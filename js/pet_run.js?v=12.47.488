@@ -1,0 +1,1193 @@
+/**
+ * 🌙 GIẤC MƠ CHẠY BỘ CỦA BÉ CƯNG (PET DREAM RUN MINIGAME - PHIÊN BẢN CÂN BẰNG V3)
+ * Tích hợp 3 cấp độ: 🌱 Dễ | ⚡ Vừa (Mặc định chuẩn) | 🔥 Khó
+ * Cân chỉnh nhịp né mượt mà, kịch tính, nhặt ⭐ Sao vàng và 🐟/🦴 Đồ ăn
+ */
+
+(function () {
+  'use strict';
+
+  const W = 300;
+  const H = 400;
+  const LANES = [63, 147, 233];
+  const RUNNER_Y = H - 70;
+  const ROAD_SCALE = 300 / 480 * 1068;
+
+  const OBSTACLES = {
+    hole:   { dw: 48, dh: 42, hw: 16, hh: 13 },
+    puddle: { dw: 56, dh: 34, hw: 20, hh: 11 },
+    cone:   { dw: 30, dh: 42, hw: 11, hh: 13 }
+  };
+
+  // 3 Cấp độ khó linh hoạt (Cân chỉnh chuẩn Arcade: phản xạ tốt, nhịp điệu cuốn hút)
+  const DIFFICULTIES = {
+    easy: {
+      label: 'Dễ',
+      baseSpd: 210,
+      speedRamp: 0.20,
+      gapMin: 165,
+      gapRange: 45,
+      doubleChance: 0.22,
+      hitInv: 0.90,
+      slowDuration: 0.35,
+      bonusExp: 5,
+      bonusMoney: 5000
+    },
+    medium: { // Mặc định chuẩn cân bằng
+      label: 'Vừa',
+      baseSpd: 245,
+      speedRamp: 0.35,
+      gapMin: 138,
+      gapRange: 36,
+      doubleChance: 0.42,
+      hitInv: 0.70,
+      slowDuration: 0.45,
+      bonusExp: 15,
+      bonusMoney: 15000
+    },
+    hard: { // Thử thách cao, phản xạ nhanh
+      label: 'Khó',
+      baseSpd: 280,
+      speedRamp: 0.45,
+      gapMin: 115,
+      gapRange: 28,
+      doubleChance: 0.62,
+      hitInv: 0.55,
+      slowDuration: 0.60,
+      bonusExp: 30,
+      bonusMoney: 30000
+    }
+  };
+
+  // Asset paths
+  const ASSETS = {
+    road:   'img/pet_run/road.png',
+    house:  'img/pet_run/house.png',
+    cone:   'img/pet_run/cone.png',
+    hole:   'img/pet_run/hole.png',
+    puddle: 'img/pet_run/puddle.png',
+    dog:    'img/pet_run/dog_run.png',
+    cat:    'img/pet_run/cat_run.png'
+  };
+
+  // Audio Synthesizer via Web Audio API
+  class SoundSynth {
+    constructor() {
+      this.ctx = null;
+    }
+    init() {
+      if (this.ctx) {
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        return;
+      }
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        try {
+          this.ctx = new AudioCtx();
+        } catch (e) {}
+      }
+    }
+    isMuted() {
+      return window.AU && window.AU.on === false;
+    }
+    playTone(freq, type = 'sine', duration = 0.1, gainVal = 0.2) {
+      if (this.isMuted()) return;
+      this.init();
+      if (!this.ctx) return;
+      try {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+      } catch (e) {}
+    }
+    tap() {
+      this.playTone(440, 'triangle', 0.05, 0.14);
+    }
+    whoosh() {
+      if (this.isMuted()) return;
+      this.init();
+      if (!this.ctx) return;
+      try {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(450, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(160, this.ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.16, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.12);
+      } catch (e) {}
+    }
+    splash() {
+      if (this.isMuted()) return;
+      this.init();
+      if (!this.ctx) return;
+      try {
+        const node = this.ctx.createBufferSource();
+        const buffer = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * 0.15), this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < buffer.length; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.05));
+        }
+        node.buffer = buffer;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.22, this.ctx.currentTime);
+        node.connect(gain);
+        gain.connect(this.ctx.destination);
+        node.start();
+      } catch (e) {}
+    }
+    hit() {
+      this.playTone(90, 'sawtooth', 0.22, 0.35);
+    }
+    star() {
+      if (this.isMuted()) return;
+      this.init();
+      this.playTone(784, 'sine', 0.06, 0.16);
+      setTimeout(() => this.playTone(1046, 'sine', 0.08, 0.18), 50);
+    }
+    win() {
+      if (this.isMuted()) return;
+      this.init();
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, idx) => {
+        setTimeout(() => this.playTone(freq, 'triangle', 0.2, 0.22), idx * 110);
+      });
+    }
+  }
+
+  const sfx = new SoundSynth();
+
+  // Preload Images
+  const imgs = {};
+  for (const [key, src] of Object.entries(ASSETS)) {
+    const im = new Image();
+    im.src = src;
+    imgs[key] = im;
+  }
+
+  // Game internal state
+  let currentPetType = 'dog';
+  let difficulty = 'medium'; // 'easy', 'medium', 'hard'
+  let targetDistKm = 1.5;
+  let state = null;
+  let animId = null;
+  let onCompleteCallback = null;
+  let autoExitTimer = null;
+
+  function getModal() {
+    let modal = document.getElementById('petRunModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'petRunModal';
+      modal.className = 'pet-run-overlay';
+      modal.innerHTML = `
+        <div class="pet-run-card">
+          <div class="pet-run-header">
+            <div class="pet-run-header-titles">
+              <h2 id="petRunTitle">🌙 GIẤC MƠ CỦA BÉ CƯNG</h2>
+              <p id="petRunSubtitle">Bé đang mơ: Né chướng ngại vật & Chạy lon ton về nhà!</p>
+            </div>
+            <button type="button" class="pet-run-close-btn" id="petRunCloseBtn" aria-label="Đóng">✕</button>
+          </div>
+
+          <!-- Toolbar -->
+          <div class="pet-run-toolbar">
+            <div class="pet-run-opt-group">
+              <span>Độ khó:</span>
+              <button type="button" class="pet-run-tgl" id="prBtnDiffEasy">🌱 Dễ</button>
+              <button type="button" class="pet-run-tgl active" id="prBtnDiffMed">⚡ Vừa</button>
+              <button type="button" class="pet-run-tgl" id="prBtnDiffHard">🔥 Khó</button>
+            </div>
+            <div class="pet-run-opt-group">
+              <span>Cự ly:</span>
+              <button type="button" class="pet-run-tgl active" id="prBtnDist1">1.5km</button>
+              <button type="button" class="pet-run-tgl" id="prBtnDist3">3.0km</button>
+              <button type="button" class="pet-run-tgl" id="prBtnDist5">4.5km</button>
+            </div>
+          </div>
+
+          <!-- HUD -->
+          <div class="pet-run-hud">
+            <span class="pet-run-hud-stat" id="prHudKm">0.0 / 1.5 km</span>
+            <span class="pet-run-hud-stat" id="prHudStars" style="color:#d97706;font-weight:800;">⭐ 0</span>
+            <div class="pet-run-progress-wrap">
+              <div class="pet-run-progress-bar" id="prProgressBar"></div>
+            </div>
+            <span class="pet-run-hud-stat" id="prHudHits" style="color:#dc2626">💥 0</span>
+          </div>
+
+          <!-- Canvas Stage -->
+          <div class="pet-run-canvas-wrap" id="prCanvasWrap">
+            <canvas id="petRunCv" width="300" height="400"></canvas>
+          </div>
+
+          <div class="pet-run-tip">Chạm <b>2 bên màn hình</b> hoặc bấm <b>A/D</b> / <b>← / →</b> để lách làn</div>
+
+          <!-- Touch Controls -->
+          <div class="pet-run-controls">
+            <button type="button" class="pet-run-ctrl-btn" id="prBtnLeft" aria-label="Lách trái">◀ TRÁI</button>
+            <button type="button" class="pet-run-ctrl-btn" id="prBtnRight" aria-label="Lách phải">PHẢI ▶</button>
+          </div>
+
+          <!-- Result Modal Overlay -->
+          <div class="pet-run-result-overlay" id="prResultModal" hidden>
+            <div class="pet-run-result-box">
+              <div class="pet-run-result-avatar">
+                <img id="prResAvatar" src="" alt="Avatar">
+              </div>
+              <div class="pet-run-badge" id="prResTag">Giấc Mơ Hoàn Hảo</div>
+              <h3 class="pet-run-result-title" id="prResTitle">Bé Về Đích Thành Công!</h3>
+              <p class="pet-run-result-msg" id="prResMsg">Bé cưng chạy lon ton về đến nhà ấm cúng, ngủ một giấc thật ngon lành!</p>
+
+              <div class="pet-run-result-stats">
+                <div>
+                  <span>Số lần vấp</span>
+                  <b id="prResHits">0 lần</b>
+                </div>
+                <div>
+                  <span>Sao nhặt được</span>
+                  <b id="prResStars" style="color:#d97706;">⭐ 0</b>
+                </div>
+                <div>
+                  <span>Thưởng EXP</span>
+                  <b id="prResExp" style="color:#7c3aed;">+35 EXP</b>
+                </div>
+                <div>
+                  <span>Quà trong mơ</span>
+                  <b id="prResMoney" style="color:#16a34a;">+30.000đ</b>
+                </div>
+              </div>
+
+              <div class="pet-run-result-actions">
+                <button type="button" class="pet-run-btn-main" id="prBtnClaim">🎉 TỈNH DẬY & NHẬN QUÀ</button>
+                <button type="button" class="pet-run-btn-sub" id="prBtnRestart">🔄 CHẠY TIẾP GIẤC MƠ</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      bindModalEvents(modal);
+    }
+    return modal;
+  }
+
+  function bindModalEvents(modal) {
+    // Close
+    modal.querySelector('#petRunCloseBtn').onclick = () => close();
+
+    // Controls
+    modal.querySelector('#prBtnLeft').onclick = (e) => { e.preventDefault(); switchLane(-1); };
+    modal.querySelector('#prBtnRight').onclick = (e) => { e.preventDefault(); switchLane(1); };
+
+    const cv = modal.querySelector('#petRunCv');
+    cv.addEventListener('pointerdown', (e) => {
+      sfx.init();
+      const rect = cv.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      switchLane(clickX < rect.width / 2 ? -1 : 1);
+    });
+
+    // Difficulty toggles
+    const diffBtns = [
+      { el: modal.querySelector('#prBtnDiffEasy'), diff: 'easy' },
+      { el: modal.querySelector('#prBtnDiffMed'), diff: 'medium' },
+      { el: modal.querySelector('#prBtnDiffHard'), diff: 'hard' }
+    ];
+    diffBtns.forEach(item => {
+      item.el.onclick = () => {
+        diffBtns.forEach(b => b.el.classList.remove('active'));
+        item.el.classList.add('active');
+        difficulty = item.diff;
+        startNewRun();
+      };
+    });
+
+    // Distance toggles
+    const distBtns = [
+      { el: modal.querySelector('#prBtnDist1'), dist: 1.5 },
+      { el: modal.querySelector('#prBtnDist3'), dist: 3.0 },
+      { el: modal.querySelector('#prBtnDist5'), dist: 4.5 }
+    ];
+    distBtns.forEach(item => {
+      item.el.onclick = () => {
+        distBtns.forEach(b => b.el.classList.remove('active'));
+        item.el.classList.add('active');
+        targetDistKm = item.dist;
+        startNewRun();
+      };
+    });
+
+    // Result buttons
+    modal.querySelector('#prBtnClaim').onclick = () => claimRewardAndExit();
+    modal.querySelector('#prBtnRestart').onclick = () => startNewRun();
+  }
+
+  function handleKeyDown(e) {
+    if (!state || state.done) return;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+      e.preventDefault();
+      switchLane(-1);
+    } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+      e.preventDefault();
+      switchLane(1);
+    } else if (e.code === 'Escape') {
+      close();
+    }
+  }
+
+  function switchLane(delta) {
+    if (!state || state.done) return;
+    sfx.init();
+    const nextLane = Math.max(0, Math.min(2, state.lane + delta));
+    if (nextLane !== state.lane) {
+      state.lane = nextLane;
+      sfx.tap();
+    }
+  }
+
+  function startNewRun() {
+    if (autoExitTimer) { clearTimeout(autoExitTimer); autoExitTimer = null; }
+    sfx.init();
+    sfx.whoosh();
+
+    const modal = getModal();
+    modal.querySelector('#prResultModal').hidden = true;
+
+    // Calibration: ~3200 pixels per km
+    // 1.5km = 4800px (~20 giây)
+    // 3.0km = 9600px (~40 giây)
+    // 4.5km = 14400px (~60 giây)
+    const totalPixels = targetDistKm * 3200;
+
+    state = {
+      t: 0,
+      dist: 0,
+      end: totalPixels,
+      lane: 1, // Start in middle lane
+      x: LANES[1],
+      obs: [],
+      items: [], // Collectibles: Stars / Treats
+      next: 220,
+      nextItem: 120,
+      hits: 0,
+      stars: 0,
+      inv: 0,
+      slow: 0,
+      lastTime: 0,
+      done: false,
+      fin: false,
+      fx: []
+    };
+
+    modal.querySelector('#prHudHits').textContent = '💥 0';
+    modal.querySelector('#prHudStars').textContent = '⭐ 0';
+    modal.querySelector('#prProgressBar').style.width = '0%';
+    modal.querySelector('#prHudKm').textContent = '0.0 / ' + targetDistKm.toFixed(1) + ' km';
+
+    if (animId) cancelAnimationFrame(animId);
+    requestAnimationFrame(gameLoop);
+  }
+
+  function render(g) {
+    g.clearRect(0, 0, W, H);
+
+    // 1. Draw Road Background
+    if (imgs.road && imgs.road.complete && imgs.road.naturalWidth) {
+      const doubleHeight = 2 * ROAD_SCALE;
+      const offset = state.dist % doubleHeight;
+      for (let i = 0, y = offset - doubleHeight; y < H; i++, y += ROAD_SCALE) {
+        if (i % 2) {
+          g.save();
+          g.translate(0, y + ROAD_SCALE);
+          g.scale(1, -1);
+          g.drawImage(imgs.road, 0, 0, imgs.road.naturalWidth, imgs.road.naturalHeight, 0, 0, W, ROAD_SCALE);
+          g.restore();
+        } else {
+          g.drawImage(imgs.road, 0, 0, imgs.road.naturalWidth, imgs.road.naturalHeight, 0, y, W, ROAD_SCALE);
+        }
+      }
+    } else {
+      // Fallback road
+      g.fillStyle = '#64748b';
+      g.fillRect(0, 0, W, H);
+      g.fillStyle = 'rgba(255,255,255,0.8)';
+      for (let y = (state.dist % 60) - 60; y < H; y += 60) {
+        g.fillRect(100 - 2, y, 4, 30);
+        g.fillRect(200 - 2, y, 4, 30);
+      }
+    }
+
+    // 2. Dream Atmosphere Tint (Cảnh đêm sao ấm cúng)
+    g.fillStyle = 'rgba(15, 23, 42, 0.35)';
+    g.fillRect(0, 0, W, H);
+    // Twinkling stars
+    g.fillStyle = 'rgba(254, 240, 138, 0.75)';
+    for (let i = 0; i < 20; i++) {
+      const sx = (i * 37 + 19) % W;
+      const sy = (i * 47 + state.dist * 0.2) % H;
+      const sz = (i % 3 === 0) ? 2.5 : 1.5;
+      g.fillRect(sx, sy, sz, sz);
+    }
+
+    // 3. Draw Finish House
+    const houseY = RUNNER_Y - (state.end - state.dist) - 60;
+    if (houseY > -140) {
+      if (imgs.house && imgs.house.complete && imgs.house.naturalWidth) {
+        g.drawImage(imgs.house, W / 2 - 60, houseY - 60, 120, 120);
+      } else {
+        g.fillStyle = '#ea580c';
+        g.fillRect(W / 2 - 40, houseY, 80, 50);
+      }
+    }
+
+    // 4. Draw Collectibles (Stars / Treats)
+    state.items.forEach(it => {
+      if (it.collected) return;
+      g.save();
+      g.translate(it.x, it.y);
+      const bobItem = Math.sin(state.t * 8 + it.seed) * 3;
+      g.translate(0, bobItem);
+
+      // Draw treat icon
+      g.font = '20px sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(it.icon, 0, 0);
+
+      // Glow circle
+      g.beginPath();
+      g.arc(0, 0, 14, 0, Math.PI * 2);
+      g.fillStyle = 'rgba(253, 224, 71, 0.25)';
+      g.fill();
+
+      g.restore();
+    });
+
+    // 5. Obstacles
+    state.obs.forEach(obs => {
+      g.globalAlpha = obs.hit ? 0.45 : 1;
+      const im = imgs[obs.k];
+      if (im && im.complete && im.naturalWidth) {
+        g.drawImage(im, obs.x - obs.dw / 2, obs.y - obs.dh / 2, obs.dw, obs.dh);
+      } else {
+        g.fillStyle = obs.k === 'puddle' ? 'rgba(56, 189, 248, 0.85)' : obs.k === 'hole' ? '#451a03' : '#f97316';
+        g.beginPath();
+        g.ellipse(obs.x, obs.y, obs.dw / 2, obs.dh / 2.5, 0, 0, Math.PI * 2);
+        g.fill();
+      }
+    });
+    g.globalAlpha = 1;
+
+    // 6. Particles FX
+    state.fx.forEach(p => {
+      g.globalAlpha = Math.max(0, p.a);
+      if (p.txt) {
+        g.font = 'bold 13px sans-serif';
+        g.fillStyle = p.c;
+        g.textAlign = 'center';
+        g.fillText(p.txt, p.x, p.y);
+      } else {
+        g.fillStyle = p.c;
+        g.beginPath();
+        g.arc(p.x, p.y, p.r || 3.5, 0, Math.PI * 2);
+        g.fill();
+      }
+    });
+    g.globalAlpha = 1;
+
+    // 7. Player Runner (Cat_run or Dog_run)
+    g.save();
+    g.translate(state.x, RUNNER_Y);
+
+    // Running bobbing animation (steps)
+    const bob = Math.sin(state.t * 24) * 3;
+    g.translate(0, bob);
+
+    if (state.inv > 0) {
+      g.rotate(Math.sin(state.t * 36) * 0.22);
+      g.globalAlpha = Math.sin(state.t * 50) > 0 ? 0.9 : 0.4;
+    }
+
+    const runnerImg = (currentPetType === 'cat') ? imgs.cat : imgs.dog;
+    if (runnerImg && runnerImg.complete && runnerImg.naturalWidth) {
+      // Draw dog_run or cat_run top-down running sprite (width: 38, height: 58)
+      g.drawImage(runnerImg, -19, -30, 38, 59);
+    } else {
+      // Fallback runner
+      g.fillStyle = (currentPetType === 'cat') ? '#f59e0b' : '#ea580c';
+      g.beginPath();
+      g.arc(0, -10, 16, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#fff';
+      g.font = '16px sans-serif';
+      g.textAlign = 'center';
+      g.fillText(currentPetType === 'cat' ? '🐱' : '🐕', 0, -4);
+    }
+    g.restore();
+  }
+
+  function gameLoop(time) {
+    if (!state || state.done) return;
+
+    const dt = state.lastTime ? Math.min(0.05, (time - state.lastTime) / 1000) : 0;
+    state.lastTime = time;
+
+    const diff = DIFFICULTIES[difficulty] || DIFFICULTIES.medium;
+    const progressRatio = Math.min(1, state.dist / state.end);
+
+    // Tốc độ chạy theo cấp độ khó
+    const baseSpd = diff.baseSpd;
+    const speed = baseSpd * (1 + progressRatio * diff.speedRamp) * (state.slow > 0 ? 0.65 : 1);
+
+    state.t += dt;
+    state.dist += speed * dt;
+    state.inv = Math.max(0, state.inv - dt);
+    state.slow = Math.max(0, state.slow - dt);
+
+    // Chuyển làn mượt mà, phản hồi nhạy bén chuẩn Arcade
+    const turnSpeed = 18;
+    state.x += (LANES[state.lane] - state.x) * Math.min(1, dt * turnSpeed);
+
+    // 1. Xuất hiện chướng ngại vật (Thử thách phản xạ, không cho người chơi đứng im)
+    if (state.dist >= state.next && state.dist < state.end - 320) {
+      const doubleChance = progressRatio > 0.15 ? diff.doubleChance : 0.15;
+      const isDouble = Math.random() < doubleChance;
+      const currentLane = state.lane;
+      let spawnLanes = [];
+
+      if (isDouble) {
+        // Đôi: Khóa 2 làn, chừa 1 làn an toàn (75% cơ hội buộc người chơi phải lách sang làn khác)
+        const safeLane = Math.random() < 0.75
+          ? (currentLane === 1 ? (Math.random() < 0.5 ? 0 : 2) : 1)
+          : currentLane;
+        spawnLanes = [0, 1, 2].filter(l => l !== safeLane);
+      } else {
+        // Đơn: 70% rơi trúng làn người chơi đang đi để bắt buộc phải phản xạ né
+        if (Math.random() < 0.70) {
+          spawnLanes = [currentLane];
+        } else {
+          const otherLanes = [0, 1, 2].filter(l => l !== currentLane);
+          spawnLanes = [otherLanes[Math.floor(Math.random() * otherLanes.length)]];
+        }
+      }
+
+      spawnLanes.forEach(laneIdx => {
+        const rnd = Math.random();
+        const type = rnd < 0.35 ? 'puddle' : rnd < 0.70 ? 'hole' : 'cone';
+        state.obs.push({
+          k: type,
+          x: LANES[laneIdx],
+          y: -50,
+          ...OBSTACLES[type],
+          hit: false
+        });
+      });
+
+      // Khoảng cách nhịp điệu giữa các chướng ngại vật
+      state.next += diff.gapMin + Math.random() * diff.gapRange;
+    }
+
+    // 2. Xuất hiện quà / sao trên đường để khuyến khích nhặt
+    if (state.dist >= state.nextItem && state.dist < state.end - 250) {
+      const isCat = currentPetType === 'cat';
+      const icons = isCat ? ['⭐', '🐟', '⭐', '🐾'] : ['⭐', '🦴', '⭐', '🍖'];
+      const chosenIcon = icons[Math.floor(Math.random() * icons.length)];
+      const freeLanes = [0, 1, 2].sort(() => Math.random() - 0.5);
+
+      state.items.push({
+        icon: chosenIcon,
+        x: LANES[freeLanes[0]],
+        y: -40,
+        seed: Math.random() * 10,
+        collected: false
+      });
+      state.nextItem += 130 + Math.random() * 80;
+    }
+
+    // Update Obstacles position
+    state.obs.forEach(obs => {
+      obs.y += speed * dt;
+    });
+    state.obs = state.obs.filter(obs => obs.y < H + 60);
+
+    // Update Items position & Collection
+    state.items.forEach(it => {
+      it.y += speed * dt;
+      if (!it.collected && Math.abs(it.x - state.x) < 30 && Math.abs(it.y - RUNNER_Y) < 34) {
+        it.collected = true;
+        state.stars++;
+        sfx.star();
+
+        const modal = getModal();
+        modal.querySelector('#prHudStars').textContent = `⭐ ${state.stars}`;
+
+        // Particle pop
+        state.fx.push({
+          txt: `+1 ${it.icon}`,
+          x: state.x,
+          y: RUNNER_Y - 20,
+          vx: (Math.random() - 0.5) * 40,
+          vy: -60,
+          a: 1.2,
+          c: '#f59e0b'
+        });
+      }
+    });
+    state.items = state.items.filter(it => it.y < H + 60 && !it.collected);
+
+    // Collision Detection
+    if (!state.inv) {
+      for (const obs of state.obs) {
+        if (obs.hit) continue;
+        if (Math.abs(obs.x - state.x) < obs.hw + 8 && Math.abs(obs.y - RUNNER_Y) < obs.hh + 12) {
+          obs.hit = true;
+          state.hits++;
+          state.inv = diff.hitInv;
+          state.slow = diff.slowDuration;
+
+          if (obs.k === 'puddle') {
+            sfx.splash();
+          } else {
+            sfx.hit();
+          }
+
+          const modal = getModal();
+          modal.querySelector('#prHudHits').textContent = '💥 ' + state.hits;
+
+          // Particles
+          for (let i = 0; i < 10; i++) {
+            state.fx.push({
+              x: state.x,
+              y: RUNNER_Y - 5,
+              vx: (Math.random() - 0.5) * 180,
+              vy: -60 - Math.random() * 120,
+              a: 1,
+              r: Math.random() * 3 + 2,
+              c: obs.k === 'puddle' ? '#38bdf8' : '#cbd5e1'
+            });
+          }
+          break;
+        }
+      }
+    }
+
+    // Update Particles
+    state.fx.forEach(p => {
+      p.x += (p.vx || 0) * dt;
+      p.y += (p.vy || 0) * dt;
+      if (!p.txt) p.vy = (p.vy || 0) + 400 * dt;
+      p.a -= dt * (p.txt ? 1.4 : 1.8);
+    });
+    state.fx = state.fx.filter(p => p.a > 0);
+
+    // Update HUD
+    const modal = getModal();
+    const progress = Math.min(100, progressRatio * 100);
+    modal.querySelector('#prProgressBar').style.width = progress + '%';
+    const currentKm = Math.min(targetDistKm, progressRatio * targetDistKm).toFixed(1);
+    modal.querySelector('#prHudKm').textContent = currentKm + ' / ' + targetDistKm.toFixed(1) + ' km';
+
+    // Canvas render
+    const cv = modal.querySelector('#petRunCv');
+    const ctx = cv.getContext('2d');
+    render(ctx);
+
+    // Finish Check
+    if (state.dist >= state.end) {
+      finishRun();
+      return;
+    }
+
+    animId = requestAnimationFrame(gameLoop);
+  }
+
+  function finishRun() {
+    if (!state || state.fin) return;
+    state.fin = true;
+    state.done = true;
+
+    sfx.win();
+
+    const diff = DIFFICULTIES[difficulty] || DIFFICULTIES.medium;
+    const hits = state.hits;
+    const stars = state.stars;
+    const isCat = currentPetType === 'cat';
+    const petName = (window.S && window.S.pet && window.S.pet.name) || (isCat ? 'Mèo Chiêu Tài' : 'Shiba Vàng');
+
+    let title = 'Giấc Mơ Hoàn Hảo!';
+    let tag = `Cấp ${diff.label} · 0 vấp`;
+    let msg = `Bé ${petName} chạy lon ton siêu tốc, né hết mọi ổ gà về đến tiệm trà an toàn! Bé nhặt được ${stars} sao trong mơ gửi tặng sếp.`;
+    let baseExp = 35;
+    let baseMoney = 30000;
+    let star = '⭐⭐⭐⭐⭐';
+    let avatar = isCat ? 'img/pet/Cat_Play.png' : 'img/pet/Dog_Play.png';
+
+    if (hits === 0) {
+      title = 'Giấc Mơ Hoàn Hảo! 🌟';
+      tag = `Xuất Sắc (${diff.label} · 0 Vấp)`;
+      msg = `Bé ${petName} chạy cực khéo, né toàn bộ chướng ngại vật về nhà và mang về ${stars} món quà gửi sếp!`;
+      baseExp = 40;
+      baseMoney = 35000;
+      star = '⭐⭐⭐⭐⭐';
+      avatar = isCat ? 'img/pet/Cat_Play.png' : 'img/pet/Dog_Play.png';
+    } else if (hits <= 2) {
+      title = 'Về Đích Thành Công! 🐾';
+      tag = `${diff.label} · Vấp ${hits} lần`;
+      msg = `Bé ${petName} về đến nhà ấm áp, ngủ một giấc sâu và lấy lại trọn vẹn 100% sinh lực!`;
+      baseExp = 28;
+      baseMoney = 20000;
+      star = '⭐⭐⭐⭐';
+      avatar = isCat ? 'img/pet/Cat_Play.png' : 'img/pet/Dog_Play.png';
+    } else {
+      title = 'Chuyến Chạy Vất Vả! 🩹';
+      tag = `${diff.label} · Vấp ${hits} lần`;
+      msg = `Bé ${petName} vấp ngã vài lần nhưng vẫn kiên cường chạy về nệm ấm! Bé cần ngủ thật say để hồi sức.`;
+      baseExp = 18;
+      baseMoney = 10000;
+      star = '⭐⭐⭐';
+      avatar = isCat ? 'img/pet/Cat_sad.png' : 'img/pet/Dog_sad.png';
+    }
+
+    // Difficulty bonus + Star bonus
+    const finalExp = baseExp + diff.bonusExp + stars;
+    const finalMoney = baseMoney + diff.bonusMoney + stars * 1000;
+
+    state.finalExp = finalExp;
+    state.finalMoney = finalMoney;
+
+    const modal = getModal();
+    modal.querySelector('#prResAvatar').src = avatar;
+    modal.querySelector('#prResTag').textContent = tag;
+    modal.querySelector('#prResTitle').textContent = title;
+    modal.querySelector('#prResMsg').textContent = msg;
+    modal.querySelector('#prResHits').textContent = hits + ' lần';
+    modal.querySelector('#prResStars').textContent = `⭐ ${stars} sao`;
+    modal.querySelector('#prResExp').textContent = `+${finalExp} EXP`;
+    modal.querySelector('#prResStar').textContent = star;
+    const claimBtn = modal.querySelector('#prBtnClaim');
+    if (claimBtn) {
+      claimBtn.textContent = '🎉 TỈNH DẬY & NHẬN QUÀ (Tự thoát sau 1.8s...)';
+    }
+
+    modal.querySelector('#prResultModal').hidden = false;
+
+    // Tự động nhận quà và thoát sau 1.8s, không cần ấn x
+    if (autoExitTimer) clearTimeout(autoExitTimer);
+    autoExitTimer = setTimeout(() => {
+      claimRewardAndExit();
+    }, 1800);
+  }
+
+  function claimRewardAndExit() {
+    if (autoExitTimer) {
+      clearTimeout(autoExitTimer);
+      autoExitTimer = null;
+    }
+    if (!state) return close();
+    const exp = state.finalExp || 25;
+    const money = state.finalMoney || 0;
+    const stars = state.stars || 0;
+
+    if (window.S && window.S.pet) {
+      const maxS = typeof window.getPetMaxStat === 'function' ? window.getPetMaxStat(window.S.pet.level) : 100;
+      window.S.pet.energy = maxS;
+      window.S.pet.happiness = Math.min(maxS, (window.S.pet.happiness || 0) + 18);
+      if (typeof window.addPetExp === 'function') {
+        window.addPetExp(exp);
+      }
+      if (money > 0) {
+        window.S.money = (window.S.money || 0) + money;
+        if (window.S.cur) {
+          window.S.cur.gift = (window.S.cur.gift || 0) + money;
+        }
+      }
+      if (typeof window.save === 'function') window.save();
+      if (typeof window.head === 'function') window.head();
+      if (typeof window.updatePetStatusBars === 'function') window.updatePetStatusBars();
+      if (typeof window.renderPetView === 'function') window.renderPetView();
+
+      const petName = window.S.pet.name || (window.S.pet.type === 'cat' ? 'Mèo Chiêu Tài' : 'Shiba');
+      const rewardTxt = money > 0 ? ` (+${exp} EXP & +${money.toLocaleString('vi-VN')}đ vào két)` : ` (+${exp} EXP)`;
+      if (typeof window.toast === 'function') {
+        window.toast(`💤 Bé ${petName} tỉnh dậy sảng khoái (100% Sức, nhặt được ${stars} sao)!${rewardTxt}`, 4500);
+      }
+    }
+
+    if (typeof onCompleteCallback === 'function') {
+      onCompleteCallback({ hits: state.hits, stars, exp, money });
+    }
+
+    close();
+  }
+
+  function open(petType, callback) {
+    currentPetType = petType || ((window.S && window.S.pet && window.S.pet.type) || 'dog');
+    onCompleteCallback = callback || null;
+
+    const modal = getModal();
+    modal.classList.add('active');
+
+    // Title update
+    const isCat = currentPetType === 'cat';
+    const petName = (window.S && window.S.pet && window.S.pet.name) || (isCat ? 'Mèo Chiêu Tài' : 'Cún Shiba');
+    modal.querySelector('#petRunTitle').textContent = `🌙 GIẤC MƠ CỦA ${petName.toUpperCase()}`;
+    modal.querySelector('#petRunSubtitle').textContent = `Bé ${petName} đang mơ: Né chướng ngại vật & Chạy lon ton về nhà!`;
+
+    // Canvas scaling
+    const cv = modal.querySelector('#petRunCv');
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = W * dpr;
+    cv.height = H * dpr;
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    startNewRun();
+  }
+
+  function close() {
+    if (autoExitTimer) {
+      clearTimeout(autoExitTimer);
+      autoExitTimer = null;
+    }
+    if (animId) {
+      cancelAnimationFrame(animId);
+      animId = null;
+    }
+    window.removeEventListener('keydown', handleKeyDown);
+    const modal = document.getElementById('petRunModal');
+    if (modal) {
+      modal.classList.remove('active');
+      modal.querySelector('#prResultModal').hidden = true;
+    }
+    state = null;
+  }
+
+  // Inject CSS Styles
+  const styleEl = document.createElement('style');
+  styleEl.id = 'petRunStyles';
+  styleEl.textContent = `
+    .pet-run-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(6px);
+      z-index: 999999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      animation: prFadeIn 0.2s ease;
+    }
+    .pet-run-overlay.active {
+      display: flex !important;
+    }
+    .pet-run-card {
+      background: #FFFFFF;
+      border-radius: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+      width: 100%;
+      max-width: 340px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .pet-run-header {
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      color: #fff;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+    }
+    .pet-run-header-titles h2 {
+      font-size: 15px;
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+    .pet-run-header-titles p {
+      font-size: 11px;
+      margin: 2px 0 0;
+      opacity: 0.9;
+    }
+    .pet-run-close-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 0.15s;
+    }
+    .pet-run-close-btn:hover {
+      background: rgba(255, 255, 255, 0.35);
+    }
+    .pet-run-toolbar {
+      background: #F8FAFC;
+      padding: 6px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      border-bottom: 1px solid #E2E8F0;
+    }
+    .pet-run-opt-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .pet-run-tgl {
+      background: #fff;
+      border: 1px solid #CBD5E1;
+      color: #334155;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .pet-run-tgl.active {
+      background: #8b5cf6;
+      border-color: #7c3aed;
+      color: #fff;
+    }
+    .pet-run-hud {
+      background: #FFFFFF;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 700;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .pet-run-progress-wrap {
+      flex: 1;
+      height: 10px;
+      background: #E2E8F0;
+      border-radius: 99px;
+      overflow: hidden;
+      margin: 0 6px;
+    }
+    .pet-run-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #F59E0B, #8b5cf6);
+      border-radius: 99px;
+      transition: width 0.1s linear;
+    }
+    .pet-run-canvas-wrap {
+      position: relative;
+      width: 300px;
+      height: 380px;
+      margin: 6px auto;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      touch-action: none;
+      cursor: pointer;
+      background: #334155;
+    }
+    #petRunCv {
+      display: block;
+      width: 300px;
+      height: 380px;
+    }
+    .pet-run-tip {
+      font-size: 10px;
+      color: #94a3b8;
+      text-align: center;
+      padding: 2px 4px 4px;
+    }
+    .pet-run-controls {
+      display: flex;
+      gap: 10px;
+      padding: 6px 12px 10px;
+      background: #F8FAFC;
+    }
+    .pet-run-ctrl-btn {
+      flex: 1;
+      height: 42px;
+      background: linear-gradient(180deg, #FFFFFF, #EDE9FE);
+      border: 1.5px solid #DDD6FE;
+      border-radius: 10px;
+      box-shadow: 0 3px 0 #C4B5FD, 0 4px 8px rgba(0,0,0,0.05);
+      font-size: 14px;
+      color: #5B21B6;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.08s ease;
+    }
+    .pet-run-ctrl-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #C4B5FD;
+    }
+    .pet-run-result-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      z-index: 100;
+      animation: prFadeIn 0.25s ease;
+    }
+    .pet-run-result-overlay[hidden] {
+      display: none !important;
+    }
+    .pet-run-result-box {
+      background: #fff;
+      border-radius: 18px;
+      padding: 16px 14px;
+      width: 100%;
+      max-width: 290px;
+      text-align: center;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.35);
+      animation: prPopIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+    .pet-run-result-avatar {
+      width: 72px;
+      height: 72px;
+      margin: -6px auto 8px;
+      border-radius: 50%;
+      background: #F5F3FF;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 3px solid #DDD6FE;
+    }
+    .pet-run-result-avatar img {
+      width: 58px;
+      height: 58px;
+      object-fit: contain;
+    }
+    .pet-run-badge {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #EDE9FE;
+      color: #6D28D9;
+      margin-bottom: 6px;
+    }
+    .pet-run-result-title {
+      font-size: 17px;
+      color: #4C1D95;
+      margin-bottom: 4px;
+      font-weight: 800;
+    }
+    .pet-run-result-msg {
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #475569;
+      margin-bottom: 12px;
+    }
+    .pet-run-result-stats {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 14px;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+    .pet-run-result-stats div {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pet-run-result-stats span {
+      font-size: 10px;
+      color: #64748b;
+      font-weight: 500;
+    }
+    .pet-run-result-stats b {
+      font-size: 13.5px;
+      color: #1e293b;
+    }
+    .pet-run-result-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .pet-run-btn-main {
+      width: 100%;
+      padding: 10px;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      border: none;
+      border-radius: 99px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 3px 0 #4f46e5;
+      transition: all 0.1s ease;
+    }
+    .pet-run-btn-main:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #4f46e5;
+    }
+    .pet-run-btn-sub {
+      width: 100%;
+      padding: 8px;
+      background: #F1F5F9;
+      border: 1px solid #CBD5E1;
+      border-radius: 99px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #475569;
+      cursor: pointer;
+    }
+    @keyframes prFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes prPopIn {
+      from { transform: scale(0.85); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+  `;
+  document.head.appendChild(styleEl);
+
+  // Expose global API
+  window.PetRunGame = {
+    open: open,
+    close: close
+  };
+})();

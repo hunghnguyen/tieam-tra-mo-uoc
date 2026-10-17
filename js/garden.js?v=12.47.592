@@ -1,0 +1,1588 @@
+/* ==========================================================================
+   🪴 KHU VƯỜN TRỒNG THẢO MỘC / TRÁI CÂY (FARM.JPG 16 Ô ĐẤT CHUẨN XÁC)
+   Tiệm Trà Mơ Ước - Version 12.47.291+
+   ========================================================================== */
+
+(function(){
+  'use strict';
+
+  // 16 Tọa độ chuẩn xác của 16 mảnh đất trên farm.jpg (952 x 550)
+  const PLOT_COORDS = [
+    { id: 0,  left: 51.05, top: 23.64, cost: 0 },
+    { id: 1,  left: 41.60, top: 31.82, cost: 0 },
+    { id: 2,  left: 59.14, top: 31.09, cost: 0 },
+    { id: 3,  left: 32.98, top: 39.82, cost: 0 },
+    { id: 4,  left: 50.74, top: 39.64, cost: 0 },
+    { id: 5,  left: 67.96, top: 39.09, cost: 0 },
+    { id: 6,  left: 23.84, top: 47.45, cost: 1000000 },
+    { id: 7,  left: 41.81, top: 47.64, cost: 1500000 },
+    { id: 8,  left: 59.35, top: 46.91, cost: 2000000 },
+    { id: 9,  left: 76.47, top: 46.55, cost: 2500000 },
+    { id: 10, left: 33.19, top: 54.91, cost: 3000000 },
+    { id: 11, left: 50.63, top: 54.91, cost: 3500000 },
+    { id: 12, left: 67.86, top: 54.55, cost: 4000000 },
+    { id: 13, left: 41.91, top: 62.55, cost: 4500000 },
+    { id: 14, left: 59.14, top: 62.36, cost: 5000000 },
+    { id: 15, left: 50.53, top: 70.00, cost: 6000000 }
+  ];
+
+  function addHarvestStock(k, q) {
+    if (!window.S) return;
+    if (!S.stock) S.stock = {};
+    if (!Array.isArray(S.stock[k])) S.stock[k] = [];
+    S.stock[k] = S.stock[k].filter(item => item && typeof item === 'object' && typeof item.q === 'number');
+    if (typeof window.addStock === 'function') {
+      window.addStock(k, q, S, true);
+    } else {
+      const l = typeof window.getIngLife === 'function' ? window.getIngLife(k) : ((window.ITEMS && window.ITEMS[k] && window.ITEMS[k].life) || 3);
+      const exp = l ? (S.day || 1) + l - 1 : 99999;
+      const b = S.stock[k].find(x => x.exp === exp);
+      if (b) b.q += q;
+      else S.stock[k].push({ q, exp });
+    }
+    if (window.ITEMS && window.ITEMS[k] && window.ITEMS[k].type === 'flav') {
+      if (typeof window.syncFlav === 'function') window.syncFlav();
+      else if (S.unlocked) S.unlocked[k] = true;
+    }
+  }
+
+  const SPROUT_IMG = 'farm/mầm cây.png?v=12.47.302';
+  const YOUNG_IMG = 'farm/cây non.png?v=12.47.302';
+
+  // Biến trạng thái thú cưng đi dạo trong vườn cây
+  let gardenPetTimer = null;
+  let gardenPetBubbleTimer = null;
+  let gardenPetX = 26; // percent left
+  let gardenPetY = 76; // percent top
+  let gardenPetFacing = 1;
+  let gardenPetState = 'sit';
+
+  // Biến trạng thái Cáp Bi đi dạo trong vườn cây
+  let gardenCapbiTimer = null;
+  let gardenCapbiBubbleTimer = null;
+  let gardenCapbiX = 66; // percent left
+  let gardenCapbiY = 74; // percent top
+  let gardenCapbiFacing = -1;
+  let gardenCapbiState = 'sit';
+
+  const GARDEN_SPOTS = [
+    { left: 18, top: 62 },
+    { left: 26, top: 76 },
+    { left: 38, top: 72 },
+    { left: 50, top: 80 },
+    { left: 63, top: 74 },
+    { left: 74, top: 78 },
+    { left: 82, top: 62 },
+    { left: 76, top: 40 },
+    { left: 68, top: 28 },
+    { left: 50, top: 16 },
+    { left: 32, top: 28 },
+    { left: 22, top: 42 }
+  ];
+
+  const SEED_DEFS = {
+    strawberry: {
+      id: 'strawberry',
+      name: 'Dâu Tây Đà Lạt',
+      img: 'farm/Dâu Tây Đà Lạt.png?v=12.47.302',
+      icon: '🍓',
+      cost: 20000,
+      days: 2,
+      rewardDesc: 'Thu hoạch +50 phần Mứt ngẫu nhiên vào kho hoàn toàn miễn phí!',
+      onHarvest(S, isStar) {
+        const JAM_KEYS = ['f_dau', 'f_dao', 'f_xoai', 'f_vai', 'f_nho', 'f_oi', 'f_mang', 'f_tao', 'f_chanh', 'f_me', 'f_dua'];
+        const chosen = JAM_KEYS[Math.floor(Math.random() * JAM_KEYS.length)];
+        const bonusPct = isStar ? Math.floor(50 + Math.random() * 51) : 0;
+        const qty = isStar ? Math.round(50 * (1 + bonusPct / 100)) : 50;
+        addHarvestStock(chosen, qty);
+        const n = (window.ITEMS && window.ITEMS[chosen] && window.ITEMS[chosen].n) || 'trái cây';
+        return isStar
+          ? `🌟 BỘI THU CÂY SAO! Đã thu hoạch +${qty} phần Mứt ${n} Organic (+${bonusPct}% Nông sản) chuyển thẳng vào kho! 🍓✨`
+          : `Đã thu hoạch +50 phần Mứt ${n} Organic tươi rói chuyển thẳng vào kho! 🍓✨`;
+      }
+    },
+    peach: {
+      id: 'peach',
+      name: 'Đào Tiên Giòn Ngọt',
+      img: 'farm/Đào Tiên Giòn Ngọt.png?v=12.47.302',
+      icon: '🍑',
+      cost: 25000,
+      days: 2,
+      rewardDesc: 'Thu hoạch +50 phần Hương ngẫu nhiên vào kho hoàn toàn miễn phí!',
+      onHarvest(S, isStar) {
+        const FLAVOR_KEYS = ['f_vai', 'f_dao', 'f_dau', 'f_nho', 'f_oi', 'f_xoai', 'f_mang', 'f_tao', 'f_chanh', 'f_me', 'f_dua', 'f_choco'];
+        const chosen = FLAVOR_KEYS[Math.floor(Math.random() * FLAVOR_KEYS.length)];
+        const bonusPct = isStar ? Math.floor(50 + Math.random() * 51) : 0;
+        const qty = isStar ? Math.round(50 * (1 + bonusPct / 100)) : 50;
+        addHarvestStock(chosen, qty);
+        const n = (window.ITEMS && window.ITEMS[chosen] && window.ITEMS[chosen].n) || 'thơm';
+        return isStar
+          ? `🌟 BỘI THU CÂY SAO! Đã thu hoạch +${qty} phần Hương ${n} thơm lừng (+${bonusPct}% Nông sản) chuyển thẳng vào kho! 🍑✨`
+          : `Đã thu hoạch +50 phần Hương ${n} thơm lừng chuyển thẳng vào kho! 🍑✨`;
+      }
+    },
+    mango: {
+      id: 'mango',
+      name: 'Xoài Cát Hòa Lộc',
+      img: 'farm/Xoài Cát Hòa Lộc.png?v=12.47.302',
+      icon: '🥭',
+      cost: 25000,
+      days: 2,
+      rewardDesc: 'Thu hoạch +50 phần Topping ngẫu nhiên vào kho hoàn toàn miễn phí!',
+      onHarvest(S, isStar) {
+        const TOPPING_KEYS = (typeof window.TOP_KEYS !== 'undefined' && Array.isArray(window.TOP_KEYS) && window.TOP_KEYS.length)
+          ? window.TOP_KEYS
+          : ['tcden', 'tcvang', 'tcsoi', 'popping', 'thach', 'cunang', 'thachtc', 'suongsao', 'thachcf', 'cheese', 'fmatcha', 'fsalt', 'fube', 'pmvien', 'pmtuoi', 'thachpm'];
+        const chosen = TOPPING_KEYS[Math.floor(Math.random() * TOPPING_KEYS.length)];
+        const bonusPct = isStar ? Math.floor(50 + Math.random() * 51) : 0;
+        const qty = isStar ? Math.round(50 * (1 + bonusPct / 100)) : 50;
+        addHarvestStock(chosen, qty);
+        const n = (window.ITEMS && window.ITEMS[chosen] && window.ITEMS[chosen].n) || 'topping';
+        return isStar
+          ? `🌟 BỘI THU CÂY SAO! Đã thu hoạch +${qty} phần Topping ${n} giòn ngọt (+${bonusPct}% Nông sản) chuyển thẳng vào kho! 🥭🧋`
+          : `Đã thu hoạch +50 phần Topping ${n} giòn ngọt chuyển thẳng vào kho! 🥭🧋`;
+      }
+    },
+    tea: {
+      id: 'tea',
+      name: 'Búp Trà Xanh Cổ Thụ',
+      img: 'farm/Búp Trà Xanh Cổ Thụ.png?v=12.47.302',
+      icon: '🍵',
+      cost: 30000,
+      days: 2,
+      rewardDesc: 'Thu hoạch +50 phần Trà ngẫu nhiên vào kho hoàn toàn miễn phí!',
+      onHarvest(S, isStar) {
+        const TEA_KEYS = (typeof window.BASE_KEYS !== 'undefined' && Array.isArray(window.BASE_KEYS) && window.BASE_KEYS.length)
+          ? window.BASE_KEYS
+          : ['tra', 'matcha', 'hong', 'luc', 'olong', 'thai'];
+        const chosen = TEA_KEYS[Math.floor(Math.random() * TEA_KEYS.length)];
+        const bonusPct = isStar ? Math.floor(50 + Math.random() * 51) : 0;
+        const qty = isStar ? Math.round(50 * (1 + bonusPct / 100)) : 50;
+        addHarvestStock(chosen, qty);
+        const n = (window.ITEMS && window.ITEMS[chosen] && window.ITEMS[chosen].n) || 'cốt trà';
+        return isStar
+          ? `🌟 BỘI THU CÂY SAO! Đã thu hoạch +${qty} phần Cốt ${n} Organic thượng hạng (+${bonusPct}% Nông sản) nhập kho! 🍵✨`
+          : `Đã thu hoạch +50 phần Cốt ${n} Organic thượng hạng nhập kho! 🍵✨`;
+      }
+    },
+    mint: {
+      id: 'mint',
+      name: 'Bạc Hà Thơm',
+      img: 'farm/Bạc Hà Thơm.png?v=12.47.302',
+      icon: '🌿',
+      cost: 10000,
+      days: 1,
+      rewardDesc: 'Lớn nhanh trong 1 ngày → Kích hoạt Buff Organic: Tăng +20% giá bán mọi ly Hồng trà, Lục trà, Trà Ô long hôm sau!',
+      onHarvest(S, isStar) {
+        if (!S.garden) S.garden = {};
+        if (isStar) {
+          S.garden.organicBuffDays = (S.garden.organicBuffDays || 0) + 2;
+          S.garden.organicBuffBoost = true;
+          const TEA_KEYS = ['hong', 'luc', 'olong', 'tra'];
+          const chosen = TEA_KEYS[Math.floor(Math.random() * TEA_KEYS.length)];
+          const bonusPct = Math.floor(50 + Math.random() * 51);
+          const extraQty = Math.round(50 * (1 + bonusPct / 100));
+          addHarvestStock(chosen, extraQty);
+          return `🌟 BỘI THU CÂY SAO BẠC HÀ! Kích hoạt SIÊU BUFF ORGANIC: Tăng +30% giá bán mọi ly trà (+50% Buff) trong 2 ngày & nhận thêm +${extraQty} Cốt trà vào kho! 🌿💰`;
+        } else {
+          S.garden.organicBuffDays = 1;
+          return 'Đã thu hoạch Bạc Hà Thơm! Kích hoạt Buff Organic: Tăng +20% giá bán mọi ly Hồng trà, Lục trà, Trà Ô long ngày hôm sau! 🌿💰';
+        }
+      }
+    },
+    lemon: {
+      id: 'lemon',
+      name: 'Chanh Vàng Quý Tộc',
+      img: 'farm/Chanh Vàng Quý Tộc.png?v=12.47.302',
+      icon: '🍋',
+      cost: 15000,
+      days: 2,
+      rewardDesc: 'Thu hoạch Tinh dầu chanh → Giảm 20% chi phí hao phí đường đá cho cả quán ngày hôm sau!',
+      onHarvest(S, isStar) {
+        if (!S.garden) S.garden = {};
+        if (isStar) {
+          S.garden.lemonBuffDays = (S.garden.lemonBuffDays || 0) + 2;
+          S.garden.lemonBuffBoost = true;
+          const bonusPct = Math.floor(50 + Math.random() * 51);
+          const extraQty = Math.round(50 * (1 + bonusPct / 100));
+          addHarvestStock('f_chanh', extraQty);
+          return `🌟 BỘI THU CÂY SAO CHANH VÀNG! Kích hoạt SIÊU TINH DẦU: Giảm -30% chi phí hao phí đường đá (+50% Buff) trong 2 ngày & nhận thêm +${extraQty} Hương chanh vào kho! 🍋✨`;
+        } else {
+          S.garden.lemonBuffDays = 1;
+          return 'Đã thu hoạch Chanh Vàng Quý Tộc & Tinh dầu chanh! Giảm 20% chi phí hao phí đường đá cho cả quán ngày hôm sau! 🍋✨';
+        }
+      }
+    }
+  };
+
+  function initGardenState() {
+    if (!window.S) return;
+    if (!S.garden) {
+      S.garden = {
+        unlocked: true,
+        plots: [],
+        seeds: {
+          mint: 4,
+          strawberry: 3,
+          lemon: 3,
+          peach: 2,
+          mango: 2,
+          tea: 2
+        },
+        organicBuffDays: 0,
+        lemonBuffDays: 0,
+        totalHarvests: 0
+      };
+    }
+
+    // Đảm bảo đủ 16 ô đất theo đúng layout farm.jpg
+    const rawPlots = (Array.isArray(S.garden.plots) ? S.garden.plots : []).filter(x => x && typeof x === 'object' && x.id != null);
+    if (rawPlots.length < 16) {
+      const newPlots = [];
+      for (let i = 0; i < 16; i++) {
+        const coord = PLOT_COORDS[i] || { left: 50, top: 50, cost: 50000 };
+        const oldP = rawPlots.find(x => x && x.id === i);
+        if (oldP) {
+          newPlots.push({
+            ...oldP,
+            left: coord.left,
+            top: coord.top,
+            cost: coord.cost
+          });
+        } else {
+          // Ô 0..5 mở sẵn miễn phí, ô 6..15 có thể khai hoang
+          const isLocked = i >= 6;
+          newPlots.push({
+            id: i,
+            left: coord.left,
+            top: coord.top,
+            cost: coord.cost,
+            locked: isLocked,
+            seed: i === 0 ? 'mint' : (i === 1 ? 'strawberry' : (i === 2 ? 'lemon' : null)),
+            stage: (i <= 2) ? 1 : 0,
+            wateredToday: false
+          });
+        }
+      }
+      S.garden.plots = newPlots;
+    } else {
+      S.garden.plots = rawPlots.slice(0, 16);
+    }
+
+    if (!S.garden.lastSeeds) S.garden.lastSeeds = {};
+
+    // Đồng bộ tọa độ, giá mở ô đất và lịch sử cây trồng (lastSeed)
+    if (Array.isArray(S.garden.plots)) {
+      S.garden.plots.forEach(p => {
+        if (!p || p.id == null) return;
+        const coord = PLOT_COORDS[p.id];
+        if (coord) {
+          p.left = coord.left;
+          p.top = coord.top;
+          if (p.locked) p.cost = coord.cost;
+        }
+        if (p.isStar == null) p.isStar = false;
+        if (p.seed) {
+          p.lastSeed = p.seed;
+          S.garden.lastSeeds[p.id] = p.seed;
+        } else if (S.garden.lastSeeds && S.garden.lastSeeds[p.id]) {
+          p.lastSeed = S.garden.lastSeeds[p.id];
+        } else if (!p.lastSeed && p.id <= 2) {
+          p.lastSeed = (p.id === 0 ? 'mint' : (p.id === 1 ? 'strawberry' : 'lemon'));
+          S.garden.lastSeeds[p.id] = p.lastSeed;
+        }
+      });
+    }
+  }
+
+  // Âm thanh tưới nước rào rào tươi mát qua WebAudio
+  function playWaterSfx() {
+    try {
+      const ctx = (window.AU && window.AU.ctx) || (typeof window.au === 'function' ? window.au() : null);
+      if (!ctx || ctx.state === 'suspended') return;
+      const now = ctx.currentTime;
+      for (let i = 0; i < 5; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const f = 560 + Math.random() * 460;
+        osc.frequency.setValueAtTime(f, now + i * 0.07);
+        osc.frequency.exponentialRampToValueAtTime(f * 1.5, now + i * 0.07 + 0.06);
+        const curVol = (window.AU && window.AU.volSfx != null) ? window.AU.volSfx : 0.8;
+        const vol = Math.max(0.02, Math.min(0.22, 0.12 * curVol));
+        gain.gain.setValueAtTime(vol, now + i * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.08);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + i * 0.07);
+        osc.stop(now + i * 0.07 + 0.09);
+      }
+    } catch (_) {}
+  }
+
+  // Hiệu ứng tưới nước sống động trên ô đất (Bình tưới nghiêng + dòng nước + sóng nước + giọt nước bắn tung tóe)
+  function animateWateringOnPlot(plotId) {
+    const plotEl = document.getElementById(`farm-plot-${plotId}`);
+    if (!plotEl) return;
+
+    const existing = plotEl.querySelector('.watering-fx-container');
+    if (existing) existing.remove();
+
+    const fx = document.createElement('div');
+    fx.className = 'watering-fx-container';
+    fx.innerHTML = `
+      <div class="watering-can-actor">
+        <img src="farm/tưới cây.png?v=12.47.304" alt="">
+      </div>
+      <div class="water-stream-fx"></div>
+      <div class="water-ripple-fx"></div>
+      <div class="water-drop-p d1">💧</div>
+      <div class="water-drop-p d2">💦</div>
+      <div class="water-drop-p d3">✨</div>
+      <div class="water-drop-p d4">💧</div>
+      <div class="water-drop-p d5">💦</div>
+    `;
+    plotEl.appendChild(fx);
+
+    const plantImg = plotEl.querySelector('.plot-plant-img');
+    if (plantImg) {
+      plantImg.classList.remove('plant-water-rejoice');
+      void plantImg.offsetWidth;
+      plantImg.classList.add('plant-water-rejoice');
+    }
+
+    setTimeout(() => {
+      if (fx.parentNode) fx.remove();
+    }, 850);
+  }
+
+  // Hiệu ứng nảy mầm mọc cây khi gieo hạt / trồng lại
+  function spawnPlantingEffect(plotEl) {
+    if (!plotEl) return;
+    plotEl.classList.remove('planting-pop');
+    void plotEl.offsetWidth;
+    plotEl.classList.add('planting-pop');
+    setTimeout(() => {
+      plotEl.classList.remove('planting-pop');
+    }, 700);
+  }
+
+  // Hiệu ứng bộc phát đột biến thành Cây Sao Lấp Lánh
+  function spawnStarEffect(plotId) {
+    const plotEl = document.getElementById(`farm-plot-${plotId}`);
+    if (!plotEl) return;
+    const existing = plotEl.querySelector('.star-transform-burst');
+    if (existing) existing.remove();
+
+    const starFx = document.createElement('div');
+    starFx.className = 'star-transform-burst';
+    starFx.innerHTML = `
+      <div class="star-burst-halo"></div>
+      <span class="burst-star s1">🌟</span>
+      <span class="burst-star s2">✨</span>
+      <span class="burst-star s3">⭐</span>
+      <span class="burst-star s4">✨</span>
+      <span class="burst-star s5">🌟</span>
+    `;
+    plotEl.appendChild(starFx);
+    setTimeout(() => {
+      if (starFx.parentNode) starFx.remove();
+    }, 1100);
+  }
+
+  const Garden = {
+    init: initGardenState,
+
+    // Chuyển sang ngày mới: chỉ những ô cây ĐÃ ĐƯỢC TƯỚI NƯỚC mới lớn lên (Phương án 1)
+    advanceDay() {
+      initGardenState();
+      if (!window.S || !S.garden || !S.garden.plots) return;
+      
+      // Giảm ngày buff
+      if (S.garden.organicBuffDays > 0) {
+        S.garden.organicBuffDays--;
+        if (S.garden.organicBuffDays <= 0) S.garden.organicBuffBoost = false;
+      }
+      if (S.garden.lemonBuffDays > 0) {
+        S.garden.lemonBuffDays--;
+        if (S.garden.lemonBuffDays <= 0) S.garden.lemonBuffBoost = false;
+      }
+
+      let grewCount = 0;
+      let unwateredCount = 0;
+      S.garden.plots.forEach(p => {
+        if (!p || p.locked || !p.seed) return;
+        const def = SEED_DEFS[p.seed];
+        const maxStage = def ? def.days + 1 : 2;
+
+        // Phương án 1: Phải tưới nước hôm nay thì qua ngày cây mới lớn!
+        if (p.wateredToday) {
+          if (p.stage < maxStage) {
+            p.stage++;
+            grewCount++;
+          }
+        } else {
+          if (p.stage < maxStage) {
+            unwateredCount++;
+          }
+        }
+        p.wateredToday = false;
+      });
+
+      if (grewCount > 0 && typeof window.toast === 'function') {
+        let msg = `🪴 Có ${grewCount} ô cây được tưới nước đã lớn thêm! 🌱`;
+        if (unwateredCount > 0) {
+          msg += ` (Có ${unwateredCount} ô chưa được tưới hôm qua nên tạm ngừng lớn)`;
+        }
+        window.toast(msg, 3500);
+      } else if (unwateredCount > 0 && typeof window.toast === 'function') {
+        window.toast(`⚠️ Hôm qua các luống cây chưa được tưới nước nên chưa thể lớn thêm! Hãy tưới nước chăm sóc cây hôm nay nhé! 💧`, 4000);
+      }
+    },
+
+    // Xử lý khi nhấn trực tiếp vào 1 ô đất trên farm.jpg
+    onPlotClick(plotId) {
+      initGardenState();
+      const p = S.garden.plots.find(x => x && x.id === plotId);
+      if (!p) return;
+
+      // 1. Ô đang khóa: Hỏi khai hoang
+      if (p.locked) {
+        const cost = p.cost || 100000;
+        if (typeof window.ask === 'function') {
+          window.ask(`
+            <div class="pbig">⛏️</div>
+            <h2>KHAI HOANG MẢNH ĐẤT #${plotId + 1}</h2>
+            <p style="font-size:0.9rem;line-height:1.5;color:var(--ink);">
+              Khai hoang mảnh đất màu mỡ này với chi phí <b>${fmt(cost)}</b> để có thêm chỗ trồng trọt và thu hoạch nông sản organic?
+            </p>
+          `, [
+            ['⛏️ Khai hoang ngay', () => this.unlockPlot(plotId), 1],
+            ['Để sau', () => {}]
+          ]);
+        }
+        return;
+      }
+
+      // 2. Ô trống: Mở chọn hạt giống
+      if (!p.seed) {
+        this.openSeedSelectModal(plotId);
+        return;
+      }
+
+      // 3. Ô đã có cây:
+      const def = SEED_DEFS[p.seed];
+      if (!def) return;
+      const maxStage = def.days + 1;
+      const isReady = p.stage >= maxStage;
+
+      if (isReady) {
+        // Thu hoạch ngay!
+        this.harvest(plotId);
+      } else {
+        const daysLeft = Math.max(1, maxStage - p.stage);
+        const timeDesc = daysLeft === 1 ? 'ngày mai sẽ chín' : `còn ${daysLeft} ngày nữa chín`;
+        // Nhấp vào cây: Nếu chưa tưới nước thì tưới ngay cho cây này!
+        if (!p.wateredToday) {
+          p.wateredToday = true;
+          playWaterSfx();
+          if (typeof window.sfx === 'function') sfx('coin');
+          animateWateringOnPlot(plotId);
+
+          let turnedStar = false;
+          if (!p.isStar && Math.random() < 0.10) {
+            p.isStar = true;
+            turnedStar = true;
+          }
+
+          if (typeof window.save === 'function') save();
+
+          if (turnedStar) {
+            setTimeout(() => {
+              if (typeof window.sfx === 'function') sfx('star');
+              spawnStarEffect(plotId);
+              if (typeof window.toast === 'function') {
+                toast(`🌟 ĐỘT BIẾN KỲ DIỆU! ${def.name} ở ô #${plotId + 1} vừa hóa thành CÂY SAO lấp lánh! BỘI THU (+50%~100% nông sản & 50% buff) khi chín! ✨⭐`, 4500, 1);
+              }
+            }, 550);
+          } else {
+            if (typeof window.toast === 'function') {
+              toast(`💧 Đã tưới nước cho ${def.name}! Cây tươi mát và lớn nhanh (${timeDesc})! ✨`, 2500);
+            }
+          }
+
+          setTimeout(() => {
+            this.render();
+          }, 700);
+          return;
+        }
+        // Đã tưới rồi: Thông tin tiến trình sinh trưởng
+        if (typeof window.toast === 'function') {
+          const starNotice = p.isStar ? ' · ⭐ CÂY SAO BỘI THU!' : '';
+          window.toast(`🌱 Mảnh #${plotId + 1}: ${def.name} đang lớn (${timeDesc}) · 💧 Đã được tưới nước hôm nay!${starNotice}`, 3000);
+        }
+      }
+    },
+
+    // Tưới nước cho toàn bộ vườn (Hiệu ứng sóng tưới nước sống động + 10% tỉ lệ hóa Cây Sao)
+    waterAll() {
+      initGardenState();
+      if (!window.S || !S.garden) return;
+      let watered = 0;
+      const plotsToWater = [];
+      const starPlots = [];
+      S.garden.plots.forEach(p => {
+        if (p && !p.locked && p.seed && !p.wateredToday) {
+          p.wateredToday = true;
+          watered++;
+          plotsToWater.push(p.id);
+          if (!p.isStar && Math.random() < 0.10) {
+            p.isStar = true;
+            starPlots.push(p.id);
+          }
+        }
+      });
+      if (watered > 0) {
+        playWaterSfx();
+        if (typeof window.sfx === 'function') sfx('coin');
+        if (typeof window.save === 'function') save();
+
+        // Chạy hiệu ứng tưới nước lượn sóng trên các ô đất
+        plotsToWater.forEach((pid, idx) => {
+          setTimeout(() => {
+            animateWateringOnPlot(pid);
+          }, idx * 80);
+        });
+
+        if (starPlots.length > 0) {
+          setTimeout(() => {
+            starPlots.forEach(pid => spawnStarEffect(pid));
+            if (typeof window.sfx === 'function') sfx('star');
+            if (typeof window.toast === 'function') {
+              toast(`🌟 ĐỘT BIẾN KỲ DIỆU! Có ${starPlots.length} ô cây vừa hấp thụ nước và biến thành CÂY SAO lấp lánh! Bội Thu (+50%~100% nông sản & 50% buff) khi chín! ✨⭐`, 5000, 1);
+            }
+          }, plotsToWater.length * 80 + 350);
+        } else {
+          if (typeof window.toast === 'function') toast(`💧 Đã tưới nước cho ${watered} ô cây! Cây đang tươi tốt và lớn nhanh! ✨`);
+        }
+
+        setTimeout(() => {
+          this.render();
+        }, Math.max(750, plotsToWater.length * 80 + 550));
+      } else {
+        if (typeof window.toast === 'function') toast(`💧 Tất cả cây trồng đều đã được tưới nước hôm nay rồi!`);
+      }
+    },
+
+    // Thu hoạch 1 ô (Lưu lại loại hạt giống để phục vụ tự động trồng lại)
+    harvest(plotId) {
+      initGardenState();
+      const p = S.garden.plots.find(x => x && x.id === plotId);
+      if (!p || !p.seed) return;
+      const def = SEED_DEFS[p.seed];
+      if (!def) return;
+      const maxStage = def.days + 1;
+      if (p.stage < maxStage) {
+        toast(`Cây ${def.name} chưa chín, hãy tưới nước và chờ thêm nhé!`);
+        return;
+      }
+
+      if (typeof window.sfx === 'function') sfx(p.isStar ? 'lvup' : 'star');
+      const wasStar = !!p.isStar;
+      const msg = def.onHarvest(S, wasStar);
+      p.lastSeed = p.seed;
+      if (!S.garden.lastSeeds) S.garden.lastSeeds = {};
+      S.garden.lastSeeds[p.id] = p.seed;
+      p.seed = null;
+      p.isStar = false;
+      p.stage = 0;
+      p.wateredToday = false;
+      S.garden.totalHarvests = (S.garden.totalHarvests || 0) + 1;
+      if (typeof window.save === 'function') save();
+      if (typeof window.toast === 'function') toast(`🧺 ${msg}`, wasStar ? 6000 : 4500, 1);
+      this.render();
+    },
+
+    // Thu hoạch tất cả (Lưu lại toàn bộ loại hạt giống để phục vụ tự động trồng lại)
+    harvestAll() {
+      initGardenState();
+      let count = 0;
+      let starCount = 0;
+      const msgs = [];
+      if (!S.garden.lastSeeds) S.garden.lastSeeds = {};
+      S.garden.plots.forEach(p => {
+        if (p && !p.locked && p.seed) {
+          const def = SEED_DEFS[p.seed];
+          if (def && p.stage >= (def.days + 1)) {
+            const wasStar = !!p.isStar;
+            if (wasStar) starCount++;
+            const m = def.onHarvest(S, wasStar);
+            p.lastSeed = p.seed;
+            S.garden.lastSeeds[p.id] = p.seed;
+            p.seed = null;
+            p.isStar = false;
+            p.stage = 0;
+            p.wateredToday = false;
+            count++;
+            msgs.push(wasStar ? `⭐${def.name} (Bội thu)` : def.name);
+          }
+        }
+      });
+
+      if (count > 0) {
+        if (typeof window.sfx === 'function') sfx(starCount > 0 ? 'lvup' : 'star');
+        S.garden.totalHarvests = (S.garden.totalHarvests || 0) + count;
+        if (typeof window.save === 'function') save();
+        if (typeof window.toast === 'function') {
+          const starNotice = starCount > 0 ? ` 🌟 (Bao gồm ${starCount} Cây Sao BỘI THU!)` : '';
+          toast(`🧺 Đã thu hoạch ${count} nông sản organic: ${msgs.join(', ')}!${starNotice} Toàn bộ đã chuyển vào kho hàng! 🎉`, 5500, 1);
+        }
+        this.render();
+      } else {
+        if (typeof window.toast === 'function') toast('Chưa có mảnh đất nào chín để thu hoạch!');
+      }
+    },
+
+    // Mở khóa ô đất
+    unlockPlot(plotId) {
+      initGardenState();
+      const p = S.garden.plots.find(x => x && x.id === plotId);
+      if (!p || !p.locked) return;
+      const cost = p.cost || 50000;
+      if (S.money < cost) {
+        if (typeof window.toast === 'function') toast(`Két không đủ tiền (${fmt(cost)}) để khai hoang mảnh đất này!`);
+        return;
+      }
+      S.money -= cost;
+      p.locked = false;
+      p.seed = null;
+      p.isStar = false;
+      p.stage = 0;
+      if (typeof window.sfx === 'function') sfx('coin');
+      if (typeof window.save === 'function') save();
+      if (typeof window.toast === 'function') toast(`🎉 Đã khai hoang xong mảnh đất #${plotId + 1}! Sẵn sàng gieo hạt! 🌱`);
+      if (typeof window.head === 'function') head();
+      if (typeof window.isStaffActive === 'function' && window.isStaffActive('staffButler') && typeof window.staffButlerAutoGarden === 'function') {
+        try { window.staffButlerAutoGarden(); } catch(e) { console.error('Butler auto garden on unlock:', e); }
+      }
+      this.render();
+    },
+
+    // Gieo hạt vào ô đất
+    plantSeed(plotId, seedId) {
+      initGardenState();
+      const p = S.garden.plots.find(x => x && x.id === plotId);
+      if (!p || p.locked || p.seed) return;
+      const count = (S.garden.seeds && S.garden.seeds[seedId]) || 0;
+      if (count <= 0) {
+        if (typeof window.toast === 'function') toast('Bạn đã hết loại hạt giống này! Hãy mua thêm tại Cửa hàng Hạt Giống nhé.');
+        return;
+      }
+      S.garden.seeds[seedId]--;
+      p.seed = seedId;
+      p.isStar = false;
+      p.lastSeed = seedId;
+      if (!S.garden.lastSeeds) S.garden.lastSeeds = {};
+      S.garden.lastSeeds[plotId] = seedId;
+      p.stage = 1;
+      p.wateredToday = false;
+      if (typeof window.sfx === 'function') sfx('tap');
+      if (typeof window.save === 'function') save();
+      if (typeof window.toast === 'function') toast(`🌱 Đã gieo ${SEED_DEFS[seedId].name} vào mảnh đất #${plotId + 1}! Hãy tưới nước để cây nhanh lớn!`);
+
+      // Thoát tab thông báo chọn hạt giống ngay sau khi gieo thành công
+      const modal = document.getElementById('modal');
+      if (modal) modal.hidden = true;
+      if (typeof window.closeModal === 'function') window.closeModal();
+
+      this.render();
+      const plotEl = document.getElementById(`farm-plot-${plotId}`);
+      if (plotEl) spawnPlantingEffect(plotEl);
+    },
+
+    // Tự động gieo lại các hạt giống đã trồng ở các ô đất trống (tự động mua hạt giống còn thiếu)
+    replantLast() {
+      initGardenState();
+      if (!window.S || !S.garden || !Array.isArray(S.garden.plots)) return;
+
+      const emptyPlots = S.garden.plots.filter(p => p && !p.locked && !p.seed);
+      if (emptyPlots.length === 0) {
+        if (typeof window.toast === 'function') toast('Tất cả mảnh đất đã mở đều đang có cây trồng!');
+        return;
+      }
+
+      if (!S.garden.seeds) S.garden.seeds = {};
+      if (!S.garden.lastSeeds) S.garden.lastSeeds = {};
+
+      const plantedPlots = [];
+      const plantedDetails = {};
+      const autoBoughtDetails = {};
+      let totalAutoBought = 0;
+      let totalMoneySpent = 0;
+      const missingSeeds = {};
+      let noHistoryPlots = 0;
+
+      emptyPlots.forEach(p => {
+        const targetSeed = p.lastSeed || S.garden.lastSeeds[p.id];
+        if (!targetSeed || !SEED_DEFS[targetSeed]) {
+          noHistoryPlots++;
+          return;
+        }
+
+        const available = S.garden.seeds[targetSeed] || 0;
+        if (available > 0) {
+          S.garden.seeds[targetSeed]--;
+          p.seed = targetSeed;
+          p.isStar = false;
+          p.lastSeed = targetSeed;
+          S.garden.lastSeeds[p.id] = targetSeed;
+          p.stage = 1;
+          p.wateredToday = false;
+          plantedPlots.push(p.id);
+          plantedDetails[targetSeed] = (plantedDetails[targetSeed] || 0) + 1;
+        } else {
+          // Tự động mua hạt giống còn thiếu từ Cửa hàng nếu két đủ tiền (Giảm 20% nếu Quản Gia Cấp 5)
+          const def = SEED_DEFS[targetSeed];
+          const butlerCostMul = (typeof window.getStaffTrainLv === 'function' && window.getStaffTrainLv('staffButler') >= 5 && window.S && window.S.upg && window.S.upg.staffButler) ? 0.80 : 1.0;
+          const seedCost = def ? Math.round(def.cost * butlerCostMul) : 0;
+          if (def && typeof S.money === 'number' && S.money >= seedCost) {
+            S.money -= seedCost;
+            totalMoneySpent += seedCost;
+            totalAutoBought++;
+            autoBoughtDetails[targetSeed] = (autoBoughtDetails[targetSeed] || 0) + 1;
+
+            p.seed = targetSeed;
+            p.isStar = false;
+            p.lastSeed = targetSeed;
+            S.garden.lastSeeds[p.id] = targetSeed;
+            p.stage = 1;
+            p.wateredToday = false;
+            plantedPlots.push(p.id);
+            plantedDetails[targetSeed] = (plantedDetails[targetSeed] || 0) + 1;
+          } else {
+            missingSeeds[targetSeed] = (missingSeeds[targetSeed] || 0) + 1;
+          }
+        }
+      });
+
+      if (plantedPlots.length > 0) {
+        if (typeof window.sfx === 'function') sfx(totalMoneySpent > 0 ? 'coin' : 'tap');
+        if (typeof window.save === 'function') save();
+        if (typeof window.head === 'function') head();
+        this.render();
+        this.updateSeedInventoryStrip();
+
+        // Hiệu ứng nảy mầm bật lên đồng loạt trên các ô vừa trồng
+        plantedPlots.forEach(pid => {
+          const el = document.getElementById(`farm-plot-${pid}`);
+          if (el) spawnPlantingEffect(el);
+        });
+
+        const summary = Object.entries(plantedDetails)
+          .map(([sid, qty]) => `${SEED_DEFS[sid] ? SEED_DEFS[sid].name : sid} x${qty}`)
+          .join(', ');
+
+        let notifyMsg = `🌾 Đã tự động trồng lại ${plantedPlots.length} ô đất (${summary})!`;
+        if (totalAutoBought > 0) {
+          const autoSummary = Object.entries(autoBoughtDetails)
+            .map(([sid, qty]) => `${SEED_DEFS[sid] ? SEED_DEFS[sid].name : sid} x${qty}`)
+            .join(', ');
+          notifyMsg += ` 🛒 Tự động mua ${totalAutoBought} túi hạt (${autoSummary}, -${fmt(totalMoneySpent)}).`;
+        }
+        if (Object.keys(missingSeeds).length > 0) {
+          const missingSummary = Object.entries(missingSeeds)
+            .map(([sid, qty]) => `${SEED_DEFS[sid] ? SEED_DEFS[sid].name : sid} x${qty}`)
+            .join(', ');
+          notifyMsg += ` ⚠️ Két không đủ tiền mua thêm: ${missingSummary}!`;
+        }
+        if (typeof window.toast === 'function') toast(notifyMsg, 5000, 1);
+      } else {
+        if (Object.keys(missingSeeds).length > 0) {
+          const butlerCostMul = (typeof window.getStaffTrainLv === 'function' && window.getStaffTrainLv('staffButler') >= 5 && window.S && window.S.upg && window.S.upg.staffButler) ? 0.80 : 1.0;
+          const totalCostNeeded = Object.entries(missingSeeds).reduce((acc, [sid, qty]) => {
+            return acc + ((SEED_DEFS[sid] ? Math.round(SEED_DEFS[sid].cost * butlerCostMul) : 0) * qty);
+          }, 0);
+          const missingSummary = Object.entries(missingSeeds)
+            .map(([sid, qty]) => `${SEED_DEFS[sid] ? SEED_DEFS[sid].name : sid} x${qty}`)
+            .join(', ');
+          if (typeof window.toast === 'function') {
+            toast(`⚠️ Két không đủ tiền (${fmt(totalCostNeeded)}) để tự động mua hạt giống (${missingSummary})! Hãy bán thêm trà hoặc nạp quỹ nhé!`, 4500);
+          }
+        } else if (noHistoryPlots > 0) {
+          if (typeof window.toast === 'function') {
+            toast(`🌱 Các ô trống chưa có lịch sử gieo hạt trước đây! Hãy nhấn vào từng ô để gieo lần đầu nhé!`, 3500);
+          }
+        }
+      }
+    },
+
+    // Popup chọn hạt giống để gieo
+    openSeedSelectModal(plotId) {
+      initGardenState();
+      const available = Object.keys(SEED_DEFS).map(k => {
+        const def = SEED_DEFS[k];
+        const qty = (S.garden.seeds && S.garden.seeds[k]) || 0;
+        return { ...def, qty };
+      });
+
+      const listHtml = available.map(s => `
+        <div class="seed-shop-item" style="cursor:${s.qty > 0 ? 'pointer' : 'default'};opacity:${s.qty > 0 ? 1 : 0.6};" onclick="${s.qty > 0 ? `window.Garden.plantSeed(${plotId}, '${s.id}')` : ''}">
+          <div class="seed-info">
+            <img src="${s.img}" alt="${s.name}" class="seed-thumb-img" onerror="this.src='img/${s.img}'">
+            <div class="seed-details">
+              <b>${s.name}</b> (Còn: <span style="color:#059669;font-weight:800;">${s.qty} túi</span>)
+              <p>${s.rewardDesc}</p>
+            </div>
+          </div>
+          <button type="button" class="sbtn pri" ${s.qty <= 0 ? 'disabled' : ''} onclick="event.stopPropagation(); window.Garden.plantSeed(${plotId}, '${s.id}');">Gieo hạt</button>
+        </div>
+      `).join('');
+
+      if (typeof window.ask === 'function') {
+        window.ask(`
+          <div class="pbig">🌱</div>
+          <h2>GIEO HẠT VÀO MẢNH ĐẤT #${plotId + 1}</h2>
+          <p style="font-size:0.85rem;color:#64748b;">Chọn 1 túi hạt giống từ kho của bạn để bắt đầu chăm sóc:</p>
+          <div style="max-height:360px;overflow-y:auto;padding-right:4px;">
+            ${listHtml}
+          </div>
+        `, [['Đóng', () => {}]]);
+      }
+    },
+
+    // Cửa hàng hạt giống
+    openSeedShop(restoreScrollTop) {
+      initGardenState();
+      const butlerCostMul = (typeof window.getStaffTrainLv === 'function' && window.getStaffTrainLv('staffButler') >= 5 && window.S && window.S.upg && window.S.upg.staffButler) ? 0.80 : 1.0;
+      const listHtml = Object.keys(SEED_DEFS).map(k => {
+        const def = SEED_DEFS[k];
+        const owned = (S.garden.seeds && S.garden.seeds[k]) || 0;
+        const actualCost = Math.round(def.cost * butlerCostMul);
+        return `
+          <div class="seed-shop-item">
+            <div class="seed-info">
+              <img src="${def.img}" alt="${def.name}" class="seed-thumb-img" onerror="this.src='img/${def.img}'">
+              <div class="seed-details">
+                <b>${def.name}</b> · <span style="color:#e11d48;font-weight:800;">${fmt(actualCost)}/túi${butlerCostMul < 1 ? ' (-20%)' : ''}</span>
+                <p>${def.rewardDesc} (Đang có: <b id="seed-shop-qty-${k}">${owned}</b>)</p>
+              </div>
+            </div>
+            <button type="button" class="sbtn pri" onclick="window.Garden.buySeed('${k}')">Mua</button>
+          </div>
+        `;
+      }).join('');
+
+      if (typeof window.ask === 'function') {
+        window.ask(`
+          <div class="pbig">🛒</div>
+          <h2>CỬA HÀNG HẠT GIỐNG TIỆM TRÀ</h2>
+          <p style="font-size:0.85rem;color:#64748b;">Mua hạt giống organic để gieo trồng trên farm, thu hoạch nông sản tươi miễn phí:</p>
+          <div id="seedShopScrollWrap" style="max-height:360px;overflow-y:auto;padding-right:4px;">
+            ${listHtml}
+          </div>
+        `, [['Đóng', () => {}]]);
+
+        if (typeof restoreScrollTop === 'number') {
+          setTimeout(() => {
+            const wrap = document.getElementById('seedShopScrollWrap');
+            if (wrap) wrap.scrollTop = restoreScrollTop;
+          }, 0);
+        }
+      }
+    },
+
+    updateSeedInventoryStrip() {
+      if (!window.S || !S.garden || !S.garden.seeds) return;
+      Object.keys(SEED_DEFS).forEach(k => {
+        const qty = S.garden.seeds[k] || 0;
+        const el = document.getElementById(`seed-strip-qty-${k}`);
+        if (el) el.textContent = qty;
+      });
+    },
+
+    buySeed(seedId) {
+      initGardenState();
+      const def = SEED_DEFS[seedId];
+      if (!def) return;
+      const butlerCostMul = (typeof window.getStaffTrainLv === 'function' && window.getStaffTrainLv('staffButler') >= 5 && window.S && window.S.upg && window.S.upg.staffButler) ? 0.80 : 1.0;
+      const actualCost = Math.round(def.cost * butlerCostMul);
+      if (S.money < actualCost) {
+        if (typeof window.toast === 'function') toast('Két không đủ tiền mua hạt giống!');
+        return;
+      }
+      S.money -= actualCost;
+      if (!S.garden.seeds) S.garden.seeds = {};
+      S.garden.seeds[seedId] = (S.garden.seeds[seedId] || 0) + 1;
+      const newQty = S.garden.seeds[seedId];
+
+      if (typeof window.sfx === 'function') sfx('coin');
+      if (typeof window.save === 'function') save();
+      if (typeof window.head === 'function') head();
+      if (typeof window.toast === 'function') toast(`Đã mua 1 túi hạt giống ${def.name}! (Hiện có: ${newQty})`);
+
+      // Cập nhật số lượng trực tiếp tại chỗ trong modal -> Tuyệt đối không bị nhảy cuộn lên đầu!
+      const qtyEl = document.getElementById(`seed-shop-qty-${seedId}`);
+      if (qtyEl) {
+        qtyEl.textContent = newQty;
+        qtyEl.style.transition = 'all 0.2s';
+        qtyEl.style.transform = 'scale(1.4)';
+        qtyEl.style.color = '#16a34a';
+        setTimeout(() => {
+          if (qtyEl) {
+            qtyEl.style.transform = '';
+            qtyEl.style.color = '';
+          }
+        }, 250);
+        this.updateSeedInventoryStrip();
+      } else {
+        const wrap = document.getElementById('seedShopScrollWrap');
+        const savedScroll = wrap ? wrap.scrollTop : 0;
+        this.openSeedShop(savedScroll);
+      }
+    },
+
+    // Hiển thị giao diện tab Khu Vườn với farm.jpg chuẩn 16 ô đất
+    render(targetContainer) {
+      initGardenState();
+
+      // Nếu có Quản Gia cao cấp, tự động thu hoạch + gieo hạt + tưới nước ngay khi mở giao diện vườn
+      const isButlerActive = (typeof window.isStaffActive === 'function' && window.isStaffActive('staffButler'));
+      if (isButlerActive && typeof window.staffButlerAutoGarden === 'function') {
+        try { window.staffButlerAutoGarden(); } catch(e) { console.error('Garden render butler auto:', e); }
+      }
+
+      const pane = targetContainer || document.getElementById('pane');
+      if (!pane) return;
+
+      const g = S.garden;
+      const organicBuffText = g.organicBuffDays > 0 ? `
+        <div class="garden-buff-badge ${g.organicBuffBoost ? 'super-buff' : ''}">
+          <span>${g.organicBuffBoost ? '🌟' : '🌿'}</span> <span>${g.organicBuffBoost ? 'Siêu Buff Organic (+50% Buff): +30% giá bán mọi ly trà hôm nay!' : 'Buff Organic: +20% giá bán mọi ly Hồng trà, Lục trà, Trà Ô long hôm nay!'} (Còn ${g.organicBuffDays} ngày)</span>
+        </div>
+      ` : '';
+
+      const lemonBuffText = g.lemonBuffDays > 0 ? `
+        <div class="garden-buff-badge ${g.lemonBuffBoost ? 'super-buff' : ''}" style="background:#eab308;color:#78350f;">
+          <span>${g.lemonBuffBoost ? '🌟' : '🍋'}</span> <span>${g.lemonBuffBoost ? 'Siêu Tinh Dầu Chanh (+50% Buff): Giảm 30% chi phí đường đá cho quán!' : 'Tinh dầu Chanh: Giảm 20% chi phí hao phí đường đá cho cả quán hôm nay!'} (Còn ${g.lemonBuffDays} ngày)</span>
+        </div>
+      ` : '';
+
+      const butlerBuffText = isButlerActive ? `
+        <div class="garden-buff-badge" style="background:linear-gradient(135deg, #0f172a, #1e293b);color:#fef08a;border:1px solid #eab308;box-shadow:0 3px 10px rgba(234,179,8,0.25);">
+          <span style="font-size:1.15rem;">🤵</span> <span><b>Quản Gia Tự Động:</b> Đang thu hoạch nông sản chín, tự động gieo hạt 100% ô trống, tưới nước toàn vườn và chăm sóc cây sao (+10% đột biến)!</span>
+        </div>
+      ` : '';
+
+      const hasPet = !!(window.S && S.pet && S.pet.unlocked && !S.pet.ranAway);
+      let gardenPetHtml = '';
+      if (hasPet) {
+        const isCat = S.pet.type === 'cat';
+        const pfx = isCat ? 'Cat' : 'Dog';
+        const name = (typeof window.esc === 'function') ? window.esc(S.pet.name || (isCat ? 'Mèo Chiêu Tài' : 'Tó Shiba')) : (S.pet.name || 'Bé cưng');
+        const isSleep = (S.pet.energy || 100) <= 20;
+        const initialSrc = isSleep ? `img/pet/${pfx}_Sleep.png` : `img/pet/${pfx}_Sit.png`;
+        gardenPetHtml = `
+          <div id="gardenPet" class="garden-pet-actor" style="left:${gardenPetX}%;top:${gardenPetY}%;" onclick="window.Garden.onPetClick(event)" title="${name} (Nhấn để nựng cưng)">
+            <div id="gardenPetBubble" class="garden-pet-bubble" style="display:none;"></div>
+            <div class="garden-pet-shadow"></div>
+            <div id="gardenPetBody" class="garden-pet-body" style="transform:scaleX(${gardenPetFacing});">
+              <img id="gardenPetImg" class="garden-pet-img" src="${initialSrc}" alt="${name}">
+            </div>
+          </div>
+        `;
+      }
+
+      const hasCapbi = !!(window.S && S.capbi && S.capbi.unlocked && S.capbi.active);
+      let gardenCapbiHtml = '';
+      if (hasCapbi) {
+        const capbiName = (typeof window.esc === 'function') ? window.esc(S.capbi.name || 'Cáp Bi') : (S.capbi.name || 'Cáp Bi');
+        const capbiEnergy = (S.capbi.energy != null) ? S.capbi.energy : 100;
+        const isCapbiSleep = capbiEnergy <= 20;
+        const capbiInitialSrc = isCapbiSleep ? 'img/pet/Capybara_Sleep.png' : 'img/pet/Capybara_Sit.png';
+        gardenCapbiHtml = `
+          <div id="gardenCapbi" class="garden-pet-actor" style="left:${gardenCapbiX}%;top:${gardenCapbiY}%;" onclick="window.Garden.onCapbiClick(event)" title="${capbiName} (Bộ trưởng Ngoại Giao)">
+            <div id="gardenCapbiBubble" class="garden-pet-bubble garden-capbi-bubble" style="display:none;"></div>
+            <div class="garden-pet-shadow"></div>
+            <div id="gardenCapbiBody" class="garden-pet-body" style="transform:scaleX(${gardenCapbiFacing});">
+              <img id="gardenCapbiImg" class="garden-pet-img" src="${capbiInitialSrc}" alt="${capbiName}">
+            </div>
+          </div>
+        `;
+      }
+
+      let unlockedCount = 0;
+      let growingCount = 0;
+      let readyCount = 0;
+
+      // Render 16 ô đất trên hình ảnh farm.jpg
+      const plotsHtml = (g.plots || []).map((p, idx) => {
+        if (!p || typeof p !== 'object' || p.id == null) {
+          p = { id: idx, locked: idx >= 6, cost: 50000, seed: null, stage: 0 };
+        }
+        const coord = PLOT_COORDS[p.id] || { left: 50, top: 50, cost: 0 };
+        const isLocked = !!p.locked;
+        if (!isLocked) unlockedCount++;
+
+        let innerContent = '';
+        let plotClass = 'empty';
+        let plotTitle = 'Trống (Nhấn để gieo hạt)';
+
+        if (isLocked) {
+          plotClass = 'locked';
+          plotTitle = `Mảnh đất #${p.id + 1} (Đang khóa) - Khai hoang: ${fmt(p.cost || 50000)}`;
+          innerContent = `
+            <span class="plot-mini-lock">🔒</span>
+            <span class="plot-hover-tip">Mở ${fmt(p.cost || 50000)}</span>
+          `;
+        } else if (!p.seed) {
+          plotClass = 'empty';
+          plotTitle = `Mảnh đất #${p.id + 1} trống (Nhấn để gieo hạt)`;
+          innerContent = `
+            <span class="plot-mini-empty">＋</span>
+            <span class="plot-hover-tip">Gieo hạt</span>
+          `;
+        } else {
+          const def = SEED_DEFS[p.seed];
+          const maxStage = def ? def.days + 1 : 2;
+          const isReady = p.stage >= maxStage;
+          const isStar = !!p.isStar;
+          const starCrown = isStar ? `<span class="star-badge-crown" title="Cây Sao Lấp Lánh! Bội Thu khi chín!">⭐</span>` : '';
+
+          if (isReady) {
+            readyCount++;
+            plotClass = 'ready' + (isStar ? ' star-plot' : '');
+            plotTitle = `${isStar ? '⭐ CÂY SAO ' : ''}${def.name} - ĐÃ CHÍN! Nhấn để BỘI THU`;
+            const timeTagHtml = isStar
+              ? `<span class="plot-time-tag ready star-tag">🌟 Bội Thu!</span>`
+              : `<span class="plot-time-tag ready"><img src="farm/thu hoạch.png?v=12.47.304" alt="" style="width:13px;height:13px;vertical-align:-2px;object-fit:contain;margin-right:2px;">Chín rồi!</span>`;
+            innerContent = `
+              <div class="plot-plant-cluster">
+                ${starCrown}
+                <img src="${def.img}" alt="${def.name}" class="plot-plant-img ready-bounce ${isStar ? 'star-plant-sparkle' : ''}" decoding="async">
+              </div>
+              ${timeTagHtml}
+              <span class="plot-hover-tip" style="background:${isStar ? '#ca8a04' : '#15803d'};color:#fff;">🧺 Thu hoạch ${isStar ? '🌟 BỘI THU ' : ''}(${def.name})</span>
+            `;
+          } else {
+            growingCount++;
+            plotClass = 'growing' + (isStar ? ' star-plot' : '');
+            const daysLeft = Math.max(1, maxStage - p.stage);
+            const timeTagText = isStar ? `⭐ Còn ${daysLeft} ngày` : (daysLeft === 1 ? '⏳ Mai chín' : `⏳ ${daysLeft} ngày`);
+            plotTitle = `${isStar ? '⭐ CÂY SAO ' : ''}${def.name} - Đang lớn (Còn ${daysLeft} ngày nữa chín)`;
+            const plantImg = (p.stage === 1) ? SPROUT_IMG : YOUNG_IMG;
+            const plantTitle = (p.stage === 1) ? 'Mầm cây' : 'Cây non';
+            const plantStageClass = (p.stage === 1) ? 'sprout-stage' : 'young-stage';
+            const waterIcon = p.wateredToday ? `<span class="plot-iso-water" title="Đã tưới nước hôm nay"><img src="farm/tưới cây.png?v=12.47.304" alt="Đã tưới" style="width:20px;height:20px;object-fit:contain;display:block;"></span>` : '';
+            innerContent = `
+              <div class="plot-plant-cluster">
+                ${starCrown}
+                <img src="${plantImg}" alt="${plantTitle}" class="plot-plant-img ${plantStageClass} ${isStar ? 'star-plant-sparkle' : ''}" decoding="async">
+                ${waterIcon}
+              </div>
+              <span class="plot-time-tag ${isStar ? 'star-tag' : ''}">${timeTagText}</span>
+              <span class="plot-hover-tip">${isStar ? '⭐ CÂY SAO: ' : ''}${def.name} (${plantTitle} · Còn ${daysLeft} ngày)</span>
+            `;
+          }
+        }
+
+        const depthZ = Math.round(coord.top * 10);
+        return `
+          <div id="farm-plot-${p.id}"
+               data-plot-id="${p.id}"
+               class="farm-plot-node ${plotClass}"
+               style="left: ${coord.left}%; top: ${coord.top}%; z-index: ${depthZ};"
+               onclick="window.Garden.onPlotClick(${p.id})"
+               title="Mảnh đất #${p.id + 1}: ${plotTitle}">
+            ${innerContent}
+          </div>
+        `;
+      }).join('');
+
+      // Kho hạt giống tóm tắt
+      const seedsListHtml = Object.keys(SEED_DEFS).map(k => {
+        const def = SEED_DEFS[k];
+        const qty = (g.seeds && g.seeds[k]) || 0;
+        return `
+          <button type="button" class="seed-chip-btn" onclick="window.Garden.openSeedShop()" title="${def.name}: ${def.rewardDesc} (Nhấn để mua thêm)">
+            <img src="${def.img}" alt="${def.name}" class="seed-chip-img">
+            <span>${def.name}: <b id="seed-strip-qty-${k}">${qty}</b></span>
+          </button>
+        `;
+      }).join('');
+
+      pane.innerHTML = `
+        <div class="garden-wrap">
+          <!-- HERO BANNER -->
+          <div class="garden-hero">
+            <div class="garden-hero-bg">🪴</div>
+            <div class="garden-hero-title">
+              <span>🪴 NÔNG TRẠI ORGANIC TIỆM TRÀ (16 MẢNH ĐẤT)</span>
+            </div>
+            <div class="garden-hero-desc">
+              Mảnh đất nông trại xanh mướt với 16 luống đất màu mỡ. Nhấn trực tiếp vào từng mảnh đất để gieo hạt, tưới nước và thu hoạch nông sản sạch miễn phí vào kho tiệm trà!
+            </div>
+            ${organicBuffText}
+            ${lemonBuffText}
+            ${butlerBuffText}
+          </div>
+
+          <!-- KHUNG HÌNH ẢNH FARM.JPG TƯƠNG TÁC 16 Ô ĐẤT -->
+          <div class="farm-interactive-canvas">
+            <img src="farm/farm.jpg?v=12.47.296" alt="Nông trại Tiệm Trà" class="farm-bg-map">
+            <div class="farm-plots-overlay">
+              ${plotsHtml}
+            </div>
+            ${gardenPetHtml}
+            ${gardenCapbiHtml}
+          </div>
+
+          <!-- THANH THAO TÁC NHANH 3D ĐẸP MẮT (4 NÚT TIỆN ÍCH) -->
+          <div class="garden-actions-row">
+            <button type="button" class="garden-btn water" onclick="window.Garden.waterAll()" title="Tưới nước cho toàn bộ cây trong vườn">
+              <img src="farm/tưới cây.png?v=12.47.304" alt="Tưới Nước" class="gbtn-action-img">
+              <div class="gbtn-text">
+                <span class="gbtn-title">Tưới Nước</span>
+                <span class="gbtn-sub">${growingCount > 0 ? `${growingCount} ô cây` : 'Đã tươi'}</span>
+              </div>
+            </button>
+            <button type="button" class="garden-btn harvest ${readyCount > 0 ? 'glow-harvest' : ''}" onclick="window.Garden.harvestAll()" title="Thu hoạch toàn bộ nông sản đã chín">
+              <img src="farm/thu hoạch.png?v=12.47.304" alt="Thu Hoạch" class="gbtn-action-img">
+              <div class="gbtn-text">
+                <span class="gbtn-title">Thu Hoạch</span>
+                <span class="gbtn-sub">${readyCount > 0 ? `${readyCount} quả chín!` : 'Chờ quả chín'}</span>
+              </div>
+            </button>
+            <button type="button" class="garden-btn replant" onclick="window.Garden.replantLast()" title="Tự động gieo lại các loại cây đã trồng lần trước vào các ô đất trống (tự động mua hạt nếu thiếu)">
+              <span class="gbtn-icon">🌾</span>
+              <div class="gbtn-text">
+                <span class="gbtn-title">Trồng Lại</span>
+                <span class="gbtn-sub">${(unlockedCount - growingCount - readyCount) > 0 ? `${unlockedCount - growingCount - readyCount} ô trống` : 'Tự gieo'}</span>
+              </div>
+            </button>
+            <button type="button" class="garden-btn shop" onclick="window.Garden.openSeedShop()" title="Mở Cửa Hàng Hạt Giống">
+              <span class="gbtn-icon">🛒</span>
+              <div class="gbtn-text">
+                <span class="gbtn-title">Cửa Hàng</span>
+                <span class="gbtn-sub">Hạt giống</span>
+              </div>
+            </button>
+          </div>
+
+          <!-- TÚI HẠT GIỐNG HIỆN CÓ -->
+          <div class="seeds-inventory-strip">
+            <div class="seeds-strip-head">
+              <span>🎒 Kho túi hạt giống của bạn:</span>
+              <span style="font-size:0.78rem;color:#059669;font-weight:700;">Đã mở: ${unlockedCount}/16 mảnh</span>
+            </div>
+            <div class="seeds-strip-grid">
+              ${seedsListHtml}
+            </div>
+          </div>
+        </div>
+      `;
+
+      if (hasPet) {
+        this.initGardenPet();
+      } else {
+        this.stopGardenPet();
+      }
+
+      if (hasCapbi) {
+        this.initGardenCapbi();
+      } else {
+        this.stopGardenCapbi();
+      }
+    },
+
+    // ===== HỆ THỐNG THÚ CƯNG ĐI DẠO TRONG VƯỜN =====
+    stopGardenPet() {
+      if (gardenPetTimer) { clearTimeout(gardenPetTimer); gardenPetTimer = null; }
+      if (gardenPetBubbleTimer) { clearTimeout(gardenPetBubbleTimer); gardenPetBubbleTimer = null; }
+      const el = document.getElementById('gardenPet');
+      if (el) el.classList.remove('walking', 'cheering');
+      this.stopGardenCapbi();
+    },
+
+    initGardenPet() {
+      this.stopGardenPet();
+      if (!window.S || !S.pet || !S.pet.unlocked || S.pet.ranAway) return;
+      const el = document.getElementById('gardenPet');
+      if (!el) return;
+
+      el.style.left = gardenPetX + '%';
+      el.style.top = gardenPetY + '%';
+      const bodyEl = document.getElementById('gardenPetBody');
+      if (bodyEl) bodyEl.style.transform = `scaleX(${gardenPetFacing})`;
+
+      this.setGardenPetVisual('sit');
+      // Bắt đầu nhịp đi dạo sớm sau 1.2s
+      this.scheduleGardenPetNextAction(1200);
+    },
+
+    scheduleGardenPetNextAction(customDelay) {
+      if (gardenPetTimer) { clearTimeout(gardenPetTimer); gardenPetTimer = null; }
+      const el = document.getElementById('gardenPet');
+      if (!el) return;
+      if (!window.S || !S.pet || !S.pet.unlocked || S.pet.ranAway) return;
+
+      const isSleep = (S.pet.energy || 100) <= 20;
+      if (isSleep) {
+        this.setGardenPetVisual('sleep');
+        this.showGardenPetBubble('💤', 3000);
+        gardenPetTimer = setTimeout(() => this.scheduleGardenPetNextAction(), 7000);
+        return;
+      }
+
+      // Nhịp điệu linh hoạt: 2.8s - 4.8s
+      const delay = customDelay || (2800 + Math.floor(Math.random() * 2000));
+      gardenPetTimer = setTimeout(() => {
+        this.runGardenPetAction();
+      }, delay);
+    },
+
+    runGardenPetAction() {
+      if (gardenPetTimer) { clearTimeout(gardenPetTimer); gardenPetTimer = null; }
+      const el = document.getElementById('gardenPet');
+      if (!el) return;
+      if (!window.S || !S.pet || !S.pet.unlocked || S.pet.ranAway) return;
+
+      const isCat = S.pet && S.pet.type === 'cat';
+      const pfx = isCat ? 'Cat' : 'Dog';
+      const rnd = Math.random();
+
+      // 65% cơ hội đi dạo đổi chỗ trong vườn
+      if (rnd < 0.65) {
+        const spot = GARDEN_SPOTS[Math.floor(Math.random() * GARDEN_SPOTS.length)];
+        const targetX = spot.left + (Math.random() * 6 - 3);
+        const targetY = spot.top + (Math.random() * 6 - 3);
+
+        const dx = targetX - gardenPetX;
+        const dy = targetY - gardenPetY;
+        const dist = Math.hypot(dx, dy);
+
+        gardenPetFacing = (targetX >= gardenPetX) ? 1 : -1;
+        const bodyEl = document.getElementById('gardenPetBody');
+        if (bodyEl) bodyEl.style.transform = `scaleX(${gardenPetFacing})`;
+
+        const durSec = Math.max(1.8, Math.min(4.2, (dist / 14)));
+        el.style.transition = `left ${durSec.toFixed(2)}s cubic-bezier(0.25, 1, 0.5, 1), top ${durSec.toFixed(2)}s cubic-bezier(0.25, 1, 0.5, 1)`;
+        el.classList.add('walking');
+
+        const imgEl = document.getElementById('gardenPetImg');
+        if (imgEl) {
+          const isHappy = (S.pet && S.pet.happiness || 0) >= 80;
+          imgEl.src = isHappy ? `img/pet/${pfx}_Play.png` : `img/pet/${pfx}.png`;
+        }
+
+        gardenPetState = 'walk';
+        el.style.left = targetX + '%';
+        el.style.top = targetY + '%';
+        gardenPetX = targetX;
+        gardenPetY = targetY;
+
+        gardenPetTimer = setTimeout(() => {
+          el.classList.remove('walking');
+          this.setGardenPetVisual('sit');
+
+          if (Math.random() < 0.55) {
+            const gardenQuotes = isCat
+              ? ['Meo~ Gió vườn mát quá 🌸', 'Bắt bướm nè 🦋', 'Dâu tây thơm quá 🍓', 'Lá bạc hà the mát 🌿', 'Rù rù... dễ chịu quá 🐱', 'Trông chừng vườn giúp sen ✨', 'Có trái chín chưa nhỉ? 🧺', 'Đất êm nằm thích ghê 🐾']
+              : ['Gâu gâu! Đất vườn tơi xốp 🌱', 'Bắt sâu bọ bảo vệ cây 🐛', 'Mùi đào chín thơm phức! 🍑', 'Chạy lăng xăng vui quá! 🐶', 'Gâu! Sen chăm vườn giỏi nha 💖', 'Trông vườn canh quả ngọt! 🍓', 'Gâu! Trái chín trĩu cành kìa! 🧺', 'Bới đất tìm kho báu nào! ✨'];
+            this.showGardenPetBubble(gardenQuotes[Math.floor(Math.random() * gardenQuotes.length)], 2800);
+          }
+
+          this.scheduleGardenPetNextAction(3000 + Math.floor(Math.random() * 2000));
+        }, durSec * 1000 + 60);
+
+      } else if (rnd < 0.85) {
+        // 20%: Nằm nghỉ ngơi trên bãi cỏ
+        this.setGardenPetVisual('lie');
+        if (Math.random() < 0.4) {
+          this.showGardenPetBubble(isCat ? 'Meo~ Khò khò 🌸' : 'Gâu~ Nằm êm ghê 🐾', 2200);
+        }
+        this.scheduleGardenPetNextAction(3200 + Math.floor(Math.random() * 2000));
+      } else {
+        // 15%: Chơi đùa / Vui vẻ
+        this.setGardenPetVisual('play');
+        if (Math.random() < 0.5) {
+          this.showGardenPetBubble('✨ 🌸 🐾', 2000);
+        }
+        this.scheduleGardenPetNextAction(3000 + Math.floor(Math.random() * 1800));
+      }
+    },
+
+    setGardenPetVisual(state) {
+      gardenPetState = state;
+      const isCat = S.pet && S.pet.type === 'cat';
+      const pfx = isCat ? 'Cat' : 'Dog';
+      const imgEl = document.getElementById('gardenPetImg');
+      if (!imgEl) return;
+      if (state === 'sit') {
+        imgEl.src = `img/pet/${pfx}_Sit.png`;
+      } else if (state === 'lie') {
+        imgEl.src = `img/pet/${pfx}_LieDown.png`;
+      } else if (state === 'sleep') {
+        imgEl.src = `img/pet/${pfx}_Sleep.png`;
+      } else if (state === 'play') {
+        imgEl.src = `img/pet/${pfx}_Play.png`;
+      } else if (state === 'walk') {
+        const isHappy = (S.pet && S.pet.happiness || 0) >= 80;
+        imgEl.src = isHappy ? `img/pet/${pfx}_Play.png` : `img/pet/${pfx}.png`;
+      }
+    },
+
+    showGardenPetBubble(text, durationMs) {
+      const b = document.getElementById('gardenPetBubble');
+      if (!b) return;
+      if (gardenPetBubbleTimer) { clearTimeout(gardenPetBubbleTimer); gardenPetBubbleTimer = null; }
+      b.textContent = text;
+      b.style.display = 'block';
+      requestAnimationFrame(() => {
+        b.classList.add('show');
+      });
+      gardenPetBubbleTimer = setTimeout(() => {
+        b.classList.remove('show');
+        setTimeout(() => {
+          if (!b.classList.contains('show')) b.style.display = 'none';
+        }, 250);
+      }, durationMs || 2200);
+    },
+
+    onPetClick(e) {
+      if (e) { e.stopPropagation(); e.preventDefault(); }
+      if (!window.S || !S.pet || !S.pet.unlocked) return;
+      const el = document.getElementById('gardenPet');
+      if (!el) return;
+
+      const isCat = S.pet.type === 'cat';
+      const pfx = isCat ? 'Cat' : 'Dog';
+      const imgEl = document.getElementById('gardenPetImg');
+      if (imgEl) imgEl.src = `img/pet/${pfx}_Play.png`;
+
+      el.classList.remove('cheering');
+      void el.offsetWidth;
+      el.classList.add('cheering');
+
+      if (typeof window.sfx === 'function') sfx('star');
+      S.pet.happiness = Math.min(100, (S.pet.happiness || 80) + 1);
+      if (typeof window.save === 'function') save();
+
+      const loves = isCat
+        ? ['Meo! Yêu sen nhất 💖', 'Rù rù... thích được vuốt ve 🐾', 'Thưởng mị một trái dâu nha 🍓', 'Meo meo! ✨']
+        : ['Gâu gâu! Yêu chủ quán nhất 💖', 'Thích đi dạo vườn lắm nè! 🐾', 'Sen tốt bụng số một! 🌟', 'Gâu gâu! ✨'];
+      this.showGardenPetBubble(loves[Math.floor(Math.random() * loves.length)], 2400);
+
+      setTimeout(() => {
+        if (el) el.classList.remove('cheering');
+        if (gardenPetState !== 'walk') {
+          this.setGardenPetVisual(gardenPetState);
+        }
+      }, 1400);
+    },
+
+    // ===== HỆ THỐNG CÁP BI ĐI DẠO TRONG VƯỜN =====
+    stopGardenCapbi() {
+      if (gardenCapbiTimer) { clearTimeout(gardenCapbiTimer); gardenCapbiTimer = null; }
+      if (gardenCapbiBubbleTimer) { clearTimeout(gardenCapbiBubbleTimer); gardenCapbiBubbleTimer = null; }
+      const el = document.getElementById('gardenCapbi');
+      if (el) el.classList.remove('walking', 'cheering');
+    },
+
+    initGardenCapbi() {
+      this.stopGardenCapbi();
+      if (!window.S || !S.capbi || !S.capbi.unlocked || !S.capbi.active) return;
+      const el = document.getElementById('gardenCapbi');
+      if (!el) return;
+
+      el.style.left = gardenCapbiX + '%';
+      el.style.top = gardenCapbiY + '%';
+      const bodyEl = document.getElementById('gardenCapbiBody');
+      if (bodyEl) bodyEl.style.transform = `scaleX(${gardenCapbiFacing})`;
+
+      this.setGardenCapbiVisual('sit');
+      this.scheduleGardenCapbiNextAction(1800);
+    },
+
+    scheduleGardenCapbiNextAction(customDelay) {
+      if (gardenCapbiTimer) { clearTimeout(gardenCapbiTimer); gardenCapbiTimer = null; }
+      const el = document.getElementById('gardenCapbi');
+      if (!el) return;
+      if (!window.S || !S.capbi || !S.capbi.unlocked || !S.capbi.active) return;
+
+      const energy = (S.capbi.energy != null) ? S.capbi.energy : 100;
+      if (energy <= 20) {
+        this.setGardenCapbiVisual('sleep');
+        this.showGardenCapbiBubble('💤 Khò...', 3000);
+        gardenCapbiTimer = setTimeout(() => this.scheduleGardenCapbiNextAction(), 7500);
+        return;
+      }
+
+      const delay = customDelay || (3200 + Math.floor(Math.random() * 2200));
+      gardenCapbiTimer = setTimeout(() => {
+        this.runGardenCapbiAction();
+      }, delay);
+    },
+
+    runGardenCapbiAction() {
+      if (gardenCapbiTimer) { clearTimeout(gardenCapbiTimer); gardenCapbiTimer = null; }
+      const el = document.getElementById('gardenCapbi');
+      if (!el) return;
+      if (!window.S || !S.capbi || !S.capbi.unlocked || !S.capbi.active) return;
+
+      const rnd = Math.random();
+
+      // 60% đi dạo đổi chỗ trong vườn (chọn điểm xa vị trí hiện tại và tránh đè lên pet nếu có)
+      if (rnd < 0.60) {
+        const availableSpots = GARDEN_SPOTS.filter(s => {
+          const distPet = Math.hypot(s.left - gardenPetX, s.top - gardenPetY);
+          return distPet > 10;
+        });
+        const pool = availableSpots.length > 0 ? availableSpots : GARDEN_SPOTS;
+        const spot = pool[Math.floor(Math.random() * pool.length)];
+        const targetX = spot.left + (Math.random() * 6 - 3);
+        const targetY = spot.top + (Math.random() * 6 - 3);
+
+        const dx = targetX - gardenCapbiX;
+        const dy = targetY - gardenCapbiY;
+        const dist = Math.hypot(dx, dy);
+
+        gardenCapbiFacing = (targetX >= gardenCapbiX) ? 1 : -1;
+        const bodyEl = document.getElementById('gardenCapbiBody');
+        if (bodyEl) bodyEl.style.transform = `scaleX(${gardenCapbiFacing})`;
+
+        const durSec = Math.max(2.0, Math.min(4.8, (dist / 12)));
+        el.style.transition = `left ${durSec.toFixed(2)}s cubic-bezier(0.25, 1, 0.5, 1), top ${durSec.toFixed(2)}s cubic-bezier(0.25, 1, 0.5, 1)`;
+        el.classList.add('walking');
+
+        const imgEl = document.getElementById('gardenCapbiImg');
+        if (imgEl) {
+          const isHappy = (S.capbi && S.capbi.happiness || 0) >= 80;
+          imgEl.src = isHappy ? 'img/pet/Capybara_Play.png' : 'img/pet/Capybara.png';
+        }
+
+        gardenCapbiState = 'walk';
+        el.style.left = targetX + '%';
+        el.style.top = targetY + '%';
+        gardenCapbiX = targetX;
+        gardenCapbiY = targetY;
+
+        gardenCapbiTimer = setTimeout(() => {
+          el.classList.remove('walking');
+          this.setGardenCapbiVisual('sit');
+
+          if (Math.random() < 0.55) {
+            const capbiQuotes = [
+              'Tắm nắng ấm áp quá... 🍊',
+              'Quýt trên đầu vẫn chưa rụng 🍊',
+              'Chill bên luống dâu tây 🍓',
+              'Hòa đồng với muôn loài 🌱',
+              'Gió vườn mát rượi, thư thả ghê 🍃',
+              'Canh vườn bình yên vô tư lự ✨',
+              'Tâm bất biến giữa dòng đời 🌿',
+              'Ăn quả đào ngắm mây trôi 🍑',
+              'Bãi cỏ này êm ái thật đấy 🐾'
+            ];
+            this.showGardenCapbiBubble(capbiQuotes[Math.floor(Math.random() * capbiQuotes.length)], 2800);
+          }
+
+          this.scheduleGardenCapbiNextAction(3200 + Math.floor(Math.random() * 2000));
+        }, durSec * 1000 + 60);
+
+      } else if (rnd < 0.85) {
+        // 25%: Nằm chill thảnh thơi
+        this.setGardenCapbiVisual('lie');
+        if (Math.random() < 0.45) {
+          const chillQuotes = [
+            'Nằm thảnh thơi ngắm cỏ cây 🌾',
+            'Chill vô cùng... 🍊',
+            'Một giấc ngắn thanh tịnh 🍃',
+            'Không vội vã, thong thả sống ✨'
+          ];
+          this.showGardenCapbiBubble(chillQuotes[Math.floor(Math.random() * chillQuotes.length)], 2400);
+        }
+        this.scheduleGardenCapbiNextAction(3500 + Math.floor(Math.random() * 2000));
+      } else {
+        // 15%: Playful / vui vẻ
+        this.setGardenCapbiVisual('play');
+        if (Math.random() < 0.5) {
+          this.showGardenCapbiBubble('🍊 ✨ 🐾', 2000);
+        }
+        this.scheduleGardenCapbiNextAction(3000 + Math.floor(Math.random() * 1800));
+      }
+    },
+
+    setGardenCapbiVisual(state) {
+      gardenCapbiState = state;
+      const imgEl = document.getElementById('gardenCapbiImg');
+      if (!imgEl) return;
+      if (state === 'sit') {
+        imgEl.src = 'img/pet/Capybara_Sit.png';
+      } else if (state === 'lie') {
+        imgEl.src = 'img/pet/Capybara_LieDown.png';
+      } else if (state === 'sleep') {
+        imgEl.src = 'img/pet/Capybara_Sleep.png';
+      } else if (state === 'play') {
+        imgEl.src = 'img/pet/Capybara_Play.png';
+      } else if (state === 'walk') {
+        const isHappy = (S.capbi && S.capbi.happiness || 0) >= 80;
+        imgEl.src = isHappy ? 'img/pet/Capybara_Play.png' : 'img/pet/Capybara.png';
+      }
+    },
+
+    showGardenCapbiBubble(text, durationMs) {
+      const b = document.getElementById('gardenCapbiBubble');
+      if (!b) return;
+      if (gardenCapbiBubbleTimer) { clearTimeout(gardenCapbiBubbleTimer); gardenCapbiBubbleTimer = null; }
+      b.textContent = text;
+      b.style.display = 'block';
+      requestAnimationFrame(() => {
+        b.classList.add('show');
+      });
+      gardenCapbiBubbleTimer = setTimeout(() => {
+        b.classList.remove('show');
+        setTimeout(() => {
+          if (!b.classList.contains('show')) b.style.display = 'none';
+        }, 250);
+      }, durationMs || 2200);
+    },
+
+    onCapbiClick(e) {
+      if (e) { e.stopPropagation(); e.preventDefault(); }
+      if (!window.S || !S.capbi || !S.capbi.unlocked) return;
+      const el = document.getElementById('gardenCapbi');
+      if (!el) return;
+
+      const imgEl = document.getElementById('gardenCapbiImg');
+      if (imgEl) imgEl.src = 'img/pet/Capybara_Play.png';
+
+      el.classList.remove('cheering');
+      void el.offsetWidth;
+      el.classList.add('cheering');
+
+      if (typeof window.sfx === 'function') sfx('star');
+      S.capbi.happiness = Math.min(100, (S.capbi.happiness || 80) + 1);
+      if (typeof window.save === 'function') save();
+
+      const capbiInteractions = [
+        'Capybara~ Yêu bạn lắm! 🍊',
+        'Ngoại giao thân thiện nhất thế giới ✨',
+        'Gãi cằm êm ái quá chừng 💖',
+        'Chill cùng Cáp Bi mỗi ngày nhé! 🌿',
+        'Quýt này ngọt lắm nè 🍊',
+        'Hiền lành và bình yên 🍃'
+      ];
+      this.showGardenCapbiBubble(capbiInteractions[Math.floor(Math.random() * capbiInteractions.length)], 2400);
+
+      setTimeout(() => {
+        if (el) el.classList.remove('cheering');
+        if (gardenCapbiState !== 'walk') {
+          this.setGardenCapbiVisual(gardenCapbiState);
+        }
+      }, 1400);
+    }
+  };
+
+  Garden.SEED_DEFS = SEED_DEFS;
+  window.Garden = Garden;
+  window.SEED_DEFS = SEED_DEFS;
+
+})();

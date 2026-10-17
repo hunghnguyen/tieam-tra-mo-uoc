@@ -1,0 +1,3187 @@
+/**
+ * 🍬 TRÀ SỮA CRUSH (CANDY CRUSH PHIÊN BẢN TRÀ SỮA)
+ * Minigame Match-3 Ngọt Ngào - Tiệm Trà Mơ Ước
+ * 
+ * Topping:
+ * 0: 🧋 Trân Châu Đường Đen (Boba)
+ * 1: 🍓 Dâu Tây Tươi (Strawberry)
+ * 2: 🍵 Matcha Uji (Matcha)
+ * 3: 🥭 Xoài Cát Chu (Mango)
+ * 4: 🫐 Việt Quất Tuyết (Blueberry)
+ * 5: 🍮 Pudding Trứng (Caramel Flan)
+ * 
+ * Hiệu ứng Đặc Biệt:
+ * - Ghép 4 thẳng hàng: Ly Sọc Siêu Cấp ⚡ (Phá huỷ nguyên 1 hàng/cột)
+ * - Ghép chữ L hoặc T: Ly Kem Cheese Nổ Bung 💣 (Phá huỷ vùng 3x3)
+ * - Ghép 5 thẳng hàng: Cốc Trân Châu Cầu Vồng 🌈 (Hút sạch 1 loại Topping toàn bàn)
+ * - Thưởng tiền két quán khi đạt 1 ⭐, 2 ⭐⭐, 3 ⭐⭐⭐
+ */
+
+(function () {
+  'use strict';
+
+  const ROWS = 7;
+  const COLS = 7;
+  const TYPES_COUNT = 6;
+
+  const TOPPINGS = [
+    { id: 0, name: 'Trân Châu', icon: '🧋', color: '#713f12' },
+    { id: 1, name: 'Dâu Tây', icon: '🍓', color: '#e11d48' },
+    { id: 2, name: 'Matcha', icon: '🍵', color: '#059669' },
+    { id: 3, name: 'Xoài Cát', icon: '🥭', color: '#ea580c' },
+    { id: 4, name: 'Việt Quất', icon: '🫐', color: '#7e22ce' },
+    { id: 5, name: 'Pudding', icon: '🍮', color: '#eab308' }
+  ];
+
+  const TURN_TIME_MAX = 30.0; // 30 giây mỗi lượt đi cơ sở
+  let turnTimerInterval = null;
+
+  // --- HỆ THỐNG MÀN CHƠI & MỤC TIÊU (LEVEL DESIGN & BALANCING SYSTEM) ---
+  function getLevelDefinition(lvl) {
+    const level = Math.max(1, lvl || 1);
+
+    if (level === 1) {
+      return {
+        level: 1,
+        title: 'Màn 1 · Nhập Môn Trà Sữa',
+        desc: 'Làm quen xếp kẹo: Thu thập 12 Trân Châu đen!',
+        targetScore: 1200,
+        moves: 25,
+        turnTime: 30.0,
+        typesCount: 4,
+        objectives: [
+          { id: 'topping_0', type: 'order_topping', targetId: 0, target: 12, current: 0, label: 'Trân Châu', icon: '🧋' },
+          { id: 'score', type: 'score', target: 1200, current: 0, label: 'Điểm', icon: '⭐' }
+        ]
+      };
+    }
+
+    if (level === 2) {
+      return {
+        level: 2,
+        title: 'Màn 2 · Dọn Thạch Trái Cây',
+        desc: 'Dọn sạch 8 ô Thạch trái cây dưới đáy bàn cờ!',
+        targetScore: 1800,
+        moves: 26,
+        turnTime: 30.0,
+        typesCount: 4,
+        objectives: [
+          { id: 'jelly', type: 'jelly', target: 8, current: 0, label: 'Dọn Thạch', icon: '🍮' }
+        ],
+        jellyLayout: [
+          [2, 2], [2, 3], [2, 4],
+          [3, 2], [3, 4],
+          [4, 2], [4, 3], [4, 4]
+        ]
+      };
+    }
+
+    if (level === 3) {
+      return {
+        level: 3,
+        title: 'Màn 3 · Băng Giá Mùa Đông',
+        desc: 'Giải cứu 4 khối Băng tuyết và dọn 10 ô thạch!',
+        targetScore: 2400,
+        moves: 27,
+        turnTime: 30.0,
+        typesCount: 5,
+        objectives: [
+          { id: 'ice', type: 'ice', target: 4, current: 0, label: 'Phá Băng', icon: '❄️' },
+          { id: 'jelly', type: 'jelly', target: 10, current: 0, label: 'Dọn Thạch', icon: '🍮' }
+        ],
+        iceLayout: [
+          [1, 3], [3, 1], [3, 5], [5, 3]
+        ],
+        jellyLayout: [
+          [1, 3], [3, 1], [3, 5], [5, 3],
+          [2, 2], [2, 4], [4, 2], [4, 4], [3, 2], [3, 4]
+        ]
+      };
+    }
+
+    if (level === 4) {
+      return {
+        level: 4,
+        title: 'Màn 4 · Đơn Hàng VIP',
+        desc: 'Thu thập 15 Dâu tây, 12 Xoài và tạo 2 Kẹo Sọc ⚡!',
+        targetScore: 2800,
+        moves: 28,
+        turnTime: 30.0,
+        typesCount: 5,
+        objectives: [
+          { id: 'topping_1', type: 'order_topping', targetId: 1, target: 15, current: 0, label: 'Dâu Tây', icon: '🍓' },
+          { id: 'topping_3', type: 'order_topping', targetId: 3, target: 12, current: 0, label: 'Xoài Cát', icon: '🥭' },
+          { id: 'special_striped', type: 'order_special', targetSpecial: 'striped', target: 2, current: 0, label: 'Kẹo Sọc', icon: '⚡' }
+        ]
+      };
+    }
+
+    if (level === 5) {
+      return {
+        level: 5,
+        title: 'Màn 5 · Thu Hoạch Quả Cherry',
+        desc: 'Đưa 2 quả Cherry rơi xuống đáy bàn cờ!',
+        targetScore: 3200,
+        moves: 30,
+        turnTime: 30.0,
+        typesCount: 5,
+        objectives: [
+          { id: 'ingredient', type: 'ingredient', target: 2, current: 0, label: 'Cherry', icon: '🍒' },
+          { id: 'score', type: 'score', target: 2500, current: 0, label: 'Điểm', icon: '⭐' }
+        ],
+        ingredients: [
+          { r: 0, c: 2 },
+          { r: 0, c: 4 }
+        ]
+      };
+    }
+
+    if (level === 6) {
+      return {
+        level: 6,
+        title: 'Màn 6 · Thạch Dày 2 Lớp',
+        desc: 'Dọn sạch 12 ô thạch dày 2 lớp (cần match 2 lần)!',
+        targetScore: 3600,
+        moves: 32,
+        turnTime: 30.0,
+        typesCount: 5,
+        objectives: [
+          { id: 'jelly', type: 'jelly', target: 12, current: 0, label: 'Thạch 2 Lớp', icon: '🍮' }
+        ],
+        jellyDoubleLayout: [
+          [1, 2], [1, 3], [1, 4],
+          [2, 2], [2, 3], [2, 4],
+          [4, 2], [4, 3], [4, 4],
+          [5, 2], [5, 3], [5, 4]
+        ]
+      };
+    }
+
+    // Từ Màn 7 trở lên: Tự động cân bằng (Số lượt tăng dần theo màn, điểm yêu cầu hợp lý & vừa sức)
+    const mode = (level - 7) % 5;
+    const moves = Math.min(50, 30 + Math.floor((level - 6) * 1.5));
+    const turnTime = 30.0;
+    const typesCount = (level >= 16) ? 6 : 5;
+    const targetScore = Math.round(3800 + (level - 6) * 350);
+
+    if (mode === 0) {
+      const jellyCount = Math.min(16, 8 + Math.floor((level - 7) / 2));
+      const cells = [];
+      for (let r = 1; r < ROWS - 1; r++) {
+        for (let c = 1; c < COLS - 1; c++) {
+          if (cells.length < jellyCount) cells.push([r, c]);
+        }
+      }
+      return {
+        level,
+        title: `Màn ${level} · Bão Thạch Trà Sữa`,
+        desc: `Dọn sạch ${jellyCount} ô Thạch trên bàn cờ!`,
+        targetScore, moves, turnTime, typesCount,
+        objectives: [{ id: 'jelly', type: 'jelly', target: jellyCount, current: 0, label: 'Dọn Thạch', icon: '🍮' }],
+        jellyLayout: cells
+      };
+    } else if (mode === 1) {
+      return {
+        level,
+        title: `Màn ${level} · Siêu Đơn Hàng VIP`,
+        desc: 'Thu thập đủ kẹo đặc biệt và topping theo yêu cầu!',
+        targetScore, moves, turnTime, typesCount,
+        objectives: [
+          { id: 'topping_2', type: 'order_topping', targetId: 2, target: 15, current: 0, label: 'Matcha', icon: '🍵' },
+          { id: 'topping_4', type: 'order_topping', targetId: 4, target: 15, current: 0, label: 'Việt Quất', icon: '🫐' },
+          { id: 'special_fish', type: 'order_special', targetSpecial: 'fish', target: 2, current: 0, label: 'Con Cá', icon: '🐟' }
+        ]
+      };
+    } else if (mode === 2) {
+      return {
+        level,
+        title: `Màn ${level} · Băng Tuyết & Thạch`,
+        desc: 'Giải cứu 5 khối băng và dọn 10 ô thạch!',
+        targetScore, moves, turnTime, typesCount,
+        objectives: [
+          { id: 'ice', type: 'ice', target: 5, current: 0, label: 'Phá Băng', icon: '❄️' },
+          { id: 'jelly', type: 'jelly', target: 10, current: 0, label: 'Dọn Thạch', icon: '🍮' }
+        ],
+        iceLayout: [
+          [1, 1], [1, 5], [3, 3], [5, 1], [5, 5]
+        ],
+        jellyLayout: [
+          [1, 2], [1, 3], [1, 4], [2, 1], [2, 5], [4, 1], [4, 5], [5, 2], [5, 3], [5, 4]
+        ]
+      };
+    } else if (mode === 3) {
+      const cherryScore = Math.min(targetScore, 2800 + (level - 7) * 200);
+      return {
+        level,
+        title: `Màn ${level} · Thu Hoạch Trái Cherry`,
+        desc: 'Đưa 2 quả Cherry rơi xuống đáy bàn cờ!',
+        targetScore, moves, turnTime, typesCount,
+        objectives: [
+          { id: 'ingredient', type: 'ingredient', target: 2, current: 0, label: 'Cherry', icon: '🍒' },
+          { id: 'score', type: 'score', target: cherryScore, current: 0, label: 'Điểm', icon: '⭐' }
+        ],
+        ingredients: [
+          { r: 0, c: 1 },
+          { r: 0, c: 5 }
+        ]
+      };
+    } else {
+      return {
+        level,
+        title: `Màn ${level} · Siêu Thử Thách Hỗn Hợp`,
+        desc: 'Dọn sạch 8 ô thạch 2 lớp và tạo 2 kẹo sọc ⚡!',
+        targetScore, moves, turnTime, typesCount,
+        objectives: [
+          { id: 'jelly', type: 'jelly', target: 8, current: 0, label: 'Thạch 2 Lớp', icon: '🍮' },
+          { id: 'special_striped', type: 'order_special', targetSpecial: 'striped', target: 2, current: 0, label: 'Kẹo Sọc', icon: '⚡' }
+        ],
+        jellyDoubleLayout: [
+          [2, 2], [2, 3], [2, 4],
+          [3, 2], [3, 3], [3, 4],
+          [4, 2], [4, 4]
+        ]
+      };
+    }
+  }
+
+  function getLevelConfig(lvl) {
+    const def = getLevelDefinition(lvl);
+    return {
+      targetScore: def.targetScore,
+      moves: def.moves,
+      turnTime: def.turnTime,
+      typesCount: def.typesCount
+    };
+  }
+
+  function getSavedCrushLevel() {
+    if (typeof window.S !== 'undefined' && window.S && typeof window.S.crushLevel === 'number' && window.S.crushLevel >= 1) {
+      return window.S.crushLevel;
+    }
+    try {
+      const val = parseInt(localStorage.getItem('tsCrushLevel') || '1', 10);
+      if (!isNaN(val) && val >= 1) return val;
+    } catch (e) {}
+    return 1;
+  }
+
+  function saveCrushLevel(lvl) {
+    const l = Math.max(1, lvl || 1);
+    if (typeof window.S !== 'undefined' && window.S) {
+      window.S.crushLevel = l;
+    }
+    try {
+      localStorage.setItem('tsCrushLevel', l.toString());
+    } catch (e) {}
+    if (typeof window.save === 'function') window.save();
+  }
+
+  const STATE = {
+    grid: [],              // 7x7 array of { type, special, id, locked }
+    jelly: [],             // 7x7 array of 0, 1, 2
+    objectives: [],        // array of objectives
+    score: 0,
+    targetScore: 2000,
+    moves: 25,
+    stars: 0,
+    level: getSavedCrushLevel(),
+    selectedCell: null,    // { r, c }
+    isBusy: false,
+    combo: 0,
+    turnTime: 30.0,
+    turnTimeMax: 30.0,
+    statusMsg: 'Hoán đổi 2 viên liền kề để tạo chuỗi 3 topping cùng loại!',
+    praiseMsg: null,
+    gameEnded: false,
+    highScore: 0,
+    activeBooster: null
+  };
+
+  let tileIdCounter = 1;
+
+  try {
+    STATE.highScore = parseInt(localStorage.getItem('tsBobaCrushHigh') || '0', 10);
+  } catch (e) {}
+
+  function getTypesCount() {
+    return getLevelConfig(STATE.level).typesCount;
+  }
+
+  function randomType() {
+    return Math.floor(Math.random() * getTypesCount());
+  }
+
+  function createTile(type, special = 'none', locked = false) {
+    return {
+      id: tileIdCounter++,
+      type: type != null ? type : randomType(),
+      special: special,
+      locked: !!locked
+    };
+  }
+
+  function isMatchable(tile) {
+    return tile && tile.type >= 0 && tile.special !== 'color_bomb' && tile.special !== 'ingredient';
+  }
+
+  // --- NẠP MÀN CHƠI (LOAD LEVEL) ---
+  function loadLevel(lvl) {
+    const def = getLevelDefinition(lvl);
+    STATE.level = def.level;
+    STATE.moves = def.moves;
+    STATE.targetScore = def.targetScore;
+    STATE.score = 0;
+    STATE.stars = 0;
+    STATE.turnTime = def.turnTime;
+    STATE.turnTimeMax = def.turnTime;
+    STATE.gameEnded = false;
+    STATE.isBusy = false;
+    STATE.selectedCell = null;
+    STATE.activeBooster = null;
+    STATE.statusMsg = def.desc;
+
+    // Nạp danh sách Mục tiêu
+    STATE.objectives = (def.objectives || []).map(obj => ({ ...obj, current: 0 }));
+
+    // Khởi tạo ma trận Thạch (Jelly)
+    STATE.jelly = [];
+    for (let r = 0; r < ROWS; r++) {
+      STATE.jelly[r] = [];
+      for (let c = 0; c < COLS; c++) {
+        STATE.jelly[r][c] = 0;
+      }
+    }
+    if (def.jellyLayout) {
+      def.jellyLayout.forEach(([r, c]) => {
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) STATE.jelly[r][c] = 1;
+      });
+    }
+    if (def.jellyDoubleLayout) {
+      def.jellyDoubleLayout.forEach(([r, c]) => {
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) STATE.jelly[r][c] = 2;
+      });
+    }
+
+    initBoard();
+
+    // Áp dụng Khóa Băng (Ice Lock)
+    if (def.iceLayout) {
+      def.iceLayout.forEach(([r, c]) => {
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS && STATE.grid[r][c]) {
+          STATE.grid[r][c].locked = true;
+        }
+      });
+    }
+
+    // Áp dụng Nguyên liệu (Cherry 🍒)
+    if (def.ingredients) {
+      def.ingredients.forEach(({ r, c }) => {
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+          STATE.grid[r][c] = {
+            id: tileIdCounter++,
+            type: -1,
+            special: 'ingredient',
+            locked: false
+          };
+        }
+      });
+    }
+  }
+
+  // --- KHỞI TẠO BÀN CHƠI KHÔNG CÓ SẴN MATCH-3 HOẶC 2x2 ---
+  function initBoard() {
+    let attempts = 0;
+    do {
+      STATE.grid = [];
+      for (let r = 0; r < ROWS; r++) {
+        STATE.grid[r] = [];
+        for (let c = 0; c < COLS; c++) {
+          const forbidden = [];
+          if (c >= 2 && STATE.grid[r][c - 1] && STATE.grid[r][c - 2] &&
+              STATE.grid[r][c - 1].type === STATE.grid[r][c - 2].type) {
+            forbidden.push(STATE.grid[r][c - 1].type);
+          }
+          if (r >= 2 && STATE.grid[r - 1][c] && STATE.grid[r - 2][c] &&
+              STATE.grid[r - 1][c].type === STATE.grid[r - 2][c].type) {
+            forbidden.push(STATE.grid[r - 1][c].type);
+          }
+          // Tránh tạo sẵn cụm 2x2 vuông
+          if (r >= 1 && c >= 1 &&
+              STATE.grid[r - 1][c] && STATE.grid[r][c - 1] && STATE.grid[r - 1][c - 1] &&
+              STATE.grid[r - 1][c].type === STATE.grid[r][c - 1].type &&
+              STATE.grid[r][c - 1].type === STATE.grid[r - 1][c - 1].type) {
+            forbidden.push(STATE.grid[r - 1][c].type);
+          }
+          const pool = [];
+          for (let t = 0; t < getTypesCount(); t++) {
+            if (!forbidden.includes(t)) pool.push(t);
+          }
+          const chosen = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : randomType();
+          STATE.grid[r][c] = createTile(chosen, 'none');
+        }
+      }
+      attempts++;
+    } while ((!hasValidMoves() || findMatches().length > 0) && attempts < 50);
+  }
+
+  function isSpecialCombo(t1, t2) {
+    if (!t1 || !t2) return false;
+    const s1 = t1.special;
+    const s2 = t2.special;
+    if (s1 === 'color_bomb' || s2 === 'color_bomb') return true;
+    if (s1 === 'fish' || s2 === 'fish') return true;
+    if (s1 !== 'none' && s1 !== 'ingredient' && s2 !== 'none' && s2 !== 'ingredient') return true;
+    return false;
+  }
+
+  // --- KIỂM TRA XEM CÒN NƯỚC ĐI HỢP LỆ KHÔNG ---
+  function hasValidMoves() {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const tile = STATE.grid[r][c];
+        if (!tile || tile.locked || tile.special === 'ingredient') continue;
+        if (tile.special === 'color_bomb' || tile.special === 'fish') return true;
+
+        // Thử đổi sang phải
+        if (c + 1 < COLS) {
+          const right = STATE.grid[r][c + 1];
+          if (right && !right.locked && right.special !== 'ingredient') {
+            if (isSpecialCombo(tile, right)) return true;
+            swapTiles(r, c, r, c + 1);
+            const matches = findMatches();
+            swapTiles(r, c, r, c + 1);
+            if (matches.length > 0) return true;
+          }
+        }
+        // Thử đổi xuống dưới
+        if (r + 1 < ROWS) {
+          const down = STATE.grid[r + 1][c];
+          if (down && !down.locked && down.special !== 'ingredient') {
+            if (isSpecialCombo(tile, down)) return true;
+            swapTiles(r, c, r + 1, c);
+            const matches = findMatches();
+            swapTiles(r, c, r + 1, c);
+            if (matches.length > 0) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  function swapTiles(r1, c1, r2, c2) {
+    const temp = STATE.grid[r1][c1];
+    STATE.grid[r1][c1] = STATE.grid[r2][c2];
+    STATE.grid[r2][c2] = temp;
+  }
+
+  // --- TÌM KIẾM CÁC TỔ HỢP MATCH-3, MATCH-4, MATCH-5, MATCH-2x2 ---
+  function findMatches() {
+    const matched = new Set();
+
+    // 1. Quét theo hàng ngang
+    for (let r = 0; r < ROWS; r++) {
+      let matchLen = 1;
+      for (let c = 0; c < COLS; c++) {
+        const cur = STATE.grid[r][c];
+        const next = (c + 1 < COLS) ? STATE.grid[r][c + 1] : null;
+
+        if (next && cur && isMatchable(cur) && isMatchable(next) && cur.type === next.type) {
+          matchLen++;
+        } else {
+          if (matchLen >= 3) {
+            for (let k = 0; k < matchLen; k++) {
+              matched.add(`${r},${c - k}`);
+            }
+          }
+          matchLen = 1;
+        }
+      }
+    }
+
+    // 2. Quét theo hàng dọc
+    for (let c = 0; c < COLS; c++) {
+      let matchLen = 1;
+      for (let r = 0; r < ROWS; r++) {
+        const cur = STATE.grid[r][c];
+        const next = (r + 1 < ROWS) ? STATE.grid[r + 1][c] : null;
+
+        if (next && cur && isMatchable(cur) && isMatchable(next) && cur.type === next.type) {
+          matchLen++;
+        } else {
+          if (matchLen >= 3) {
+            for (let k = 0; k < matchLen; k++) {
+              matched.add(`${r - k},${c}`);
+            }
+          }
+          matchLen = 1;
+        }
+      }
+    }
+
+    // 3. Quét hình vuông 2x2 (Tạo Con Cá 🐟)
+    for (let r = 0; r < ROWS - 1; r++) {
+      for (let c = 0; c < COLS - 1; c++) {
+        const t1 = STATE.grid[r][c];
+        const t2 = STATE.grid[r][c + 1];
+        const t3 = STATE.grid[r + 1][c];
+        const t4 = STATE.grid[r + 1][c + 1];
+
+        if (
+          t1 && t2 && t3 && t4 &&
+          isMatchable(t1) && isMatchable(t2) && isMatchable(t3) && isMatchable(t4) &&
+          t1.type === t2.type &&
+          t1.type === t3.type &&
+          t1.type === t4.type
+        ) {
+          matched.add(`${r},${c}`);
+          matched.add(`${r},${c + 1}`);
+          matched.add(`${r + 1},${c}`);
+          matched.add(`${r + 1},${c + 1}`);
+        }
+      }
+    }
+
+    return Array.from(matched).map(coord => {
+      const [r, c] = coord.split(',').map(Number);
+      return { r, c };
+    });
+  }
+
+  // --- PHÂN TÍCH NHÓM ĐỂ TẠO RA ITEM ĐẶC BIỆT (SPECIALS) ---
+  function analyzeMatchesForSpecials(lastSwapTarget) {
+    const specialsToCreate = [];
+    const hRuns = [];
+    const vRuns = [];
+
+    // Tìm runs ngang
+    for (let r = 0; r < ROWS; r++) {
+      let len = 1;
+      for (let c = 0; c < COLS; c++) {
+        const cur = STATE.grid[r][c];
+        const next = (c + 1 < COLS) ? STATE.grid[r][c + 1] : null;
+        if (next && cur && isMatchable(cur) && isMatchable(next) && cur.type === next.type) {
+          len++;
+        } else {
+          if (len >= 3) {
+            const tiles = [];
+            for (let k = 0; k < len; k++) tiles.push({ r, c: c - k });
+            hRuns.push(tiles);
+          }
+          len = 1;
+        }
+      }
+    }
+
+    // Tìm runs dọc
+    for (let c = 0; c < COLS; c++) {
+      let len = 1;
+      for (let r = 0; r < ROWS; r++) {
+        const cur = STATE.grid[r][c];
+        const next = (r + 1 < ROWS) ? STATE.grid[r + 1][c] : null;
+        if (next && cur && isMatchable(cur) && isMatchable(next) && cur.type === next.type) {
+          len++;
+        } else {
+          if (len >= 3) {
+            const tiles = [];
+            for (let k = 0; k < len; k++) tiles.push({ r: r - k, c });
+            vRuns.push(tiles);
+          }
+          len = 1;
+        }
+      }
+    }
+
+    // 1. Kiểm tra L hoặc T shape (Giao thoa giữa hRun và vRun) => Bom Kem Cheese (Wrapped)
+    for (const h of hRuns) {
+      for (const v of vRuns) {
+        const intersect = h.find(ht => v.some(vt => vt.r === ht.r && vt.c === ht.c));
+        if (intersect) {
+          const type = STATE.grid[intersect.r][intersect.c] ? STATE.grid[intersect.r][intersect.c].type : randomType();
+          specialsToCreate.push({ r: intersect.r, c: intersect.c, special: 'wrapped', type });
+          h._used = true;
+          v._used = true;
+          break;
+        }
+      }
+    }
+
+    // 2. Kiểm tra runs >= 5 => Cầu Vồng (Color Bomb)
+    [...hRuns, ...vRuns].forEach(run => {
+      if (run._used) return;
+      if (run.length >= 5) {
+        let target = run[Math.floor(run.length / 2)];
+        if (lastSwapTarget && run.some(t => t.r === lastSwapTarget.r && t.c === lastSwapTarget.c)) {
+          target = lastSwapTarget;
+        }
+        specialsToCreate.push({ r: target.r, c: target.c, special: 'color_bomb', type: -1 });
+        run._used = true;
+      }
+    });
+
+    // 3. Kiểm tra cụm hình vuông 2x2 => Con Cá (Jelly Fish 🐟)
+    const square2x2List = [];
+    for (let r = 0; r < ROWS - 1; r++) {
+      for (let c = 0; c < COLS - 1; c++) {
+        const t1 = STATE.grid[r][c];
+        const t2 = STATE.grid[r][c + 1];
+        const t3 = STATE.grid[r + 1][c];
+        const t4 = STATE.grid[r + 1][c + 1];
+
+        if (
+          t1 && t2 && t3 && t4 &&
+          isMatchable(t1) && isMatchable(t2) && isMatchable(t3) && isMatchable(t4) &&
+          t1.type === t2.type &&
+          t1.type === t3.type &&
+          t1.type === t4.type
+        ) {
+          square2x2List.push({
+            r, c,
+            type: t1.type,
+            cells: [{ r, c }, { r, c: c + 1 }, { r: r + 1, c }, { r: r + 1, c: c + 1 }]
+          });
+        }
+      }
+    }
+
+    square2x2List.forEach(sq => {
+      // Tìm ô phù hợp nhất để đặt Con Cá (ưu tiên lastSwapTarget nếu người chơi vuốt vào)
+      let target = null;
+      if (lastSwapTarget && sq.cells.some(cell => cell.r === lastSwapTarget.r && cell.c === lastSwapTarget.c)) {
+        if (!specialsToCreate.some(s => s.r === lastSwapTarget.r && s.c === lastSwapTarget.c)) {
+          target = lastSwapTarget;
+        }
+      }
+      if (!target) {
+        target = sq.cells.find(cell => !specialsToCreate.some(s => s.r === cell.r && s.c === cell.c));
+      }
+      if (target) {
+        specialsToCreate.push({ r: target.r, c: target.c, special: 'fish', type: sq.type });
+      }
+    });
+
+    // 4. Kiểm tra runs == 4 => Sọc (Striped)
+    hRuns.forEach(run => {
+      if (run._used) return;
+      if (run.length === 4) {
+        let target = run[1];
+        if (lastSwapTarget && run.some(t => t.r === lastSwapTarget.r && t.c === lastSwapTarget.c)) {
+          target = lastSwapTarget;
+        }
+        if (!specialsToCreate.some(s => s.r === target.r && s.c === target.c)) {
+          const type = STATE.grid[target.r][target.c] ? STATE.grid[target.r][target.c].type : randomType();
+          specialsToCreate.push({ r: target.r, c: target.c, special: 'striped_v', type });
+          run._used = true;
+        }
+      }
+    });
+
+    vRuns.forEach(run => {
+      if (run._used) return;
+      if (run.length === 4) {
+        let target = run[1];
+        if (lastSwapTarget && run.some(t => t.r === lastSwapTarget.r && t.c === lastSwapTarget.c)) {
+          target = lastSwapTarget;
+        }
+        if (!specialsToCreate.some(s => s.r === target.r && s.c === target.c)) {
+          const type = STATE.grid[target.r][target.c] ? STATE.grid[target.r][target.c].type : randomType();
+          specialsToCreate.push({ r: target.r, c: target.c, special: 'striped_h', type });
+          run._used = true;
+        }
+      }
+    });
+
+    return specialsToCreate;
+  }
+
+  // --- TÌM Ô MỤC TIÊU THÔNG MINH CHO CON CÁ 🐟 (ƯU TIÊN THẠCH / BĂNG / NGUYÊN LIỆU) ---
+  function getFishTargetCandidates(excludeCells = []) {
+    const excludeSet = new Set(excludeCells.map(c => `${c.r},${c.c}`));
+    const priority1 = []; // Thạch hoặc Khóa Băng hoặc bên dưới Cherry
+    const priority2 = []; // Ô kẹo đặc biệt
+    const priority3 = []; // Ô kẹo thường
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const key = `${r},${c}`;
+        if (excludeSet.has(key)) continue;
+        const tile = STATE.grid[r][c];
+        if (!tile || tile.special === 'ingredient') continue;
+
+        const hasJelly = STATE.jelly && STATE.jelly[r] && STATE.jelly[r][c] > 0;
+        const isLocked = tile.locked;
+
+        if (hasJelly || isLocked) {
+          priority1.push({ r, c });
+        } else if (tile.special !== 'none') {
+          priority2.push({ r, c });
+        } else {
+          priority3.push({ r, c });
+        }
+      }
+    }
+
+    const shuffle = arr => arr.sort(() => Math.random() - 0.5);
+    return [...shuffle(priority1), ...shuffle(priority2), ...shuffle(priority3)];
+  }
+
+  // --- KÍCH HOẠT HIỆU ỨNG ITEM ĐẶC BIỆT ---
+  function expandSpecialExplosions(initialCoords) {
+    const toClear = new Set();
+    const queue = [];
+    const flyingFish = [];
+
+    initialCoords.forEach(c => {
+      const tile = STATE.grid[c.r] ? STATE.grid[c.r][c.c] : null;
+      if (tile && tile.special !== 'ingredient') {
+        toClear.add(`${c.r},${c.c}`);
+        queue.push({ r: c.r, c: c.c });
+      }
+    });
+
+    while (queue.length > 0) {
+      const { r, c } = queue.shift();
+      const tile = STATE.grid[r] ? STATE.grid[r][c] : null;
+      if (!tile || tile.special === 'none' || tile.special === 'ingredient') continue;
+
+      if (tile.special === 'striped_h') {
+        // Phá cả hàng ngang
+        for (let col = 0; col < COLS; col++) {
+          const key = `${r},${col}`;
+          const t = STATE.grid[r] ? STATE.grid[r][col] : null;
+          if (t && t.special !== 'ingredient' && !toClear.has(key)) {
+            toClear.add(key);
+            queue.push({ r, c: col });
+          }
+        }
+      } else if (tile.special === 'striped_v') {
+        // Phá cả cột dọc
+        for (let row = 0; row < ROWS; row++) {
+          const key = `${row},${c}`;
+          const t = STATE.grid[row] ? STATE.grid[row][c] : null;
+          if (t && t.special !== 'ingredient' && !toClear.has(key)) {
+            toClear.add(key);
+            queue.push({ r: row, c });
+          }
+        }
+      } else if (tile.special === 'wrapped') {
+        // Nổ 3x3
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+              const key = `${nr},${nc}`;
+              const t = STATE.grid[nr] ? STATE.grid[nr][nc] : null;
+              if (t && t.special !== 'ingredient' && !toClear.has(key)) {
+                toClear.add(key);
+                queue.push({ r: nr, c: nc });
+              }
+            }
+          }
+        }
+      } else if (tile.special === 'fish') {
+        // Con Cá 🐟: Ưu tiên bơi tới ô Thạch, Băng hoặc Kẹo đặc biệt!
+        const candidates = getFishTargetCandidates(Array.from(toClear).map(k => {
+          const [cr, cc] = k.split(',').map(Number);
+          return { r: cr, c: cc };
+        }));
+
+        if (candidates.length > 0) {
+          const chosen = candidates[0];
+          const chosenKey = `${chosen.r},${chosen.c}`;
+          toClear.add(chosenKey);
+          queue.push({ r: chosen.r, c: chosen.c });
+
+          flyingFish.push({
+            fromR: r,
+            fromC: c,
+            toR: chosen.r,
+            toC: chosen.c,
+            type: tile.type
+          });
+        }
+      }
+    }
+
+    return {
+      cells: Array.from(toClear).map(coord => {
+        const [r, c] = coord.split(',').map(Number);
+        return { r, c };
+      }),
+      flyingFish
+    };
+  }
+
+  // --- THỰC HIỆN KẾT HỢP 2 ITEM ĐẶC BIỆT (SPECIAL COMBOS TOÀN DIỆN) ---
+  async function executeSpecialCombo(r1, c1, r2, c2, t1, t2) {
+    swapTiles(r1, c1, r2, c2);
+    STATE.moves = Math.max(0, STATE.moves - 1);
+    renderBoardOnly();
+    await sleep(150);
+
+    const s1 = t1.special;
+    const s2 = t2.special;
+
+    const isStriped = s => s === 'striped_h' || s === 'striped_v';
+    const isWrapped = s => s === 'wrapped';
+    const isFish = s => s === 'fish';
+    const isColorBomb = s => s === 'color_bomb';
+
+    // 1. CẦU VỒNG + CẦU VỒNG 🌈 + 🌈 (Super Nova 100% Board Wipe)
+    if (isColorBomb(s1) && isColorBomb(s2)) {
+      triggerPraise('SIÊU BÃO CẦU VỒNG! 🌈✨');
+      triggerScreenShake('heavy');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+      const allCells = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (STATE.grid[r][c] && STATE.grid[r][c].special !== 'ingredient') {
+            allCells.push({ r, c });
+          }
+        }
+      }
+      await processEliminations(allCells);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+
+    // 2. CẦU VỒNG + KẸO SỌC 🌈 + ⚡ (Pháo Hoa Cầu Vồng)
+    if ((isColorBomb(s1) && isStriped(s2)) || (isStriped(s1) && isColorBomb(s2))) {
+      triggerPraise('PHÁO HOA CẦU VỒNG! 🌈⚡');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+      const stripedTile = isStriped(s1) ? t1 : t2;
+      const targetType = stripedTile.type >= 0 ? stripedTile.type : randomType();
+
+      const transformed = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const tile = STATE.grid[r][c];
+          if (tile && (tile.type === targetType || (r === r2 && c === c2) || (r === r1 && c === c1))) {
+            tile.special = Math.random() < 0.5 ? 'striped_h' : 'striped_v';
+            transformed.push({ r, c });
+          }
+        }
+      }
+      renderBoardOnly();
+      await sleep(250);
+
+      const { cells: expanded, flyingFish } = expandSpecialExplosions(transformed);
+      await processEliminations(expanded, [], flyingFish);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+
+    // 3. CẦU VỒNG + BỌC KEM CHEESE 🌈 + 💣 (Bão Kem Cheese 3x3 Kép)
+    if ((isColorBomb(s1) && isWrapped(s2)) || (isWrapped(s1) && isColorBomb(s2))) {
+      triggerPraise('BÃO BỌC KEM CHEESE! 🌈💣');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+      const wrappedTile = isWrapped(s1) ? t1 : t2;
+      const targetType = wrappedTile.type >= 0 ? wrappedTile.type : randomType();
+
+      const transformed = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const tile = STATE.grid[r][c];
+          if (tile && (tile.type === targetType || (r === r2 && c === c2) || (r === r1 && c === c1))) {
+            tile.special = 'wrapped';
+            transformed.push({ r, c });
+          }
+        }
+      }
+      renderBoardOnly();
+      await sleep(250);
+
+      const { cells: expanded, flyingFish } = expandSpecialExplosions(transformed);
+      await processEliminations(expanded, [], flyingFish);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+
+    // 4. CẦU VỒNG + CON CÁ 🌈 + 🐟 (Cầu Vồng Đàn Cá Bay Rợp Trời)
+    if ((isColorBomb(s1) && isFish(s2)) || (isFish(s1) && isColorBomb(s2))) {
+      triggerPraise('CẦU VỒNG ĐÀN CÁ! 🌈🐟');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+      const fishTile = isFish(s1) ? t1 : t2;
+      const targetType = fishTile.type >= 0 ? fishTile.type : randomType();
+
+      const transformed = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const tile = STATE.grid[r][c];
+          if (tile && (tile.type === targetType || (r === r2 && c === c2) || (r === r1 && c === c1))) {
+            tile.special = 'fish';
+            transformed.push({ r, c });
+          }
+        }
+      }
+      renderBoardOnly();
+      await sleep(250);
+
+      const { cells: expanded, flyingFish } = expandSpecialExplosions(transformed);
+      await processEliminations(expanded, [], flyingFish);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+
+    // 5. CẦU VỒNG + KẸO THƯỜNG 🌈 + (normal)
+    if (isColorBomb(s1) || isColorBomb(s2)) {
+      triggerPraise('SỨC MẠNH CẦU VỒNG! ✨');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+      const normalTile = isColorBomb(s1) ? t2 : t1;
+      const targetType = normalTile.type;
+      const targets = [{ r: r1, c: c1 }, { r: r2, c: c2 }];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (STATE.grid[r][c] && STATE.grid[r][c].type === targetType && STATE.grid[r][c].special !== 'ingredient') {
+            targets.push({ r, c });
+          }
+        }
+      }
+      await processEliminations(targets);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+
+    // 6. KẸO SỌC + KẸO SỌC ⚡ + ⚡ (Tia Sét Chữ Thập Ngang + Dọc)
+    if (isStriped(s1) && isStriped(s2)) {
+      triggerPraise('TIA SÉT CHỮ THẬP! ⚡⚡');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+      spawnLaserBeam('h', r2);
+      spawnLaserBeam('v', c2);
+
+      const cells = [];
+      for (let col = 0; col < COLS; col++) cells.push({ r: r2, c: col });
+      for (let row = 0; row < ROWS; row++) {
+        if (row !== r2) cells.push({ r: row, c: c2 });
+      }
+      const { cells: expanded, flyingFish } = expandSpecialExplosions(cells);
+      await processEliminations(expanded, [], flyingFish);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+
+    // 7. KẸO SỌC + BỌC KEM CHEESE ⚡ + 💣 (Đại Pháo Thập Tự 3x3)
+    if ((isStriped(s1) && isWrapped(s2)) || (isWrapped(s1) && isStriped(s2))) {
+      triggerPraise('ĐẠI PHÁO THẬP TỰ 3x3! ⚡💣');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+      spawnGiantLaserBeams(r2, c2);
+
+      const cells = new Set();
+      // 3 hàng ngang
+      for (let dr = -1; dr <= 1; dr++) {
+        const tr = r2 + dr;
+        if (tr >= 0 && tr < ROWS) {
+          for (let col = 0; col < COLS; col++) cells.add(`${tr},${col}`);
+        }
+      }
+      // 3 cột dọc
+      for (let dc = -1; dc <= 1; dc++) {
+        const tc = c2 + dc;
+        if (tc >= 0 && tc < COLS) {
+          for (let row = 0; row < ROWS; row++) cells.add(`${row},${tc}`);
+        }
+      }
+
+      const initial = Array.from(cells).map(k => {
+        const [r, c] = k.split(',').map(Number);
+        return { r, c };
+      });
+      const { cells: expanded, flyingFish } = expandSpecialExplosions(initial);
+      await processEliminations(expanded, [], flyingFish);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+
+    // 8. BỌC KEM CHEESE + BỌC KEM CHEESE 💣 + 💣 (Đại Địa Chấn 5x5)
+    if (isWrapped(s1) && isWrapped(s2)) {
+      triggerPraise('ĐẠI ĐỊA CHẤN 5x5! 💣💣');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+      spawnShockwave(r2, c2);
+      triggerScreenShake('heavy');
+
+      const cells = [];
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+          const tr = r2 + dr, tc = c2 + dc;
+          if (tr >= 0 && tr < ROWS && tc >= 0 && tc < COLS) {
+            cells.push({ r: tr, c: tc });
+          }
+        }
+      }
+      const { cells: expanded, flyingFish } = expandSpecialExplosions(cells);
+      await processEliminations(expanded, [], flyingFish);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+
+    // 9. CON CÁ + CON CÁ 🐟 + 🐟 (Đàn Cá 3 Con)
+    if (isFish(s1) && isFish(s2)) {
+      triggerPraise('ĐÀN CÁ BÙNG NỔ! 🐟🐟');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+
+      const flyingFish = [];
+      const candidates = getFishTargetCandidates([{ r: r1, c: c1 }, { r: r2, c: c2 }]);
+      const count = Math.min(3, candidates.length);
+      for (let i = 0; i < count; i++) {
+        const target = candidates[i];
+        flyingFish.push({
+          fromR: r2, fromC: c2,
+          toR: target.r, toC: target.c,
+          type: t1.type
+        });
+      }
+      const initial = [{ r: r1, c: c1 }, { r: r2, c: c2 }, ...flyingFish.map(f => ({ r: f.toR, c: f.toC }))];
+      const { cells: expanded } = expandSpecialExplosions(initial);
+      await processEliminations(expanded, [], flyingFish);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+
+    // 10. CON CÁ + KẸO SỌC 🐟 + ⚡ (Cá Phóng Lôi)
+    if ((isFish(s1) && isStriped(s2)) || (isStriped(s1) && isFish(s2))) {
+      triggerPraise('CÁ PHÓNG LÔI! 🐟⚡');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+
+      const candidates = getFishTargetCandidates([{ r: r1, c: c1 }, { r: r2, c: c2 }]);
+      const target = candidates.length > 0 ? candidates[0] : { r: r2, c: c2 };
+
+      const flyingFish = [{
+        fromR: r2, fromC: c2,
+        toR: target.r, toC: target.c,
+        type: t1.type
+      }];
+
+      await animateFlyingFish(flyingFish[0]);
+      spawnLaserBeam('h', target.r);
+      spawnLaserBeam('v', target.c);
+
+      const cells = new Set();
+      cells.add(`${r1},${c1}`);
+      cells.add(`${r2},${c2}`);
+      for (let col = 0; col < COLS; col++) cells.add(`${target.r},${col}`);
+      for (let row = 0; row < ROWS; row++) cells.add(`${row},${target.c}`);
+
+      const initial = Array.from(cells).map(k => {
+        const [r, c] = k.split(',').map(Number);
+        return { r, c };
+      });
+      const { cells: expanded, flyingFish: moreFish } = expandSpecialExplosions(initial);
+      await processEliminations(expanded, [], moreFish);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+
+    // 11. CON CÁ + BỌC KEM CHEESE 🐟 + 💣 (Cá Ôm Bom 3x3)
+    if ((isFish(s1) && isWrapped(s2)) || (isWrapped(s1) && isFish(s2))) {
+      triggerPraise('CÁ ÔM BOM! 🐟💣');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+
+      const candidates = getFishTargetCandidates([{ r: r1, c: c1 }, { r: r2, c: c2 }]);
+      const target = candidates.length > 0 ? candidates[0] : { r: r2, c: c2 };
+
+      const flyingFish = [{
+        fromR: r2, fromC: c2,
+        toR: target.r, toC: target.c,
+        type: t1.type
+      }];
+
+      await animateFlyingFish(flyingFish[0]);
+      spawnShockwave(target.r, target.c);
+
+      const cells = new Set();
+      cells.add(`${r1},${c1}`);
+      cells.add(`${r2},${c2}`);
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const tr = target.r + dr, tc = target.c + dc;
+          if (tr >= 0 && tr < ROWS && tc >= 0 && tc < COLS) {
+            cells.add(`${tr},${tc}`);
+          }
+        }
+      }
+
+      const initial = Array.from(cells).map(k => {
+        const [r, c] = k.split(',').map(Number);
+        return { r, c };
+      });
+      const { cells: expanded, flyingFish: moreFish } = expandSpecialExplosions(initial);
+      await processEliminations(expanded, [], moreFish);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+
+    // 12. CON CÁ + KẸO THƯỜNG 🐟 + (normal)
+    if (isFish(s1) || isFish(s2)) {
+      triggerPraise('CÁ BƠI BÙNG NỔ! 🐟✨');
+      if (typeof window.sfx === 'function') window.sfx('bell');
+      const targets = [{ r: r1, c: c1 }, { r: r2, c: c2 }];
+      const { cells: expandedMatches, flyingFish } = expandSpecialExplosions(targets);
+      await processEliminations(expandedMatches, [], flyingFish);
+      await dropAndFillCascade();
+      finishTurn();
+      return;
+    }
+  }
+
+  // --- XỬ LÝ LƯỢT ĐỔI Ô (SWAP ACTION) ---
+  async function handleSwap(r1, c1, r2, c2) {
+    if (STATE.isBusy || STATE.gameEnded) return;
+
+    // Kiểm tra tính liền kề
+    const dist = Math.abs(r1 - r2) + Math.abs(c1 - c2);
+    if (dist !== 1) return;
+
+    const tile1 = STATE.grid[r1][c1];
+    const tile2 = STATE.grid[r2][c2];
+    if (!tile1 || !tile2) return;
+
+    // Nếu ô bị khóa băng, không thể hoán đổi!
+    if (tile1.locked || tile2.locked) {
+      triggerScreenShake('light');
+      if (typeof window.sfx === 'function') window.sfx('bad');
+      if (typeof window.toast === 'function') {
+        window.toast('❄️ Kẹo này bị đóng băng! Hãy ghép kẹo cùng màu bên cạnh để giải cứu!', 2500);
+      }
+      return;
+    }
+
+    // Nếu cả 2 đều là nguyên liệu (Cherry), không thể hoán đổi
+    if (tile1.special === 'ingredient' && tile2.special === 'ingredient') return;
+
+    STATE.isBusy = true;
+    STATE.combo = 0;
+    stopTurnTimer();
+
+    if (typeof window.sfx === 'function') window.sfx('tap');
+
+    // 1. KIỂM TRA SPECIAL COMBOS (KHI HOÁN ĐỔI 2 KẸO ĐẶC BIỆT HOẶC CẦU VỒNG / CÁ)
+    const isSpecial1 = tile1.special !== 'none' && tile1.special !== 'ingredient';
+    const isSpecial2 = tile2.special !== 'none' && tile2.special !== 'ingredient';
+
+    if (isSpecial1 && isSpecial2) {
+      await executeSpecialCombo(r1, c1, r2, c2, tile1, tile2);
+      return;
+    }
+    if (tile1.special === 'color_bomb' || tile2.special === 'color_bomb') {
+      await executeSpecialCombo(r1, c1, r2, c2, tile1, tile2);
+      return;
+    }
+    if (tile1.special === 'fish' || tile2.special === 'fish') {
+      await executeSpecialCombo(r1, c1, r2, c2, tile1, tile2);
+      return;
+    }
+
+    // 2. HOÁN ĐỔI BÌNH THƯỜNG
+    swapTiles(r1, c1, r2, c2);
+    renderBoardOnly();
+
+    const matches = findMatches();
+    if (matches.length === 0) {
+      // Không match: hoàn tác lại vị trí cũ
+      await sleep(150);
+      swapTiles(r1, c1, r2, c2);
+      renderBoardOnly();
+      STATE.isBusy = false;
+      startTurnTimer();
+      return;
+    }
+
+    // Giảm 1 lượt đi
+    STATE.moves = Math.max(0, STATE.moves - 1);
+
+    // Xử lý tạo item đặc biệt từ lượt di chuyển
+    const specialsToCreate = analyzeMatchesForSpecials({ r: r2, c: c2 });
+
+    const { cells: expandedMatches, flyingFish } = expandSpecialExplosions(matches);
+    await processEliminations(expandedMatches, specialsToCreate, flyingFish);
+
+    await dropAndFillCascade();
+    finishTurn();
+  }
+
+  // --- XỬ LÝ BIẾN MẤT VÀ TÍNH ĐIỂM + CẬP NHẬT TIẾN ĐỘ MỤC TIÊU ---
+  async function processEliminations(cellsToClear, specialsToSpawn = [], flyingFishList = []) {
+    if (!cellsToClear || cellsToClear.length === 0) return;
+
+    STATE.combo++;
+    const comboMultiplier = Math.min(10, STATE.combo);
+    const basePts = cellsToClear.length * 20;
+    const addedScore = basePts * comboMultiplier;
+
+    STATE.score += addedScore;
+    updateStars();
+
+    // 1. CẬP NHẬT MỤC TIÊU (THẠCH, BĂNG, ĐƠN HÀNG)
+    cellsToClear.forEach(({ r, c }) => {
+      const tile = STATE.grid[r] ? STATE.grid[r][c] : null;
+
+      // Giảm Thạch (Jelly)
+      if (STATE.jelly && STATE.jelly[r] && STATE.jelly[r][c] > 0) {
+        STATE.jelly[r][c]--;
+        if (STATE.jelly[r][c] === 0) {
+          const jellyObj = (STATE.objectives || []).find(o => o.type === 'jelly');
+          if (jellyObj) jellyObj.current = Math.min(jellyObj.target, jellyObj.current + 1);
+        }
+      }
+
+      // Phá Khóa Băng (Ice Lock)
+      if (tile && tile.locked) {
+        tile.locked = false;
+        const iceObj = (STATE.objectives || []).find(o => o.type === 'ice');
+        if (iceObj) iceObj.current = Math.min(iceObj.target, iceObj.current + 1);
+      }
+
+      // Đơn hàng Topping
+      if (tile && tile.type >= 0) {
+        const topObj = (STATE.objectives || []).find(o => o.type === 'order_topping' && o.targetId === tile.type);
+        if (topObj) topObj.current = Math.min(topObj.target, topObj.current + 1);
+      }
+    });
+
+    // Phá băng ở các ô liền kề nếu cùng loại kẹo
+    cellsToClear.forEach(({ r, c }) => {
+      const clearedTile = STATE.grid[r] ? STATE.grid[r][c] : null;
+      if (!clearedTile) return;
+      [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dr, dc]) => {
+        const nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+          const neighbor = STATE.grid[nr][nc];
+          if (neighbor && neighbor.locked && neighbor.type === clearedTile.type) {
+            neighbor.locked = false;
+            const iceObj = (STATE.objectives || []).find(o => o.type === 'ice');
+            if (iceObj) iceObj.current = Math.min(iceObj.target, iceObj.current + 1);
+          }
+        }
+      });
+    });
+
+    // Đơn hàng Kẹo đặc biệt mới tạo
+    (specialsToSpawn || []).forEach(sp => {
+      (STATE.objectives || []).forEach(obj => {
+        if (obj.type === 'order_special') {
+          if (obj.targetSpecial === 'striped' && (sp.special === 'striped_h' || sp.special === 'striped_v')) {
+            obj.current = Math.min(obj.target, obj.current + 1);
+          } else if (obj.targetSpecial === sp.special) {
+            obj.current = Math.min(obj.target, obj.current + 1);
+          }
+        }
+      });
+    });
+
+    // Floating text
+    const centerCell = cellsToClear[Math.floor(cellsToClear.length / 2)];
+    if (centerCell) {
+      spawnFloatingScore(centerCell.r, centerCell.c, `+${addedScore}`);
+    }
+
+    // Hiệu ứng Combo 3D đa tầng đẳng cấp Candy Crush
+    if (STATE.combo >= 2) {
+      const cInfo = getComboInfo(STATE.combo);
+      triggerComboFly(cInfo.text, cInfo.lvl, cInfo.sub);
+
+      if (typeof window.sfx === 'function') {
+        if (cInfo.sfx) window.sfx(cInfo.sfx);
+        if (STATE.combo >= 10) {
+          setTimeout(() => {
+            if (typeof window.sfx === 'function') window.sfx('bell');
+          }, 140);
+        }
+      }
+      playComboChime(STATE.combo);
+    }
+
+    // Cá bay
+    if (flyingFishList && flyingFishList.length > 0) {
+      await Promise.all(flyingFishList.map(fish => animateFlyingFish(fish)));
+    }
+
+    // Hạt nổ 3D (giới hạn tối đa 5 ô đại diện để mượt mà trên mobile)
+    cellsToClear.slice(0, 5).forEach(({ r, c }) => {
+      const tile = STATE.grid[r] ? STATE.grid[r][c] : null;
+      const color = tile && TOPPINGS[tile.type] ? TOPPINGS[tile.type].color : '#f59e0b';
+      spawnExplosionParticles(r, c, color);
+    });
+
+    // Kích hoạt tia laser / shockwave / cá lặn và hiệu ứng pop-out
+    cellsToClear.forEach(({ r, c }) => {
+      const tile = STATE.grid[r] ? STATE.grid[r][c] : null;
+      if (tile) {
+        if (tile.special === 'striped_h') spawnLaserBeam('h', r);
+        else if (tile.special === 'striped_v') spawnLaserBeam('v', c);
+        else if (tile.special === 'wrapped') spawnShockwave(r, c);
+        else if (tile.special === 'fish') spawnWaterSplash(r, c);
+      }
+
+      const el = document.querySelector(`[data-cell-pos="${r},${c}"] .crush-tile`);
+      if (el) el.classList.add('pop-out');
+    });
+
+    // Chỉ rung màn hình khi kết hợp 5 cục hoặc khi có chuỗi combo (combo >= 2), không rung khi ghép 3-4 cục thông thường cho đỡ rối mắt
+    const isMatch5 = (specialsToSpawn && specialsToSpawn.some(s => s.special === 'color_bomb' || s.special === 'wrapped')) || (cellsToClear && cellsToClear.length >= 5);
+    const isComboChain = STATE.combo >= 2;
+
+    if (isComboChain) {
+      triggerScreenShake(STATE.combo >= 10 ? 'ultra' : (STATE.combo >= 6 ? 'heavy' : (STATE.combo >= 3 ? 'medium' : 'light')));
+    } else if (isMatch5) {
+      const hasColorBomb = specialsToSpawn && specialsToSpawn.some(s => s.special === 'color_bomb');
+      triggerScreenShake(hasColorBomb ? 'heavy' : 'medium');
+    }
+    await sleep(180);
+
+    // Xoá ô khỏi grid (không xoá ingredient nếu chưa rơi đến đáy)
+    cellsToClear.forEach(({ r, c }) => {
+      const tile = STATE.grid[r] ? STATE.grid[r][c] : null;
+      if (tile && tile.special !== 'ingredient') {
+        STATE.grid[r][c] = null;
+      }
+    });
+
+    // Tạo các viên đặc biệt mới sinh ra
+    specialsToSpawn.forEach(({ r, c, special, type }) => {
+      STATE.grid[r][c] = createTile(type, special);
+    });
+
+    renderBoardOnly();
+  }
+
+  // --- RƠI TỰ DO & LẤP ĐẦY TRÊN ĐỈNH (CASCADE GRAVITY + CHERRY COLLECTION) ---
+  async function dropAndFillCascade() {
+    let hasDrop = true;
+
+    while (hasDrop) {
+      hasDrop = false;
+
+      // 1. Kiểm tra thu hoạch Nguyên liệu (Cherry 🍒) chạm hàng đáy
+      for (let c = 0; c < COLS; c++) {
+        const bottomTile = STATE.grid[ROWS - 1][c];
+        if (bottomTile && bottomTile.special === 'ingredient') {
+          STATE.grid[ROWS - 1][c] = null;
+          hasDrop = true;
+          const ingObj = (STATE.objectives || []).find(o => o.type === 'ingredient');
+          if (ingObj) ingObj.current = Math.min(ingObj.target, ingObj.current + 1);
+          spawnFloatingScore(ROWS - 1, c, 'CHERRY! 🍒');
+          triggerScreenShake('light');
+          if (typeof window.sfx === 'function') window.sfx('cash');
+          await sleep(120);
+        }
+      }
+
+      // 2. Rơi các viên hiện có xuống
+      for (let c = 0; c < COLS; c++) {
+        for (let r = ROWS - 1; r >= 0; r--) {
+          if (STATE.grid[r][c] === null) {
+            for (let above = r - 1; above >= 0; above--) {
+              if (STATE.grid[above][c] !== null) {
+                STATE.grid[r][c] = STATE.grid[above][c];
+                STATE.grid[above][c] = null;
+                hasDrop = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Sinh topping mới ở các ô trống trên cùng (và sinh thêm Cherry nếu cần)
+      const ingObj = (STATE.objectives || []).find(o => o.type === 'ingredient');
+      let needMoreCherry = false;
+      if (ingObj) {
+        let onBoard = 0;
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (STATE.grid[r][c] && STATE.grid[r][c].special === 'ingredient') onBoard++;
+          }
+        }
+        if (onBoard + ingObj.current < ingObj.target) {
+          needMoreCherry = true;
+        }
+      }
+
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+          if (STATE.grid[r][c] === null) {
+            if (needMoreCherry && Math.random() < 0.35) {
+              STATE.grid[r][c] = {
+                id: tileIdCounter++,
+                type: -1,
+                special: 'ingredient',
+                locked: false
+              };
+              needMoreCherry = false;
+            } else {
+              STATE.grid[r][c] = createTile(randomType(), 'none');
+            }
+            hasDrop = true;
+          }
+        }
+      }
+
+      if (hasDrop) {
+        renderBoardOnly();
+        await sleep(130);
+
+        // Kiểm tra lại nếu có Cherry vừa chạm đáy sau khi rơi
+        for (let c = 0; c < COLS; c++) {
+          const bottomTile = STATE.grid[ROWS - 1][c];
+          if (bottomTile && bottomTile.special === 'ingredient') {
+            STATE.grid[ROWS - 1][c] = null;
+            const curIng = (STATE.objectives || []).find(o => o.type === 'ingredient');
+            if (curIng) curIng.current = Math.min(curIng.target, curIng.current + 1);
+            spawnFloatingScore(ROWS - 1, c, 'CHERRY! 🍒');
+            if (typeof window.sfx === 'function') window.sfx('cash');
+          }
+        }
+
+        // Kiểm tra xem có tạo ra match liên hoàn không
+        const cascadeMatches = findMatches();
+        if (cascadeMatches.length > 0) {
+          const specials = analyzeMatchesForSpecials(null);
+          const { cells: expanded, flyingFish } = expandSpecialExplosions(cascadeMatches);
+          await processEliminations(expanded, specials, flyingFish);
+        } else {
+          break;
+        }
+      }
+    }
+  }
+
+  // --- KIỂM TRA ĐIỀU KIỆN HOÀN THÀNH TẤT CẢ MỤC TIÊU ---
+  function isAllObjectivesComplete() {
+    if (!STATE.objectives || STATE.objectives.length === 0) {
+      return STATE.score >= STATE.targetScore;
+    }
+    return STATE.objectives.every(obj => {
+      if (obj.type === 'score') return STATE.score >= obj.target;
+      return obj.current >= obj.target;
+    });
+  }
+
+  // --- HIỆU ỨNG SUGAR CRUSH: BIẾN TẤT CẢ LƯỢT CÒN LẠI THÀNH KẸO 7 MÀU & CHUỖI CHO LẸ 🌈⚡ ---
+  async function triggerSugarCrush() {
+    STATE.isBusy = true;
+    stopTurnTimer();
+    triggerComboFly('🌈 BÃO 7 MÀU! 🌈', 6);
+    triggerPraise('🌈 BÃO 7 MÀU LIÊN HOÀN! 🌈');
+    if (typeof window.sfx === 'function') window.sfx('bell');
+    await sleep(350);
+
+    // 1. Biến toàn bộ các lượt còn lại thành Kẹo 7 Màu (Color Bomb) siêu tốc
+    while (STATE.moves > 0) {
+      STATE.moves--;
+      renderHeaderAndStats();
+
+      const candidates = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const t = STATE.grid[r][c];
+          if (t && t.special !== 'ingredient' && t.special !== 'color_bomb' && !t.locked) {
+            candidates.push({ r, c });
+          }
+        }
+      }
+      if (candidates.length === 0) break;
+
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+      STATE.grid[chosen.r][chosen.c].special = 'color_bomb';
+      STATE.grid[chosen.r][chosen.c].type = -1; // Kẹo 7 màu
+
+      renderBoardOnly();
+      if (typeof window.sfx === 'function') window.sfx('coin');
+      await sleep(55); // Nhanh dứt khoát
+    }
+
+    STATE.moves = 0;
+    renderHeaderAndStats();
+    await sleep(150);
+
+    // 2. Kích nổ chuỗi liên hoàn các kẹo 7 màu siêu tốc (cho lẹ)
+    let crushCombo = 1;
+    let safeLoop = 0;
+    while (safeLoop < 30) {
+      safeLoop++;
+      const curBombs = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (STATE.grid[r][c] && STATE.grid[r][c].special === 'color_bomb') {
+            curBombs.push({ r, c });
+          }
+        }
+      }
+      if (curBombs.length === 0) break;
+
+      // Nổ theo cụm (1-2 viên cùng lúc nếu còn nhiều)
+      const batchSize = curBombs.length >= 4 ? 2 : 1;
+      const explodingBombs = curBombs.slice(0, batchSize);
+
+      let allTargets = [];
+      explodingBombs.forEach(b => {
+        allTargets.push(b);
+        // Chọn một loại topping có sẵn trên bàn để quét sạch toàn bộ màu đó
+        const targetType = Math.floor(Math.random() * Math.max(1, STATE.typesCount || 4));
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const tile = STATE.grid[r][c];
+            if (tile && tile.type === targetType && tile.special !== 'ingredient') {
+              allTargets.push({ r, c });
+            }
+          }
+        }
+      });
+
+      const uniqueTargets = [];
+      const seen = new Set();
+      allTargets.forEach(pos => {
+        const key = `${pos.r},${pos.c}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueTargets.push(pos);
+        }
+      });
+
+      crushCombo++;
+      playComboChime(crushCombo);
+      if (typeof window.sfx === 'function') window.sfx('cash');
+      triggerScreenShake('light');
+
+      await processEliminations(uniqueTargets);
+      await dropAndFillCascade();
+      await sleep(95); // Chuỗi siêu tốc
+    }
+
+    // Quét nốt các match tự nhiên còn sót lại
+    let cascadeCount = 0;
+    while (findMatches().length > 0 && cascadeCount < 5) {
+      cascadeCount++;
+      const matches = findMatches();
+      const { cells: expanded, flyingFish } = expandSpecialExplosions(matches);
+      await processEliminations(expanded, [], flyingFish);
+      await dropAndFillCascade();
+      await sleep(80);
+    }
+  }
+
+  // --- CẬP NHẬT SAO ⭐ ---
+  function updateStars() {
+    const s1 = Math.round(STATE.targetScore * 0.45);
+    const s2 = Math.round(STATE.targetScore * 0.85);
+    const s3 = STATE.targetScore;
+
+    if (STATE.score >= s3) STATE.stars = 3;
+    else if (STATE.score >= s2) STATE.stars = 2;
+    else if (STATE.score >= s1) STATE.stars = 1;
+    else STATE.stars = isAllObjectivesComplete() ? 1 : 0;
+
+    if (STATE.score > STATE.highScore) {
+      STATE.highScore = STATE.score;
+      try {
+        localStorage.setItem('tsBobaCrushHigh', STATE.highScore.toString());
+      } catch (e) {}
+    }
+  }
+
+  // --- KẾT THÚC LƯỢT & KIỂM TRA ĐIỀU KIỆN THẮNG/THUA ---
+  async function finishTurn() {
+    STATE.selectedCell = null;
+    updateStars();
+
+    // Cập nhật tiến độ điểm số
+    const scoreObj = (STATE.objectives || []).find(o => o.type === 'score');
+    if (scoreObj) scoreObj.current = STATE.score;
+
+    // KIỂM TRA CHIẾN THẮNG (TẤT CẢ MỤC TIÊU ĐÃ ĐẠT)
+    if (isAllObjectivesComplete() && !STATE.gameEnded) {
+      STATE.gameEnded = true;
+      if (STATE.moves > 0) {
+        await triggerSugarCrush();
+      }
+      await handleGameEnd(true);
+      return;
+    }
+
+    // Nếu hết nước đi hợp lệ trên bàn, tự động xáo bài (Shuffle)
+    if (!hasValidMoves() && STATE.moves > 0 && !STATE.gameEnded) {
+      await triggerShuffle();
+    }
+
+    // KIỂM TRA HẾT LƯỢT ĐI (THUA)
+    if (STATE.moves <= 0) {
+      await handleGameEnd(false);
+    } else {
+      STATE.isBusy = false;
+      render();
+      startTurnTimer();
+    }
+  }
+
+  // --- TỰ ĐỘNG XÁO BÀN KHI HẾT NƯỚC ĐI ---
+  async function triggerShuffle() {
+    STATE.statusMsg = '🔄 Hết nước đi - Tự động xáo bài Topping!';
+    renderHeaderAndStats();
+    triggerComboFly('XÁO BÀN! 🔄', 3);
+    if (typeof window.sfx === 'function') window.sfx('dice');
+
+    document.querySelectorAll('.crush-tile').forEach(el => el.classList.add('shuffle-spin'));
+    await sleep(450);
+
+    let attempts = 0;
+    do {
+      shuffleBoard();
+      attempts++;
+    } while ((!hasValidMoves() || findMatches().length > 0) && attempts < 50);
+
+    if (!hasValidMoves()) {
+      initBoard();
+    }
+
+    renderBoardOnly();
+    await sleep(300);
+  }
+
+  function shuffleBoard() {
+    const tiles = [];
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (STATE.grid[r][c] && STATE.grid[r][c].special !== 'ingredient') {
+          tiles.push(STATE.grid[r][c]);
+        }
+      }
+    }
+    for (let i = tiles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+    }
+    let idx = 0;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (STATE.grid[r][c] && STATE.grid[r][c].special !== 'ingredient') {
+          STATE.grid[r][c] = tiles[idx++] || createTile(randomType());
+        }
+      }
+    }
+  }
+
+  // --- KIỂM TRA & TRAO THƯỞNG PACK NGUYÊN LIỆU MỖI 5 LEVEL VƯỢT ---
+  function checkAndAwardCrushMilestones(clearedLevel) {
+    if (typeof window.S === 'undefined' || !window.S) return 0;
+    if (!window.S.crushPackClaimed) window.S.crushPackClaimed = {};
+    if (!window.S.collection) {
+      window.S.collection = { unopenedPacks: 0, claimedPacks: 0, milestonesClaimed: [], unlockedIngs: {}, craftedRecipes: {}, lastRevealed: [] };
+    }
+    let awarded = 0;
+    for (let m = 5; m <= clearedLevel; m += 5) {
+      if (!window.S.crushPackClaimed[m]) {
+        window.S.crushPackClaimed[m] = true;
+        window.S.collection.unopenedPacks = (window.S.collection.unopenedPacks || 0) + 1;
+        awarded++;
+      }
+    }
+    if (awarded > 0) {
+      if (typeof window.Collection !== 'undefined' && typeof window.Collection.updateBadge === 'function') {
+        window.Collection.updateBadge();
+      }
+    }
+    return awarded;
+  }
+
+  // --- XỬ LÝ KHI HẾT LƯỢT / THẮNG / THUA ---
+  async function handleGameEnd(winStatus) {
+    stopTurnTimer();
+    STATE.gameEnded = true;
+    STATE.isBusy = false;
+
+    const isWin = winStatus != null ? winStatus : isAllObjectivesComplete();
+    if (isWin && STATE.stars === 0) STATE.stars = 1;
+
+    // Phát âm thanh
+    if (typeof window.sfx === 'function') {
+      if (isWin) window.sfx('lvup');
+      else window.sfx('bad');
+    }
+
+    // Trao thưởng vào két quán & Buff doanh thu
+    let rewardCash = 0;
+    if (isWin) {
+      if (STATE.stars === 3) rewardCash = 100000;
+      else if (STATE.stars === 2) rewardCash = 60000;
+      else rewardCash = 30000;
+
+      if (typeof window.S !== 'undefined' && window.S) {
+        if (typeof window.S.money === 'number') {
+          window.S.money += rewardCash;
+        }
+        // Thắng mỗi màn: TĂNG VĨNH VIỄN 1% (0.01) THEO CẤP ĐỘ
+        const nextLvl = STATE.level + 1;
+        saveCrushLevel(nextLvl);
+
+        const permRate = Math.round(STATE.level * 0.01 * 100) / 100;
+        window.S.crushBuffRate = Math.max(permRate, Math.round(((window.S.crushBuffRate || 0) + 0.01) * 100) / 100);
+
+        // Kiểm tra mốc 5 level vượt Milk Tea Crush -> Tặng 1 pack nguyên liệu
+        const newPacksWon = checkAndAwardCrushMilestones(STATE.level);
+
+        if (typeof window.save === 'function') window.save();
+        if (typeof window.head === 'function') window.head();
+        if (typeof window.toast === 'function') {
+          const totalBuffPct = Math.round(window.S.crushBuffRate * 100);
+          const packMsg = newPacksWon > 0 ? ` 🎁 +${newPacksWon} TÚI NGUYÊN LIỆU (Mốc 5 màn)!` : '';
+          window.toast(`🍬 Thắng Màn ${STATE.level} (${STATE.stars} ⭐): +${formatMoney(rewardCash)} & TĂNG VĨNH VIỄN +1% Doanh Thu (Hiện có: +${totalBuffPct}% vĩnh viễn)!${packMsg} 🧋`, 5000);
+        }
+      }
+    } else {
+      // THUA MÀN: KHÔNG RESET % BUFF VÌ ĐÂY LÀ BUFF TĂNG VĨNH VIỄN
+      if (typeof window.S !== 'undefined' && window.S) {
+        // Giữ nguyên STATE.level hiện tại để chơi lại (không bị rớt về màn 1)
+        saveCrushLevel(STATE.level);
+
+        if (typeof window.save === 'function') window.save();
+        if (typeof window.head === 'function') window.head();
+        if (typeof window.toast === 'function') {
+          const totalBuffPct = Math.round((window.S.crushBuffRate || 0) * 100);
+          window.toast(`🥺 Hết lượt đi! Màn ${STATE.level} vẫn được giữ nguyên để bạn phục thù (Buff vĩnh viễn: +${totalBuffPct}% DT được bảo lưu trọn đời)! 🔄`, 4500);
+        }
+      }
+    }
+
+    render();
+  }
+
+  function startNextLevel() {
+    stopTurnTimer();
+    STATE.level++;
+    saveCrushLevel(STATE.level);
+    loadLevel(STATE.level);
+    render();
+    showLevelStartModal();
+  }
+
+  function restartGame() {
+    stopTurnTimer();
+    // Giữ nguyên màn hiện tại STATE.level
+    loadLevel(STATE.level);
+    render();
+    showLevelStartModal();
+  }
+
+  function triggerPraise(text) {
+    STATE.praiseMsg = text;
+    renderPraiseBanner(text);
+  }
+
+  let shakeTimer = null;
+  function triggerScreenShake(intensity = 'light') {
+    const outer = document.querySelector('.crush-board-outer');
+    if (!outer || shakeTimer) return;
+    const cls = intensity === 'ultra' ? 'screen-shake-ultra' : (intensity === 'heavy' ? 'screen-shake-heavy' : 'screen-shake');
+    outer.classList.add(cls);
+    const duration = intensity === 'ultra' ? 450 : (intensity === 'heavy' ? 320 : 220);
+    shakeTimer = setTimeout(() => {
+      if (outer) outer.classList.remove('screen-shake', 'screen-shake-heavy', 'screen-shake-ultra');
+      shakeTimer = null;
+    }, duration);
+  }
+
+  function spawnLaserBeam(dir, index) {
+    const fxLayer = document.getElementById('crushFxLayer') || document.querySelector('.crush-board-outer');
+    if (!fxLayer) return;
+
+    const beam = document.createElement('div');
+    if (dir === 'h') {
+      beam.className = 'crush-laser-beam-h';
+      beam.style.top = `${((index + 0.5) / ROWS) * 100}%`;
+    } else {
+      beam.className = 'crush-laser-beam-v';
+      beam.style.left = `${((index + 0.5) / COLS) * 100}%`;
+    }
+
+    fxLayer.appendChild(beam);
+    triggerScreenShake('medium');
+    if (typeof window.sfx === 'function') window.sfx('bell');
+    setTimeout(() => beam.remove(), 350);
+  }
+
+  function spawnGiantLaserBeams(centerR, centerC) {
+    const fxLayer = document.getElementById('crushFxLayer') || document.querySelector('.crush-board-outer');
+    if (!fxLayer) return;
+
+    for (let dr = -1; dr <= 1; dr++) {
+      const r = centerR + dr;
+      if (r >= 0 && r < ROWS) {
+        const beam = document.createElement('div');
+        beam.className = 'crush-laser-beam-giant-h';
+        beam.style.top = `${((r + 0.5) / ROWS) * 100}%`;
+        fxLayer.appendChild(beam);
+        setTimeout(() => beam.remove(), 400);
+      }
+    }
+
+    for (let dc = -1; dc <= 1; dc++) {
+      const c = centerC + dc;
+      if (c >= 0 && c < COLS) {
+        const beam = document.createElement('div');
+        beam.className = 'crush-laser-beam-giant-v';
+        beam.style.left = `${((c + 0.5) / COLS) * 100}%`;
+        fxLayer.appendChild(beam);
+        setTimeout(() => beam.remove(), 400);
+      }
+    }
+
+    triggerScreenShake('heavy');
+    if (typeof window.sfx === 'function') window.sfx('bell');
+  }
+
+  function spawnShockwave(r, c) {
+    const fxLayer = document.getElementById('crushFxLayer') || document.querySelector('.crush-board-outer');
+    if (!fxLayer) return;
+
+    const ring = document.createElement('div');
+    ring.className = 'crush-shockwave-ring';
+    ring.style.left = `${((c + 0.5) / COLS) * 100}%`;
+    ring.style.top = `${((r + 0.5) / ROWS) * 100}%`;
+
+    fxLayer.appendChild(ring);
+    triggerScreenShake('medium');
+    if (typeof window.sfx === 'function') window.sfx('cash');
+    setTimeout(() => ring.remove(), 420);
+  }
+
+  function spawnExplosionParticles(r, c, color = '#f59e0b') {
+    const fxLayer = document.getElementById('crushFxLayer') || document.querySelector('.crush-board-outer');
+    if (!fxLayer) return;
+
+    const cx = ((c + 0.5) / COLS) * 100;
+    const cy = ((r + 0.5) / ROWS) * 100;
+
+    const icons = ['✨', '⭐', '💥'];
+    const count = 2; // Tối ưu 2 hạt nhẹ nhàng, mượt 60fps trên điện thoại
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'crush-particle-3d';
+      p.textContent = icons[i % icons.length];
+      p.style.left = `${cx}%`;
+      p.style.top = `${cy}%`;
+
+      const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.4 - 0.2);
+      const dist = 18 + Math.random() * 16;
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist - 8;
+
+      p.style.setProperty('--dx', `${dx}px`);
+      p.style.setProperty('--dy', `${dy}px`);
+
+      fxLayer.appendChild(p);
+      setTimeout(() => p.remove(), 420);
+    }
+  }
+
+  // --- HIỆU ỨNG CÁ BƠI BAY 3D ĐẾN Ô MỤC TIÊU 🐟 ---
+  async function animateFlyingFish(fish) {
+    const fxLayer = document.getElementById('crushFxLayer') || document.querySelector('.crush-board-outer');
+    const gridEl = document.getElementById('crushBoardGrid');
+    if (!fxLayer || !gridEl) return;
+
+    const fromCell = gridEl.querySelector(`[data-cell-pos="${fish.fromR},${fish.fromC}"]`);
+    if (fromCell) {
+      const originTile = fromCell.querySelector('.crush-tile');
+      if (originTile) originTile.classList.add('pop-out');
+    }
+
+    const startX = ((fish.fromC + 0.5) / COLS) * 100;
+    const startY = ((fish.fromR + 0.5) / ROWS) * 100;
+
+    const fishEl = document.createElement('div');
+    fishEl.className = 'crush-flying-fish';
+    fishEl.innerHTML = `<span class="crush-flying-fish-icon">🐟</span>`;
+    fishEl.style.left = `${startX}%`;
+    fishEl.style.top = `${startY}%`;
+
+    const dx = (fish.toC - fish.fromC) * 44;
+    const dy = (fish.toR - fish.fromR) * 44;
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    fishEl.style.setProperty('--dx', `${dx}px`);
+    fishEl.style.setProperty('--dy', `${dy}px`);
+    fishEl.style.setProperty('--fly-angle', `${angle}deg`);
+
+    fxLayer.appendChild(fishEl);
+
+    if (typeof window.sfx === 'function') window.sfx('tap');
+
+    await sleep(260);
+
+    // Đáp xuống ô mục tiêu: Sóng nước và nổ tung (không rung màn hình để tránh làm rối mắt)
+    spawnWaterSplash(fish.toR, fish.toC);
+    spawnExplosionParticles(fish.toR, fish.toC, '#38bdf8');
+    if (typeof window.sfx === 'function') window.sfx('cash');
+
+    fishEl.remove();
+  }
+
+  // Sóng nước và bọt tung toé khi cá chạm ô
+  function spawnWaterSplash(r, c) {
+    const fxLayer = document.getElementById('crushFxLayer') || document.querySelector('.crush-board-outer');
+    if (!fxLayer) return;
+
+    const centerX = ((c + 0.5) / COLS) * 100;
+    const centerY = ((r + 0.5) / ROWS) * 100;
+
+    const wave = document.createElement('div');
+    wave.className = 'crush-water-ripple';
+    wave.style.left = `${centerX}%`;
+    wave.style.top = `${centerY}%`;
+    fxLayer.appendChild(wave);
+    setTimeout(() => wave.remove(), 420);
+
+    const icons = ['💦', '🫧', '💧'];
+    for (let i = 0; i < 3; i++) {
+      const p = document.createElement('div');
+      p.className = 'crush-particle-3d splash-drop';
+      p.textContent = icons[i % icons.length];
+      p.style.left = `${centerX}%`;
+      p.style.top = `${centerY}%`;
+
+      const angle = (Math.PI * 2 * i) / 3 + (Math.random() * 0.4 - 0.2);
+      const dist = 18 + Math.random() * 16;
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist - 6;
+
+      p.style.setProperty('--dx', `${dx}px`);
+      p.style.setProperty('--dy', `${dy}px`);
+
+      fxLayer.appendChild(p);
+      setTimeout(() => p.remove(), 420);
+    }
+  }
+
+  function getComboInfo(combo) {
+    if (combo === 2) return { text: 'COMBO x2! ✨', lvl: 2, sub: '', sfx: 'coin' };
+    if (combo === 3) return { text: 'NGỌT NGÀO! 🧋 x3', lvl: 3, sub: 'Sweet & Tasty', sfx: 'cash' };
+    if (combo === 4) return { text: 'THƠM NGON! 🍓 x4', lvl: 4, sub: 'Delicious Flavor', sfx: 'cash' };
+    if (combo === 5) return { text: 'BÙNG NỔ! 💥 x5', lvl: 5, sub: 'Sugar Explosion', sfx: 'bell' };
+    if (combo === 6) return { text: 'SIÊU CRUSH! 🌈 x6', lvl: 6, sub: '✨ Siêu chuỗi liên hoàn ✨', sfx: 'bell' };
+    if (combo === 7) return { text: 'TUYỆT ĐỈNH! ⚡ x7', lvl: 7, sub: '⚡ Sấm sét khuấy đảo ⚡', sfx: 'lvup' };
+    if (combo === 8) return { text: 'KHÔNG TƯỞNG! 🔮 x8', lvl: 8, sub: '🔮 Pha xử lý xuất thần 🔮', sfx: 'lvup' };
+    if (combo === 9) return { text: 'PHI THƯỜNG! 🌟 x9', lvl: 9, sub: '🌟 Đẳng cấp thượng thừa 🌟', sfx: 'lvup' };
+    if (combo === 10) return { text: 'HUYỀN THOẠI! 👑 x10', lvl: 10, sub: '🌟 KỶ LỤC HUYỀN THOẠI 🌟', sfx: 'lvup' };
+    if (combo === 11) return { text: 'BẤT KHẢ CHIẾN BẠI! ⚔️ x11', lvl: 10, sub: '⚔️ Siêu cấp vô địch ⚔️', sfx: 'lvup' };
+    if (combo === 12) return { text: 'CUỒNG PHONG TRÀ! 🌪️ x12', lvl: 10, sub: '🌪️ Quét sạch toàn bàn 🌪️', sfx: 'lvup' };
+    if (combo === 13) return { text: 'SỨC MẠNH VÔ CỰC! ♾️ x13', lvl: 10, sub: '♾️ Chuỗi bất tận ♾️', sfx: 'lvup' };
+    if (combo === 14) return { text: 'ĐỈNH CAO VŨ TRỤ! 🌌 x14', lvl: 10, sub: '🌌 Tầm cỡ thiên hà 🌌', sfx: 'lvup' };
+    if (combo === 15) return { text: 'MƯA THIÊN THẠCH! ☄️ x15', lvl: 10, sub: '☄️ Bão kẹo giáng lâm ☄️', sfx: 'lvup' };
+    if (combo === 16) return { text: 'CHẤN ĐỘNG TRỜI ĐẤT! 🌋 x16', lvl: 10, sub: '🌋 Rung chuyển địa cầu 🌋', sfx: 'lvup' };
+    if (combo === 17) return { text: 'TOÀN NĂNG SIÊU VIỆT! ⚡ x17', lvl: 10, sub: '⚡ Thao túng bàn cờ ⚡', sfx: 'lvup' };
+    if (combo === 18) return { text: 'THẦN THOẠI BẤT TỬ! 🐉 x18', lvl: 10, sub: '🐉 Long Phụng Tranh Hùng 🐉', sfx: 'lvup' };
+    if (combo === 19) return { text: 'CHÚA TỂ TRÀ SỮA! 🏆 x19', lvl: 10, sub: '👑 KỶ LỤC ĐỈNH CAO 👑', sfx: 'lvup' };
+    return { text: `ĐẲNG CẤP VĨ ĐẠI! 👑 x${combo}`, lvl: 10, sub: '🏆 HUYỀN THOẠI MATCH-3 🏆', sfx: 'lvup' };
+  }
+
+  function playComboChime(combo) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = (window.AU && window.AU.ctx) || new AudioCtx();
+      if (!ctx || ctx.state === 'suspended') return;
+      const now = ctx.currentTime;
+      const baseFreq = 280 + Math.min(combo * 48, 750);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = combo >= 10 ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(baseFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.45, now + 0.14);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.95, now + 0.28);
+      const curVol = (window.AU && window.AU.volSfx != null) ? window.AU.volSfx : 0.8;
+      const vol = Math.max(0.02, Math.min(0.28, 0.16 * curVol));
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.42);
+    } catch (_) {}
+  }
+
+  function spawnComboConfetti(comboLevel) {
+    const fxLayer = document.getElementById('crushFxLayer') || document.querySelector('.crush-board-outer');
+    if (!fxLayer) return;
+    const count = comboLevel >= 10 ? 12 : (comboLevel >= 6 ? 8 : 4);
+    const icons = comboLevel >= 10 
+      ? ['⭐', '✨', '👑', '🎉', '💥', '🌈', '💎', '🧋', '🍬'] 
+      : ['✨', '⭐', '🎉', '💥', '🧋'];
+
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'crush-particle-3d';
+      p.textContent = icons[Math.floor(Math.random() * icons.length)];
+      p.style.left = '50%';
+      p.style.top = '45%';
+      p.style.fontSize = `${16 + Math.floor(Math.random() * 8)}px`;
+      p.style.zIndex = '260';
+
+      const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.4 - 0.2);
+      const dist = (comboLevel >= 10 ? 55 : 38) + Math.random() * (comboLevel >= 10 ? 70 : 45);
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist - 20;
+
+      p.style.setProperty('--dx', `${dx}px`);
+      p.style.setProperty('--dy', `${dy}px`);
+
+      fxLayer.appendChild(p);
+      setTimeout(() => p.remove(), 650);
+    }
+  }
+
+  function triggerComboFly(text, comboLevel, subText = '') {
+    const outer = document.querySelector('.crush-board-outer');
+    if (!outer) return;
+
+    // Xoá các banner combo cũ
+    const existing = outer.querySelectorAll('.crush-combo-fly-banner');
+    existing.forEach(b => b.remove());
+
+    const banner = document.createElement('div');
+    const lvlCls = Math.min(10, comboLevel);
+    banner.className = `crush-combo-fly-banner combo-lvl-${lvlCls}`;
+    let html = `<span class="combo-fly-inner">${text}`;
+    if (subText) {
+      const subCls = comboLevel >= 15 ? 'godlike' : (comboLevel >= 10 ? 'cosmic' : '');
+      html += `<span class="combo-fly-sub ${subCls}">${subText}</span>`;
+    }
+    html += `</span>`;
+    banner.innerHTML = html;
+    outer.appendChild(banner);
+
+    // Kích hoạt pháo hoa / bụi sao lấp lánh khi chuỗi combo cao
+    if (comboLevel >= 4) {
+      spawnComboConfetti(comboLevel);
+    }
+
+    setTimeout(() => {
+      if (banner.parentNode) banner.remove();
+    }, 950);
+  }
+
+  function spawnFloatingScore(r, c, text) {
+    const fxLayer = document.getElementById('crushFxLayer') || document.querySelector('.crush-board-outer');
+    if (!fxLayer) return;
+
+    const tag = document.createElement('div');
+    tag.className = 'crush-floating-txt';
+    tag.textContent = text;
+    tag.style.left = `${((c + 0.5) / COLS) * 100}%`;
+    tag.style.top = `${((r + 0.5) / ROWS) * 100}%`;
+
+    fxLayer.appendChild(tag);
+    setTimeout(() => {
+      if (tag.parentNode) tag.parentNode.removeChild(tag);
+    }, 650);
+  }
+
+  function renderPraiseBanner(text) {
+    const outer = document.querySelector('.crush-board-outer');
+    if (!outer) return;
+    const old = outer.querySelector('.crush-praise-banner');
+    if (old) old.remove();
+
+    const banner = document.createElement('div');
+    banner.className = 'crush-praise-banner';
+    banner.textContent = text;
+    outer.appendChild(banner);
+
+    setTimeout(() => {
+      if (banner.parentNode) banner.parentNode.removeChild(banner);
+    }, 850);
+  }
+
+  // --- ĐẾM NGƯỢC THỜI GIAN TỪNG LƯỢT (TURN COUNTDOWN TIMER) ---
+  function startTurnTimer() {
+    stopTurnTimer();
+    if (STATE.gameEnded || STATE.isBusy || STATE.moves <= 0) return;
+
+    STATE.turnTime = STATE.turnTimeMax || TURN_TIME_MAX;
+    updateTurnTimerUi();
+
+    turnTimerInterval = setInterval(() => {
+      if (STATE.isBusy || STATE.gameEnded) return;
+
+      STATE.turnTime -= 0.2;
+      if (STATE.turnTime <= 0) {
+        STATE.turnTime = 0;
+        updateTurnTimerUi();
+        stopTurnTimer();
+        handleTurnTimeout();
+      } else {
+        updateTurnTimerUi();
+      }
+    }, 200);
+  }
+
+  function stopTurnTimer() {
+    if (turnTimerInterval) {
+      clearInterval(turnTimerInterval);
+      turnTimerInterval = null;
+    }
+  }
+
+  function updateTurnTimerUi() {
+    const fillEl = document.getElementById('crushTimerFill');
+    const secEl = document.getElementById('crushTimerSec');
+    const wrapEl = document.getElementById('crushTimerWrap');
+
+    const maxTime = STATE.turnTimeMax || TURN_TIME_MAX;
+    const ratio = Math.max(0, Math.min(1, STATE.turnTime / maxTime));
+    const secs = Math.ceil(STATE.turnTime);
+    const secsStr = `${secs}s`;
+
+    if (fillEl) fillEl.style.transform = `scaleX(${ratio})`;
+    if (secEl && secEl.textContent !== secsStr) secEl.textContent = secsStr;
+
+    if (wrapEl) {
+      if (STATE.turnTime <= 5.0) {
+        if (!wrapEl.classList.contains('warning')) wrapEl.classList.add('warning');
+      } else {
+        if (wrapEl.classList.contains('warning')) wrapEl.classList.remove('warning');
+      }
+    }
+  }
+
+  async function handleTurnTimeout() {
+    if (STATE.isBusy || STATE.gameEnded) return;
+
+    STATE.isBusy = true;
+    STATE.moves = Math.max(0, STATE.moves - 1);
+    triggerScreenShake('heavy');
+    if (typeof window.sfx === 'function') window.sfx('bad');
+    triggerComboFly('HẾT GIỜ! ⏰ -1 LƯỢT', 4);
+
+    renderHeaderAndStats();
+
+    await sleep(650);
+
+    if (STATE.moves <= 0) {
+      await handleGameEnd();
+    } else {
+      if (!hasValidMoves()) {
+        await triggerShuffle();
+      }
+      STATE.isBusy = false;
+      startTurnTimer();
+    }
+  }
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function formatMoney(n) {
+    if (typeof window.fmt === 'function') return window.fmt(n);
+    return Number(n || 0).toLocaleString('vi-VN') + 'đ';
+  }
+
+  // --- RENDER DANH SÁCH MỤC TIÊU (OBJECTIVES BADGES) ---
+  function renderObjectivesHtml() {
+    if (!STATE.objectives || STATE.objectives.length === 0) {
+      return `<div class="crush-obj-item"><span>⭐ Điểm: ${STATE.score.toLocaleString()}/${STATE.targetScore.toLocaleString()}</span></div>`;
+    }
+    return STATE.objectives.map(obj => {
+      const isDone = (obj.type === 'score' ? STATE.score >= obj.target : obj.current >= obj.target);
+      const valText = isDone ? '✓' : `${obj.current}/${obj.target}`;
+      return `
+        <div class="crush-obj-item ${isDone ? 'done' : ''}" title="${obj.label}">
+          <span class="crush-obj-icon">${obj.icon}</span>
+          <span class="crush-obj-text">${valText}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // --- POPUP GIỚI THIỆU MÀN CHƠI (LEVEL INTRO POPUP) ---
+  function renderLevelIntroOverlayHtml() {
+    const def = getLevelDefinition(STATE.level);
+    return `
+      <div class="crush-level-intro-overlay" id="crushIntroOverlay">
+        <div class="crush-level-intro-card">
+          <div style="font-size:1.8rem;line-height:1;margin-bottom:2px;">🍬</div>
+          <h3 class="crush-level-intro-title">${def.title}</h3>
+          <div class="crush-level-intro-sub">${def.desc}</div>
+          <div class="crush-level-intro-targets">
+            <div style="font-size:0.75rem;font-weight:900;color:#db2777;margin-bottom:2px;">MỤC TIÊU CẦN ĐẠT:</div>
+            ${def.objectives.map(obj => `
+              <div class="crush-level-intro-item">
+                <span>${obj.icon} ${obj.label}</span>
+                <span style="color:#db2777;">${obj.target.toLocaleString()}</span>
+              </div>
+            `).join('')}
+            <div class="crush-level-intro-item" style="border-top:1px dashed #fbcfe8;padding-top:3px;margin-top:2px;">
+              <span>⏳ Lượt đi cho phép</span>
+              <span style="color:#0284c7;">${def.moves} lượt</span>
+            </div>
+          </div>
+          <button type="button" class="crush-btn" id="crushIntroStartBtn" style="width:100%;padding:8px 12px;font-size:0.92rem;font-weight:900;">BẮT ĐẦU CHƠI 🚀</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function showLevelStartModal() {
+    stopTurnTimer();
+    const outer = document.querySelector('.crush-board-outer');
+    if (!outer) return;
+    const old = outer.querySelector('#crushIntroOverlay');
+    if (old) old.remove();
+
+    const div = document.createElement('div');
+    div.innerHTML = renderLevelIntroOverlayHtml();
+    const overlay = div.firstElementChild;
+    outer.appendChild(overlay);
+
+    const startBtn = overlay.querySelector('#crushIntroStartBtn');
+    if (startBtn) {
+      startBtn.onclick = () => {
+        overlay.remove();
+        startTurnTimer();
+      };
+    }
+  }
+
+  // --- HỆ THỐNG VẬT PHẨM HỖ TRỢ TRÀ SỮA CRUSH (BOOSTER SYSTEM) ---
+  const BOOSTER_DEFS = {
+    hammer: {
+      key: 'hammer',
+      name: 'Búa Topping',
+      icon: '🔨',
+      desc: 'Đập nổ 1 ô kẹo/thạch bất kỳ (không tốn lượt)',
+      btnColor: '#f97316'
+    },
+    bomb: {
+      key: 'bomb',
+      name: 'Bom Phô Mai',
+      icon: '💣',
+      desc: 'Kích nổ vùng 3x3 giải phóng diện rộng',
+      btnColor: '#ef4444'
+    },
+    rainbow: {
+      key: 'rainbow',
+      name: 'Cầu Vồng',
+      icon: '🌈',
+      desc: 'Hút sạch 1 loại Topping trên toàn bàn cờ',
+      btnColor: '#ec4899'
+    },
+    moves: {
+      key: 'moves',
+      name: '+5 Lượt Đi',
+      icon: '➕5',
+      desc: 'Cộng ngay +5 lượt đi cho màn hiện tại',
+      btnColor: '#06b6d4'
+    },
+    shuffle: {
+      key: 'shuffle',
+      name: 'Xáo Bàn Cờ',
+      icon: '🔀',
+      desc: 'Xáo trộn lại toàn bộ bàn kẹo ngay lập tức',
+      btnColor: '#8b5cf6'
+    }
+  };
+
+  function getBoosters() {
+    if (!window.S) return { hammer: 1, bomb: 1, rainbow: 1, moves: 1, shuffle: 1 };
+    if (!window.S.crushBoosters) {
+      window.S.crushBoosters = { hammer: 1, bomb: 1, rainbow: 1, moves: 1, shuffle: 1 };
+    }
+    return window.S.crushBoosters;
+  }
+
+  function getBoosterCost() {
+    const curMoney = (window.S && typeof window.S.money === 'number') ? window.S.money : 0;
+    // 10% két quán (tối thiểu 1.000đ)
+    const cashCost = Math.max(1000, Math.floor(curMoney * 0.10));
+    // x10 tổng sao (10 Sao đẳng cấp star5Count)
+    const starCost = 10;
+    return {
+      cashCost,
+      starCost,
+      curMoney,
+      curStars: (window.S && window.S.star5Count) || 0
+    };
+  }
+
+  function buyBooster(boosterKey) {
+    if (!window.S) return false;
+    const { cashCost, starCost, curMoney, curStars } = getBoosterCost();
+
+    if (curMoney < cashCost) {
+      if (typeof window.toast === 'function') {
+        window.toast(`❌ Két tiền không đủ! Cần 10% két (${formatMoney(cashCost)}) để mua vật phẩm!`, 3500, 1);
+      }
+      return false;
+    }
+    if (curStars < starCost) {
+      if (typeof window.toast === 'function') {
+        window.toast(`❌ Tổng sao không đủ! Cần tối thiểu x10 Tổng Sao (⭐) (Hiện có: x${curStars} ⭐) để mua vật phẩm!`, 3500, 1);
+      }
+      return false;
+    }
+
+    window.S.money -= cashCost;
+    window.S.star5Count = Math.max(0, curStars - starCost);
+    const boosters = getBoosters();
+    boosters[boosterKey] = (boosters[boosterKey] || 0) + 1;
+
+    if (typeof window.save === 'function') window.save();
+    if (typeof window.head === 'function') window.head();
+    if (typeof window.sfx === 'function') window.sfx('cash');
+    if (typeof window.toast === 'function') {
+      const bName = BOOSTER_DEFS[boosterKey] ? BOOSTER_DEFS[boosterKey].name : 'Vật phẩm';
+      window.toast(`🎉 Mua thành công 1x ${bName}! (-${formatMoney(cashCost)} & -10 ⭐ Tổng sao)`, 3500);
+    }
+    return true;
+  }
+
+  function openBuyBoosterModal(boosterKey) {
+    const b = BOOSTER_DEFS[boosterKey];
+    if (!b) return;
+    const { cashCost, starCost, curMoney, curStars } = getBoosterCost();
+    const canMoney = curMoney >= cashCost;
+    const canStars = curStars >= starCost;
+    const canAfford = canMoney && canStars;
+
+    const outer = document.querySelector('.crush-board-outer') || document.getElementById('codam-card');
+    if (!outer) return;
+    const old = outer.querySelector('#crushBoosterModal');
+    if (old) old.remove();
+
+    const div = document.createElement('div');
+    div.className = 'crush-level-intro-overlay';
+    div.id = 'crushBoosterModal';
+    div.innerHTML = `
+      <div class="crush-level-intro-card" style="max-width:320px;text-align:center;">
+        <div style="font-size:2.2rem;line-height:1;margin-bottom:4px;">${b.icon}</div>
+        <h3 style="margin:0 0 4px;font-size:1.15rem;font-weight:900;color:#be185d;">MUA ${b.name.toUpperCase()}</h3>
+        <div style="font-size:0.75rem;color:#64748b;margin-bottom:8px;">${b.desc}</div>
+
+        <div style="background:#fdf2f8;border:1.5px dashed #fbcfe8;border-radius:12px;padding:8px 10px;margin-bottom:10px;text-align:left;">
+          <div style="font-size:0.72rem;font-weight:900;color:#db2777;margin-bottom:4px;">GIÁ BÁN VẬT PHẨM:</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.78rem;font-weight:800;margin-bottom:3px;">
+            <span>💵 10% Két Quán:</span>
+            <span style="color:${canMoney ? '#16a34a' : '#dc2626'};">${formatMoney(cashCost)} (${canMoney ? 'Đủ' : 'Thiếu'})</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.78rem;font-weight:800;margin-bottom:3px;">
+            <span>⭐ x10 Tổng Sao:</span>
+            <span style="color:${canStars ? '#16a34a' : '#dc2626'};">${starCost} Sao (${canStars ? 'Đủ' : 'Thiếu'})</span>
+          </div>
+          <div style="border-top:1px dashed #fbcfe8;padding-top:4px;margin-top:4px;font-size:0.7rem;color:#64748b;">
+            Hiện có: <b>${formatMoney(curMoney)}</b> | <b>x${curStars} ⭐</b>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:6px;">
+          <button type="button" class="crush-btn" id="confirmBuyBoosterBtn" 
+                  style="flex:1;padding:8px 10px;font-size:0.88rem;font-weight:900;${!canAfford ? 'opacity:0.6;' : ''}">
+            MUA NGAY 🛒
+          </button>
+          <button type="button" class="crush-btn sec" id="cancelBuyBoosterBtn" 
+                  style="padding:8px 12px;font-size:0.88rem;">Đóng</button>
+        </div>
+      </div>
+    `;
+    outer.appendChild(div);
+
+    const confirmBtn = div.querySelector('#confirmBuyBoosterBtn');
+    const cancelBtn = div.querySelector('#cancelBuyBoosterBtn');
+
+    if (cancelBtn) cancelBtn.onclick = () => div.remove();
+    if (confirmBtn) {
+      confirmBtn.onclick = () => {
+        const ok = buyBooster(boosterKey);
+        if (ok) {
+          div.remove();
+          renderBoostersBar();
+        }
+      };
+    }
+  }
+
+  function renderBoostersHtml() {
+    const boosters = getBoosters();
+    return `
+      <div class="crush-boosters-track">
+        ${Object.keys(BOOSTER_DEFS).map(k => {
+          const b = BOOSTER_DEFS[k];
+          const count = boosters[k] || 0;
+          const isActive = STATE.activeBooster === k;
+          return `
+            <div class="crush-booster-slot">
+              <button type="button" class="crush-booster-btn ${isActive ? 'active' : ''} ${count === 0 ? 'empty' : ''}" 
+                      data-booster="${k}" title="${b.name}: ${b.desc}">
+                <span class="crush-booster-icon">${b.icon}</span>
+                <span class="crush-booster-name">${b.name}</span>
+                <span class="crush-booster-badge ${count === 0 ? 'zero' : ''}">${count}</span>
+              </button>
+              <button type="button" class="crush-booster-plus-btn" data-buy-booster="${k}" title="Mua thêm ${b.name}">+</button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function renderBoostersBar() {
+    const bar = document.getElementById('crushBoostersBar');
+    if (bar) bar.innerHTML = renderBoostersHtml();
+  }
+
+  function updateBoardTargetingClass() {
+    const gridEl = document.getElementById('crushBoardGrid');
+    if (!gridEl) return;
+    if (STATE.activeBooster) {
+      gridEl.classList.add('booster-targeting');
+    } else {
+      gridEl.classList.remove('booster-targeting');
+    }
+  }
+
+  async function handleBoosterClick(key) {
+    if (STATE.isBusy || STATE.gameEnded) return;
+
+    const boosters = getBoosters();
+    const count = boosters[key] || 0;
+
+    if (count <= 0) {
+      openBuyBoosterModal(key);
+      return;
+    }
+
+    // Nếu là lượt đi tức thì (moves hoặc shuffle)
+    if (key === 'moves') {
+      boosters.moves = Math.max(0, boosters.moves - 1);
+      if (typeof window.save === 'function') window.save();
+      STATE.moves += 5;
+      triggerScreenShake('light');
+      triggerComboFly('+5 LƯỢT ĐI! ➕5', 4);
+      triggerPraise('+5 LƯỢT ĐI CHIẾN LƯỢC!');
+      if (typeof window.sfx === 'function') window.sfx('lvup');
+      renderHeaderAndStats();
+      renderBoostersBar();
+      return;
+    }
+
+    if (key === 'shuffle') {
+      boosters.shuffle = Math.max(0, boosters.shuffle - 1);
+      if (typeof window.save === 'function') window.save();
+      triggerComboFly('ĐỔI BÀN CỜ! 🔀', 3);
+      triggerPraise('ĐẢO BÀN CỜ TOÀN DIỆN!');
+      if (typeof window.sfx === 'function') window.sfx('dice');
+      renderBoostersBar();
+      await triggerShuffle();
+      return;
+    }
+
+    // Đối với các booster nhắm mục tiêu: hammer, bomb, rainbow
+    if (STATE.activeBooster === key) {
+      STATE.activeBooster = null;
+      STATE.statusMsg = 'Đã hủy dùng vật phẩm';
+      renderHeaderAndStats();
+      renderBoostersBar();
+      updateBoardTargetingClass();
+    } else {
+      STATE.activeBooster = key;
+      const def = BOOSTER_DEFS[key];
+      STATE.statusMsg = `${def.icon} ${def.name}: ${def.desc}`;
+      if (typeof window.toast === 'function') {
+        window.toast(`🎯 Chọn 1 ô trên bàn cờ để kích hoạt ${def.name}! (Bấm lại để hủy)`, 2500);
+      }
+      renderHeaderAndStats();
+      renderBoostersBar();
+      updateBoardTargetingClass();
+    }
+  }
+
+  async function executeBoosterOnCell(boosterKey, r, c) {
+    if (STATE.isBusy || STATE.gameEnded) return;
+
+    const boosters = getBoosters();
+    if ((boosters[boosterKey] || 0) <= 0) {
+      STATE.activeBooster = null;
+      renderBoostersBar();
+      updateBoardTargetingClass();
+      return;
+    }
+
+    STATE.isBusy = true;
+    stopTurnTimer();
+
+    // Khấu trừ 1 vật phẩm
+    boosters[boosterKey] = Math.max(0, boosters[boosterKey] - 1);
+    if (typeof window.save === 'function') window.save();
+
+    STATE.activeBooster = null;
+    renderBoostersBar();
+    updateBoardTargetingClass();
+
+    if (boosterKey === 'hammer') {
+      // 🔨 BÚA TOPPING: Đập nổ ô (r, c)
+      triggerScreenShake('medium');
+      spawnExplosionParticles(r, c, '#f59e0b');
+      spawnShockwave(r, c);
+      if (typeof window.sfx === 'function') window.sfx('bell');
+      triggerComboFly('ĐẬP BÚA! 🔨', 3);
+
+      const cellsToClear = [{ r, c }];
+      const { cells: expandedMatches, flyingFish } = expandSpecialExplosions(cellsToClear);
+      await processEliminations(expandedMatches, [], flyingFish);
+      await dropAndFillCascade();
+      finishTurn();
+    } else if (boosterKey === 'bomb') {
+      // 💣 BOM PHÔ MAI: Nổ 3x3 quanh (r, c)
+      triggerScreenShake('heavy');
+      spawnGiantLaserBeams(r, c);
+      spawnShockwave(r, c);
+      if (typeof window.sfx === 'function') window.sfx('cash');
+      triggerComboFly('BOM NỔ BUNG! 💣', 4);
+
+      const cellsToClear = [];
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+            cellsToClear.push({ r: nr, c: nc });
+          }
+        }
+      }
+      const { cells: expandedMatches, flyingFish } = expandSpecialExplosions(cellsToClear);
+      await processEliminations(expandedMatches, [], flyingFish);
+      await dropAndFillCascade();
+      finishTurn();
+    } else if (boosterKey === 'rainbow') {
+      // 🌈 CẦU VỒNG TINH HOA: Hút sạch loại topping của ô (r, c) trên toàn bàn
+      const targetTile = STATE.grid[r][c];
+      let targetType = (targetTile && targetTile.type >= 0) ? targetTile.type : Math.floor(Math.random() * (STATE.typesCount || 4));
+
+      triggerScreenShake('heavy');
+      spawnShockwave(r, c);
+      if (typeof window.sfx === 'function') window.sfx('bell');
+      triggerComboFly('CẦU VỒNG QUÉT! 🌈', 5);
+
+      const cellsToClear = [];
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const t = STATE.grid[row][col];
+          if (t && (t.type === targetType || (row === r && col === c))) {
+            cellsToClear.push({ r: row, c: col });
+          }
+        }
+      }
+      const { cells: expandedMatches, flyingFish } = expandSpecialExplosions(cellsToClear);
+      await processEliminations(expandedMatches, [], flyingFish);
+      await dropAndFillCascade();
+      finishTurn();
+    }
+  }
+
+  // --- RENDER GIAO DIỆN CHÍNH ---
+  function render() {
+    const card = document.getElementById('codam-card');
+    if (!card) return;
+
+    const def = getLevelDefinition(STATE.level);
+    const progressPct = Math.min(100, Math.round((STATE.score / STATE.targetScore) * 100));
+
+    card.innerHTML = `
+      <!-- Header -->
+      <div class="crush-header">
+        <div class="crush-title-box">
+          <div class="crush-logo">🍬</div>
+          <div>
+            <h2 class="crush-title">MILK TEA CRUSH</h2>
+            <div class="crush-subtitle">
+              ${def.title}
+              ${(window.S && window.S.crushBuffRate > 0) ? `<span style="color:#15803d;font-size:0.75rem;font-weight:800;margin-left:5px;">⚡ +${Math.round(window.S.crushBuffRate * 100)}% DT vĩnh viễn</span>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="crush-head-actions">
+          <button type="button" class="crush-head-btn" id="crushRestartBtn" title="Chơi ván mới">🔄 Chơi lại</button>
+          <button type="button" class="crush-head-btn crush-head-close" id="crushCloseBtn" title="Đóng">✕</button>
+        </div>
+      </div>
+
+      <!-- Banner Tự Động Bán Nước Trong Lúc Chơi Kẹo -->
+      ${(window.R && window.R.running) ? `
+        <div class="crush-autosell-bar" id="crushAutoSellBar">
+          <span class="crush-autosell-dot">🟢</span>
+          <div class="crush-autosell-text">
+            <span>Tự động bán: <b id="crushAutoSellEarned" style="color:#16a34a;">+${(window.fmt ? window.fmt(window.R.crushAutoEarned || 0) : ((window.R.crushAutoEarned || 0).toLocaleString() + 'đ'))}</b> (<span id="crushAutoSellCount">${window.R.crushAutoServedCount || 0}</span> ly)</span>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Dashboard Bar -->
+      <div class="crush-dashboard">
+        <div class="crush-stat-block">
+          <span class="crush-stat-label">Điểm số</span>
+          <span class="crush-stat-val" id="crushScoreVal">${STATE.score.toLocaleString()}</span>
+        </div>
+
+        <div class="crush-moves-badge">
+          <span class="crush-moves-num" id="crushMovesVal">${STATE.moves}</span>
+          <span class="crush-moves-txt">Lượt</span>
+        </div>
+
+        <div class="crush-target-block">
+          <span class="crush-stat-label">Mục tiêu: ${STATE.targetScore.toLocaleString()}</span>
+          <div class="crush-stars-row">
+            <span class="crush-star ${STATE.stars >= 1 ? 'active' : ''}">⭐</span>
+            <span class="crush-star ${STATE.stars >= 2 ? 'active' : ''}">⭐</span>
+            <span class="crush-star ${STATE.stars >= 3 ? 'active' : ''}">⭐</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Objectives Row -->
+      <div class="crush-objectives-row">
+        <div class="crush-obj-title">🎯 MỤC TIÊU:</div>
+        <div class="crush-obj-list" id="crushObjList">
+          ${renderObjectivesHtml()}
+        </div>
+      </div>
+
+      <!-- Star Progress Bar -->
+      <div class="crush-progress-bar-wrap">
+        <div class="crush-progress-fill" style="width: ${progressPct}%;"></div>
+      </div>
+
+      <!-- Turn Countdown Timer Bar -->
+      <div class="crush-timer-wrap" id="crushTimerWrap">
+        <div class="crush-timer-track">
+          <div class="crush-timer-fill" id="crushTimerFill" style="width: ${(STATE.turnTime / (STATE.turnTimeMax || TURN_TIME_MAX)) * 100}%;"></div>
+        </div>
+        <div class="crush-timer-badge" id="crushTimerBadge">
+          <span class="crush-timer-icon">⏳</span>
+          <span class="crush-timer-sec" id="crushTimerSec">${Math.ceil(STATE.turnTime)}s</span>
+        </div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="crush-status-bar">
+        <span class="crush-status-msg" id="crushStatusMsg">
+          ${STATE.statusMsg}
+        </span>
+        ${STATE.combo > 1 ? `<span class="crush-combo-badge">Combo x${STATE.combo}!</span>` : ''}
+      </div>
+
+      <!-- Board Outer -->
+      <div class="crush-board-outer">
+        <div class="crush-board-grid" id="crushBoardGrid">
+          ${renderBoardHtml()}
+        </div>
+        <div class="crush-fx-layer" id="crushFxLayer" style="position:absolute;inset:0;pointer-events:none;z-index:200;overflow:hidden;"></div>
+
+        <!-- Result Overlay -->
+        ${STATE.gameEnded ? renderResultOverlayHtml() : ''}
+      </div>
+
+      <!-- Booster Bar -->
+      <div class="crush-boosters-bar" id="crushBoostersBar">
+        ${renderBoostersHtml()}
+      </div>
+
+      <!-- Footer -->
+      <div class="crush-footer">
+        <div class="crush-tip">
+          💡 Ghép 2 kẹo đặc biệt với nhau để tạo Siêu Combo hủy diệt! Hoàn thành đủ Mục tiêu trước khi hết lượt để chiến thắng!
+        </div>
+      </div>
+    `;
+
+    bindEvents();
+  }
+
+  function renderHeaderAndStats() {
+    const sEl = document.getElementById('crushScoreVal');
+    const mEl = document.getElementById('crushMovesVal');
+    const msgEl = document.getElementById('crushStatusMsg');
+    const objEl = document.getElementById('crushObjList');
+    if (sEl) sEl.textContent = STATE.score.toLocaleString();
+    if (mEl) mEl.textContent = STATE.moves.toString();
+    if (msgEl) msgEl.textContent = STATE.statusMsg;
+    if (objEl) objEl.innerHTML = renderObjectivesHtml();
+    updateTurnTimerUi();
+  }
+
+  function renderBoardHtml() {
+    let html = '';
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const tile = STATE.grid[r][c];
+        const isChecker = (r + c) % 2 === 1;
+        const isSelected = STATE.selectedCell && STATE.selectedCell.r === r && STATE.selectedCell.c === c;
+
+        const jellyLv = (STATE.jelly && STATE.jelly[r]) ? STATE.jelly[r][c] : 0;
+        const jellyClass = jellyLv === 2 ? 'has-jelly-2' : (jellyLv === 1 ? 'has-jelly-1' : '');
+
+        if (!tile) {
+          html += `
+            <div class="crush-cell ${isChecker ? 'checker' : ''} ${jellyClass}" data-cell-pos="${r},${c}">
+              ${jellyLv > 0 ? `
+                <div class="crush-jelly-coating ${jellyClass}">
+                  <span class="crush-jelly-glaze"></span>
+                  <span class="crush-jelly-tag">${jellyLv >= 2 ? '🍮²' : '🍮'}</span>
+                </div>
+              ` : ''}
+            </div>
+          `;
+          continue;
+        }
+
+        const isIngredient = tile.special === 'ingredient';
+        const topping = isIngredient 
+          ? { name: 'Cherry', icon: '🍒', color: '#e11d48' }
+          : (TOPPINGS[tile.type] || TOPPINGS[0]);
+
+        const specialClass = tile.special !== 'none' ? `special-${tile.special}` : '';
+        const lockedClass = tile.locked ? 'is-locked' : '';
+
+        let icon = topping.icon;
+        if (tile.special === 'color_bomb') icon = '🌈';
+        else if (tile.special === 'fish') icon = '🐟';
+        else if (isIngredient) icon = '🍒';
+
+        let badgeHtml = '';
+        if (tile.special === 'striped_h') {
+          badgeHtml = '<span class="crush-special-badge" title="Tia Sét Ngang">⚡</span>';
+        } else if (tile.special === 'striped_v') {
+          badgeHtml = '<span class="crush-special-badge" title="Tia Sét Dọc">⚡</span>';
+        } else if (tile.special === 'wrapped') {
+          badgeHtml = '<span class="crush-special-badge" title="Kem Cheese Nổ Bung">💣</span>';
+        } else if (tile.special === 'color_bomb') {
+          badgeHtml = '<span class="crush-special-badge" title="Cầu Vồng Hoàng Gia">✨</span>';
+        } else if (tile.special === 'fish') {
+          badgeHtml = `<span class="crush-special-badge fish-badge" title="Con Cá">${topping.icon}</span>`;
+        }
+
+        html += `
+          <div class="crush-cell ${isChecker ? 'checker' : ''} ${jellyClass}" data-cell-pos="${r},${c}">
+            <div class="crush-tile crush-type-${tile.type} ${specialClass} ${lockedClass} ${isSelected ? 'selected' : ''}" 
+                 data-r="${r}" data-c="${c}" data-tile-id="${tile.id}"
+                 title="${topping.name}">
+              <span class="crush-tile-icon">${icon}</span>
+              ${badgeHtml}
+            </div>
+            ${jellyLv > 0 ? `
+              <div class="crush-jelly-coating ${jellyClass}">
+                <span class="crush-jelly-glaze"></span>
+                <span class="crush-jelly-tag">${jellyLv >= 2 ? '🍮²' : '🍮'}</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+    }
+    return html;
+  }
+
+  function fastUpdateBoardDOM(gridEl) {
+    const cells = gridEl.children;
+    let idx = 0;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++, idx++) {
+        const cellEl = cells[idx];
+        if (!cellEl) continue;
+        const tile = STATE.grid[r][c];
+        const isChecker = (r + c) % 2 === 1;
+        const isSelected = STATE.selectedCell && STATE.selectedCell.r === r && STATE.selectedCell.c === c;
+        const jellyLv = (STATE.jelly && STATE.jelly[r]) ? STATE.jelly[r][c] : 0;
+        const jellyClass = jellyLv === 2 ? 'has-jelly-2' : (jellyLv === 1 ? 'has-jelly-1' : '');
+
+        const targetCellClass = `crush-cell ${isChecker ? 'checker' : ''} ${jellyClass}`.trim();
+        if (cellEl.className !== targetCellClass) cellEl.className = targetCellClass;
+
+        let tileEl = cellEl.querySelector('.crush-tile');
+
+        if (!tile) {
+          if (tileEl) tileEl.remove();
+        } else {
+          const isIngredient = tile.special === 'ingredient';
+          const topping = isIngredient 
+            ? { name: 'Cherry', icon: '🍒', color: '#e11d48' }
+            : (TOPPINGS[tile.type] || TOPPINGS[0]);
+          const specialClass = tile.special !== 'none' ? `special-${tile.special}` : '';
+          const lockedClass = tile.locked ? 'is-locked' : '';
+          let icon = topping.icon;
+          if (tile.special === 'color_bomb') icon = '🌈';
+          else if (tile.special === 'fish') icon = '🐟';
+          else if (isIngredient) icon = '🍒';
+
+          let badgeHtml = '';
+          if (tile.special === 'striped_h') badgeHtml = '<span class="crush-special-badge" title="Tia Sét Ngang">⚡</span>';
+          else if (tile.special === 'striped_v') badgeHtml = '<span class="crush-special-badge" title="Tia Sét Dọc">⚡</span>';
+          else if (tile.special === 'wrapped') badgeHtml = '<span class="crush-special-badge" title="Kem Cheese Nổ Bung">💣</span>';
+          else if (tile.special === 'color_bomb') badgeHtml = '<span class="crush-special-badge" title="Cầu Vồng Hoàng Gia">✨</span>';
+          else if (tile.special === 'fish') badgeHtml = `<span class="crush-special-badge fish-badge" title="Con Cá">${topping.icon}</span>`;
+
+          const targetTileClass = `crush-tile crush-type-${tile.type} ${specialClass} ${lockedClass} ${isSelected ? 'selected' : ''}`.trim();
+
+          if (!tileEl) {
+            tileEl = document.createElement('div');
+            tileEl.className = targetTileClass;
+            tileEl.dataset.r = r;
+            tileEl.dataset.c = c;
+            tileEl.dataset.tileId = tile.id;
+            tileEl.title = topping.name;
+            tileEl.innerHTML = `<span class="crush-tile-icon">${icon}</span>${badgeHtml}`;
+            cellEl.prepend(tileEl);
+          } else {
+            if (tileEl.className !== targetTileClass) tileEl.className = targetTileClass;
+            tileEl.dataset.r = r;
+            tileEl.dataset.c = c;
+            tileEl.dataset.tileId = tile.id;
+            const iconEl = tileEl.querySelector('.crush-tile-icon');
+            if (iconEl && iconEl.textContent !== icon) iconEl.textContent = icon;
+            const curBadge = tileEl.querySelector('.crush-special-badge');
+            if (badgeHtml) {
+              if (!curBadge) tileEl.insertAdjacentHTML('beforeend', badgeHtml);
+              else if (curBadge.outerHTML !== badgeHtml) {
+                curBadge.remove();
+                tileEl.insertAdjacentHTML('beforeend', badgeHtml);
+              }
+            } else if (curBadge) {
+              curBadge.remove();
+            }
+          }
+        }
+
+        let jellyEl = cellEl.querySelector('.crush-jelly-coating');
+        if (jellyLv > 0) {
+          if (!jellyEl) {
+            cellEl.insertAdjacentHTML('beforeend', `
+              <div class="crush-jelly-coating ${jellyClass}">
+                <span class="crush-jelly-glaze"></span>
+                <span class="crush-jelly-tag">${jellyLv >= 2 ? '🍮²' : '🍮'}</span>
+              </div>
+            `);
+          } else {
+            if (jellyEl.className !== `crush-jelly-coating ${jellyClass}`) jellyEl.className = `crush-jelly-coating ${jellyClass}`;
+            const tagEl = jellyEl.querySelector('.crush-jelly-tag');
+            if (tagEl) tagEl.textContent = jellyLv >= 2 ? '🍮²' : '🍮';
+          }
+        } else if (jellyEl) {
+          jellyEl.remove();
+        }
+      }
+    }
+  }
+
+  function renderBoardOnly() {
+    const gridEl = document.getElementById('crushBoardGrid');
+    if (!gridEl) return;
+    if (gridEl.children.length !== ROWS * COLS) {
+      gridEl.innerHTML = renderBoardHtml();
+    } else {
+      fastUpdateBoardDOM(gridEl);
+    }
+    renderHeaderAndStats();
+  }
+
+  function renderResultOverlayHtml() {
+    const isWin = isAllObjectivesComplete();
+    const curBuffPct = Math.round(((window.S && window.S.crushBuffRate) || 0) * 100);
+    let rewardTxt = '';
+    if (isWin) {
+      let cashTxt = '+30.000đ';
+      if (STATE.stars === 3) cashTxt = '+100.000đ';
+      else if (STATE.stars === 2) cashTxt = '+60.000đ';
+      const isMilestone = (STATE.level % 5 === 0);
+      const milestoneTxt = isMilestone ? '<br><span style="color:#10b981;font-weight:800;font-size:0.95rem;">🎁 ĐẠT MỐC 5 MÀN: NHẬN +1 TÚI NGUYÊN LIỆU BÍ MẬT!</span>' : '';
+      rewardTxt = `${cashTxt} & TĂNG VĨNH VIỄN +1% Doanh Thu (Hiện có: +${curBuffPct}% vĩnh viễn) ⚡${milestoneTxt}`;
+    } else {
+      rewardTxt = `Hết lượt đi! Màn ${STATE.level} vẫn được giữ nguyên để phục thù (Buff vĩnh viễn +${curBuffPct}% không bị mất)!`;
+    }
+
+    const def = getLevelDefinition(STATE.level);
+
+    return `
+      <div class="crush-result-overlay">
+        <div class="crush-result-icon">${isWin ? '🏆🎉' : '🥺'}</div>
+        <h3 class="crush-result-title">${isWin ? 'CHIẾN THẮNG NGỌT NGÀO!' : 'HẾT LƯỢT ĐI RỒI!'}</h3>
+        <div class="crush-result-desc">
+          <b>${def.title}</b><br>
+          Điểm số của bạn: <b style="color:#fef08a;font-size:1.1rem;">${STATE.score.toLocaleString()}</b> điểm<br>
+          Xếp hạng: ${STATE.stars > 0 ? '⭐'.repeat(STATE.stars) : (isWin ? '⭐' : 'Chưa có sao')}
+        </div>
+        <div class="crush-reward-badge" style="${!isWin ? 'background:#fef2f2;border-color:#fca5a5;color:#b91c1c;' : ''}">
+          ${isWin ? `🎁 ${rewardTxt}` : `⚠️ ${rewardTxt}`}
+        </div>
+        <div class="crush-result-btns">
+          ${isWin ? `
+            <button type="button" class="crush-btn" id="crushNextLevelBtn">▶ Chơi Tiếp (Màn ${STATE.level + 1}) ➜</button>
+          ` : `
+            <button type="button" class="crush-btn" id="crushRetryBtn">🔄 Chơi Lại Màn ${STATE.level}</button>
+          `}
+          <button type="button" class="crush-btn sec" id="crushOverCloseBtn">Đóng</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // --- SỰ KIỆN TƯƠNG TÁC (TOUCH, CLICK, DRAG) ---
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartCell = null;
+
+  function bindEvents() {
+    const card = document.getElementById('codam-card');
+    if (!card) return;
+
+    const modal = document.getElementById('codam-modal');
+    if (modal) {
+      modal.onclick = (e) => {
+        if (e.target === modal) close();
+      };
+    }
+
+    const closeBtn = card.querySelector('#crushCloseBtn');
+    if (closeBtn) closeBtn.onclick = close;
+
+    const restartBtn = card.querySelector('#crushRestartBtn');
+    if (restartBtn) restartBtn.onclick = restartGame;
+
+    const retryBtn = card.querySelector('#crushRetryBtn');
+    if (retryBtn) retryBtn.onclick = restartGame;
+
+    const nextLvlBtn = card.querySelector('#crushNextLevelBtn');
+    if (nextLvlBtn) nextLvlBtn.onclick = startNextLevel;
+
+    const overCloseBtn = card.querySelector('#crushOverCloseBtn');
+    if (overCloseBtn) overCloseBtn.onclick = close;
+
+    const boostersBar = card.querySelector('#crushBoostersBar');
+    if (boostersBar) {
+      boostersBar.onclick = (e) => {
+        const buyBtn = e.target.closest('[data-buy-booster]');
+        if (buyBtn) {
+          e.stopPropagation();
+          const key = buyBtn.dataset.buyBooster;
+          openBuyBoosterModal(key);
+          return;
+        }
+        const btn = e.target.closest('[data-booster]');
+        if (btn) {
+          e.stopPropagation();
+          const key = btn.dataset.booster;
+          handleBoosterClick(key);
+          return;
+        }
+      };
+    }
+
+    const gridEl = card.querySelector('#crushBoardGrid');
+    if (!gridEl) return;
+
+    // 1. XỬ LÝ CHẠM VÀ VUỐT SIÊU NHẠY 60FPS (INSTANT TOUCH & GESTURE SWAP)
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartCell = null;
+    let activePointerId = null;
+    let isSwiped = false;
+
+    function handleTapCell(r, c) {
+      if (STATE.isBusy || STATE.gameEnded) return;
+
+      if (STATE.activeBooster) {
+        executeBoosterOnCell(STATE.activeBooster, r, c);
+        return;
+      }
+
+      if (!STATE.selectedCell) {
+        STATE.selectedCell = { r, c };
+        renderBoardOnly();
+      } else {
+        const prev = STATE.selectedCell;
+        if (prev.r === r && prev.c === c) {
+          STATE.selectedCell = null;
+          renderBoardOnly();
+        } else {
+          const dist = Math.abs(prev.r - r) + Math.abs(prev.c - c);
+          if (dist === 1) {
+            const p1 = { ...prev };
+            STATE.selectedCell = null;
+            handleSwap(p1.r, p1.c, r, c);
+          } else {
+            STATE.selectedCell = { r, c };
+            renderBoardOnly();
+          }
+        }
+      }
+    }
+
+    gridEl.onpointerdown = (e) => {
+      if (STATE.isBusy || STATE.gameEnded) return;
+      const tileEl = e.target.closest('.crush-tile') || e.target.closest('.crush-cell');
+      if (!tileEl) return;
+      if (e.cancelable) e.preventDefault();
+
+      activePointerId = e.pointerId;
+      touchStartX = e.clientX;
+      touchStartY = e.clientY;
+      isSwiped = false;
+      const cellPos = tileEl.dataset.cellPos ? tileEl.dataset.cellPos.split(',') : [tileEl.dataset.r, tileEl.dataset.c];
+      touchStartCell = {
+        r: parseInt(cellPos[0], 10),
+        c: parseInt(cellPos[1], 10)
+      };
+
+      try {
+        gridEl.setPointerCapture(e.pointerId);
+      } catch (_) {}
+    };
+
+    gridEl.onpointermove = (e) => {
+      if (!touchStartCell || STATE.isBusy || STATE.gameEnded || isSwiped) return;
+      if (STATE.activeBooster) return; // Không vuốt khi đang nhắm mục tiêu vật phẩm
+      if (e.cancelable) e.preventDefault();
+
+      const dx = e.clientX - touchStartX;
+      const dy = e.clientY - touchStartY;
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+
+      // Kích hoạt hoán đổi ngay khi vuốt đạt 14px (không cần chờ nhấc ngón tay)
+      if (Math.max(absX, absY) >= 14) {
+        isSwiped = true;
+        const { r, c } = touchStartCell;
+        touchStartCell = null;
+
+        let targetR = r;
+        let targetC = c;
+        if (absX > absY) {
+          targetC += (dx > 0) ? 1 : -1;
+        } else {
+          targetR += (dy > 0) ? 1 : -1;
+        }
+
+        if (targetR >= 0 && targetR < ROWS && targetC >= 0 && targetC < COLS) {
+          STATE.selectedCell = null;
+          handleSwap(r, c, targetR, targetC);
+        }
+
+        try {
+          if (activePointerId != null) gridEl.releasePointerCapture(activePointerId);
+        } catch (_) {}
+      }
+    };
+
+    gridEl.onpointerup = (e) => {
+      try {
+        if (activePointerId != null) gridEl.releasePointerCapture(activePointerId);
+      } catch (_) {}
+      activePointerId = null;
+
+      if (isSwiped) {
+        isSwiped = false;
+        touchStartCell = null;
+        return;
+      }
+
+      if (touchStartCell && !STATE.isBusy && !STATE.gameEnded) {
+        const { r, c } = touchStartCell;
+        touchStartCell = null;
+        handleTapCell(r, c);
+      } else {
+        touchStartCell = null;
+      }
+    };
+
+    gridEl.onpointercancel = () => {
+      try {
+        if (activePointerId != null) gridEl.releasePointerCapture(activePointerId);
+      } catch (_) {}
+      activePointerId = null;
+      touchStartCell = null;
+      isSwiped = false;
+    };
+
+    gridEl.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+  }
+
+  // --- API MỞ / ĐÓNG MODAL ---
+  function open() {
+    const modal = document.getElementById('codam-modal');
+    if (!modal) return;
+    document.body.classList.add('codam-active');
+    const toastEl = document.getElementById('toast');
+    if (toastEl) {
+      toastEl.classList.remove('show');
+      toastEl.style.opacity = '0';
+      toastEl.style.display = 'none';
+    }
+    const sbWrap = document.getElementById('staffBarWrap');
+    if (sbWrap) sbWrap.style.display = 'none';
+
+    modal.hidden = false;
+    modal.scrollTop = 0;
+    const card = document.getElementById('codam-card');
+    if (card) card.scrollTop = 0;
+    STATE.level = getSavedCrushLevel();
+    if (STATE.level > 1) {
+      checkAndAwardCrushMilestones(STATE.level - 1);
+    }
+    if (STATE.grid.length === 0 || STATE.gameEnded) {
+      restartGame();
+    } else {
+      STATE.isBusy = false;
+      render();
+      startTurnTimer();
+    }
+    modal.onclick = (e) => {
+      if (e.target === modal) close();
+    };
+    requestAnimationFrame(() => {
+      if (modal) modal.scrollTop = 0;
+      const c = document.getElementById('codam-card');
+      if (c) c.scrollTop = 0;
+    });
+  }
+
+  function close() {
+    stopTurnTimer();
+    document.body.classList.remove('codam-active');
+    const toastEl = document.getElementById('toast');
+    if (toastEl) toastEl.style.display = '';
+    const sbWrap = document.getElementById('staffBarWrap');
+    if (sbWrap) sbWrap.style.display = '';
+
+    const modal = document.getElementById('codam-modal');
+    if (!modal) return;
+    modal.hidden = true;
+    if (typeof window.onCloseMilkTeaCrush === 'function') {
+      window.onCloseMilkTeaCrush();
+    }
+  }
+
+  // Khai báo MilkTeaCrush, BobaCrush và CoDam để tương thích hoàn toàn
+  window.MilkTeaCrush = {
+    open,
+    close,
+    restart: restartGame,
+    getState: () => ({ ...STATE }),
+    checkAndAwardCrushMilestones
+  };
+
+  window.BobaCrush = window.MilkTeaCrush;
+  window.CoDam = window.MilkTeaCrush;
+  window.openMilkTeaCrush = open;
+  window.openCoDam = open;
+  window.openBobaCrush = open;
+})();

@@ -1,0 +1,864 @@
+/**
+ * 🧋 ĐẤU TRÍ TRÂN CHÂU - MINIGAME TRÀ SỮA ĐỘC BẢN TIỆM TRÀ MƠ ƯỚC
+ * Phiên bản Trà Sữa: Trân Châu Đen (1đ), Đại Trân Châu Hoàng Kim (5đ)
+ * Cơ chế đấu trí bàn cờ hấp dẫn:
+ * - Oẳn tù xì giành lượt đi trước
+ * - Bàn 10 khay topping + 2 nồi trân châu lớn ở 2 đầu
+ * - Bốc rải liên hoàn, thu hoạch cách khay, thu hoạch liên tiếp
+ * - Chống múc nồi chưa ủ đủ (< 5 hạt)
+ * - Tự động trích 5 hạt từ giỏ khi hết trân châu ở 5 khay
+ */
+
+(function () {
+  'use strict';
+
+  // 12 ô trên bàn cờ theo vòng khép kín:
+  // 0 -> 4: 5 khay topping của Chủ Quán (Hàng dưới, từ trái sang phải)
+  // 5: Nồi Trân Châu Phải (Bán nguyệt bên phải)
+  // 6 -> 10: 5 khay topping của Khách hàng/Đối phương (Hàng trên, từ phải sang trái: 6 là góc phải, 10 là góc trái)
+  // 11: Nồi Trân Châu Trái (Bán nguyệt bên trái)
+
+  const STATE = {
+    pits: [],            // Array 12 phần tử { dan: number, quan: number }
+    playerScore: { dan: 0, quan: 0, debt: 0 },
+    aiScore: { dan: 0, quan: 0, debt: 0 },
+    currentTurn: 'player', // 'player' | 'ai'
+    gamePhase: 'rps',      // 'rps' | 'playing' | 'animating' | 'ended'
+    selectedPit: null,     // Khay đang chọn chờ chọn hướng đi
+    selectedBet: 0,
+    bet: 0,                // Thuần túy giao lưu 0đ cá cược
+    statusMsg: 'Oẳn Tù Xì để giành quyền đi trước!',
+    speed: 'normal',       // 'normal' (250ms) | 'fast' (90ms) | 'instant' (0ms)
+    handPieces: 0,
+    activeHighlightPit: null,
+    capturedHighlightPit: null,
+    rpsResult: null,
+    opponent: null
+  };
+
+  const PRESET_CUSTOMERS = [
+    { name: 'Bé Na Mê Topping', avatar: '👧', badge: '🧋 Khách ruột mê trân châu', quote: 'Trà sữa là phải 100% đường nhiều trân châu mới chịu cơ! Cược một chầu trân châu nha!' },
+    { name: 'Anh Shipper Vui Tính', avatar: '🛵', badge: '⚡ Khách quen hay ghé quán', quote: 'Chạy giao đơn mệt quá ghé quán nghỉ chân, làm ván cờ trân châu giải trí nào!' },
+    { name: 'Chị Khách Văn Phòng', avatar: '💼', badge: '⭐ Hội fan cứng trà sữa', quote: 'Chiều nào cả phòng cũng order tiệm mình, nay rảnh em đại diện thách đấu chủ quán!' },
+    { name: 'Foodie Sài Gòn', avatar: '🥢', badge: '🌟 Reviewer ẩm thực triệu view', quote: 'Ghé thẩm vị trà sữa tiệm mình, sẵn tiện giao lưu ván cờ lên clip TikTok luôn!' },
+    { name: 'Thần Mèo Karin', avatar: '🐱', badge: '🛡️ Thần bảo hộ kiên nhẫn', quote: 'Meo meo! Karin ghé ban phước may mắn và thách đấu chủ quán nè!' },
+    { name: 'Tín Đồ Trà Đào', avatar: '🍑', badge: '🍑 Fan cứng trà trái cây', quote: 'Uống ly trà đào mát lạnh tỉnh cả người, quyết đấu giành trọn Đại Trân Châu!' },
+    { name: 'Bạn Sinh Viên Cạnh Trường', avatar: '🎒', badge: '📚 Khách quen giờ tan học', quote: 'Học bài căng thẳng quá, qua quán làm ly trà sữa rồi giao lưu một ván cờ!' },
+    { name: 'Bác Khách Hàng Xóm', avatar: '🍵', badge: '🍵 Khách lớn tuổi thích trà mộc', quote: 'Trà quán này thơm thanh hậu ngọt, lão già này cược với chú em một ván xem sao!' },
+    { name: 'Cô Nàng Mê Cheese', avatar: '🧀', badge: '🧀 Nghiện kem cheese của tiệm', quote: 'Lớp kem cheese béo ngậy làm em mê mẩn, cược một ván xem ai múc nhiều trân châu hơn!' },
+    { name: 'Anh Kỹ Sư Công Nghệ', avatar: '💻', badge: '💻 Khách quen cú đêm', quote: 'Fix bug xong rồi, vào làm một trận cờ trân châu xả stress với chủ quán!' }
+  ];
+
+  let recentOpponentNames = [];
+
+  function formatMoney(n) {
+    if (typeof window.fmt === 'function') return window.fmt(n);
+    return (Number(n || 0).toLocaleString('vi-VN')) + 'đ';
+  }
+
+  function getAvatarForName(name) {
+    const fNames = ['Thị', 'Bé', 'Chị', 'Nhi', 'Hân', 'Trang', 'Mai', 'Linh', 'Ngân', 'Hương', 'Vy', 'My', 'Phương', 'Lan', 'Quỳnh', 'Hoa', 'Thảo', 'Yến', 'Anh', 'Ngọc', 'Nga', 'Dung', 'Châu'];
+    const mNames = ['Văn', 'Anh', 'Chú', 'Huy', 'Khoa', 'Tuấn', 'Long', 'Đạt', 'Minh', 'Hoàng', 'Nam', 'Dũng', 'Phong', 'Hùng', 'Bảo', 'Tài', 'Đức', 'Sơn', 'Quân', 'Thịnh'];
+    const fFaces = ['👧', '👩', '👱‍♀️', '👩‍🦰', '🧕', '👵', '🥰', '😊'];
+    const mFaces = ['👦', '👨', '👨‍💼', '🧔', '👴', '😎', '🙂', '🤩'];
+    if (fNames.some(h => name.includes(h))) {
+      return fFaces[Math.floor(Math.random() * fFaces.length)];
+    }
+    if (mNames.some(h => name.includes(h))) {
+      return mFaces[Math.floor(Math.random() * mFaces.length)];
+    }
+    const all = [...fFaces, ...mFaces];
+    return all[Math.floor(Math.random() * all.length)];
+  }
+
+  // Chọn khách hàng đối thủ: ưu tiên khách từng mua trà sữa & để lại đánh giá
+  function pickCustomerOpponent() {
+    const pool = [];
+    const seenNames = new Set();
+
+    // 1. Trích xuất những khách hàng ĐÃ TỪNG MUA TRÀ SỮA tại quán (từ S.reviews)
+    if (window.S && Array.isArray(window.S.reviews) && window.S.reviews.length > 0) {
+      window.S.reviews.forEach(r => {
+        if (r && r.n && typeof r.n === 'string' && r.n.trim() && !seenNames.has(r.n.trim())) {
+          const cleanName = r.n.trim();
+          seenNames.add(cleanName);
+          const stars = r.s || 5;
+          const dayInfo = r.d ? `(Ngày ${r.d})` : '';
+          const quoteText = r.t ? `"${r.t.slice(0, 48)}${r.t.length > 48 ? '...' : ''}"` : 'Trà sữa tiệm mình đậm vị thơm ngon lắm!';
+          const av = (r.f && typeof r.f === 'string' && /^b\d+$/.test(r.f)) ? `<img src="img/brand/${r.f}.png" style="width:100%;height:100%;object-fit:contain;border-radius:50%;">` : ((r.f && !r.f.startsWith('img/')) ? r.f : getAvatarForName(cleanName));
+          pool.push({
+            name: cleanName,
+            avatar: av,
+            badge: `⭐ Khách từng mua trà sữa · Đánh giá ${stars}★ ${dayInfo}`,
+            quote: quoteText,
+            isPastCustomer: true
+          });
+        }
+      });
+    }
+
+    // 2. Trích xuất từ lịch sử gọi món gần đây (S.nameLog)
+    if (window.S && Array.isArray(window.S.nameLog) && window.S.nameLog.length > 0) {
+      const genericQuotes = [
+        'Trà sữa của quán pha chuẩn gu em lắm, nay rảnh ghé solo cờ trân châu!',
+        'Em hay mua trà sữa ở đây nè, chủ quán so tài cược trân châu không?',
+        'Vừa uống ly trà đào mát lạnh xong, vào làm một ván cược thử vận may!'
+      ];
+      window.S.nameLog.forEach(n => {
+        if (n && typeof n === 'string' && n.trim() && !seenNames.has(n.trim())) {
+          const cleanName = n.trim();
+          seenNames.add(cleanName);
+          pool.push({
+            name: cleanName,
+            avatar: getAvatarForName(cleanName),
+            badge: '🥤 Khách quen từng ghé quán gọi trà sữa',
+            quote: genericQuotes[Math.floor(Math.random() * genericQuotes.length)],
+            isPastCustomer: true
+          });
+        }
+      });
+    }
+
+    // 3. Khách hàng thân quen mặc định
+    PRESET_CUSTOMERS.forEach(pc => {
+      if (!seenNames.has(pc.name)) {
+        seenNames.add(pc.name);
+        pool.push({ ...pc, isPastCustomer: false });
+      }
+    });
+
+    // Lọc bỏ những khách đã đấu trong các ván gần nhất để luôn đảm bảo MỖI LẦN CHƠI LÀ 1 KHÁCH KHÁC NHAU
+    let available = pool.filter(c => !recentOpponentNames.includes(c.name));
+    if (available.length === 0) {
+      recentOpponentNames = [];
+      available = pool;
+    }
+
+    const picked = available[Math.floor(Math.random() * available.length)];
+    recentOpponentNames.push(picked.name);
+    if (recentOpponentNames.length > 15) recentOpponentNames.shift();
+
+    return picked;
+  }
+
+  function startMatch(newOpponent = true) {
+    if (newOpponent || !STATE.opponent) {
+      STATE.opponent = pickCustomerOpponent();
+    }
+    STATE.bet = 0;
+    STATE.selectedPit = null;
+    STATE.rpsResult = null;
+    STATE.playerScore = { dan: 0, quan: 0, debt: 0 };
+    STATE.aiScore = { dan: 0, quan: 0, debt: 0 };
+    initBoard();
+    STATE.gamePhase = 'rps';
+    STATE.statusMsg = `Giao lưu cùng <b>${STATE.opponent.name}</b>! Hãy Oẳn Tù Xì để giành quyền đi trước! ✊✌️🖐️`;
+    render();
+  }
+
+  function playSound(type) {
+    try {
+      if (typeof window.sfx === 'function') {
+        if (type === 'drop') window.sfx('tap');
+        else if (type === 'capture') { window.sfx('coin'); setTimeout(() => window.sfx('star'), 180); }
+        else if (type === 'win') { window.sfx('coin'); setTimeout(() => window.sfx('lvup'), 220); }
+        else if (type === 'lose') window.sfx('bad');
+      }
+    } catch (e) {}
+  }
+
+  function getDelay() {
+    if (STATE.speed === 'fast') return 80;
+    if (STATE.speed === 'instant') return 0;
+    return 240;
+  }
+
+  function sleep(ms) {
+    if (ms <= 0) return Promise.resolve();
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function initBoard() {
+    STATE.pits = [];
+    for (let i = 0; i < 12; i++) {
+      if (i === 5 || i === 11) {
+        // Nồi Trân Châu: 1 Đại Trân Châu Hoàng Kim + 0 Trân Châu Đen khởi đầu
+        STATE.pits.push({ dan: 0, quan: 1 });
+      } else {
+        // Khay Topping: 5 Trân Châu Đen
+        STATE.pits.push({ dan: 5, quan: 0 });
+      }
+    }
+    STATE.playerScore = { dan: 0, quan: 0, debt: 0 };
+    STATE.aiScore = { dan: 0, quan: 0, debt: 0 };
+    STATE.selectedPit = null;
+    STATE.activeHighlightPit = null;
+    STATE.capturedHighlightPit = null;
+    STATE.handPieces = 0;
+    STATE.rpsResult = null;
+  }
+
+  // --- OẲN TÙ XÌ (RPS) ---
+  function playRPS(playerChoice) {
+    const choices = ['bua', 'keo', 'bao'];
+    const aiChoice = choices[Math.floor(Math.random() * choices.length)];
+    const choiceNames = { bua: '✊ Búa', keo: '✌️ Kéo', bao: '🖐️ Bao' };
+
+    playSound('drop');
+
+    let result = '';
+    if (playerChoice === aiChoice) {
+      result = 'tie';
+      STATE.statusMsg = `Cả hai cùng ra <b>${choiceNames[playerChoice]}</b>! Hoà rồi, hãy ra lại! ✊✌️🖐️`;
+    } else if (
+      (playerChoice === 'bua' && aiChoice === 'keo') ||
+      (playerChoice === 'keo' && aiChoice === 'bao') ||
+      (playerChoice === 'bao' && aiChoice === 'bua')
+    ) {
+      result = 'win';
+      STATE.currentTurn = 'player';
+      STATE.gamePhase = 'playing';
+      STATE.statusMsg = `Bạn ra <b>${choiceNames[playerChoice]}</b> thắng <b>${choiceNames[aiChoice]}</b> của khách! <b>Bạn được đi trước</b> 🎉`;
+      playSound('capture');
+      checkTurnStart();
+    } else {
+      result = 'lose';
+      STATE.currentTurn = 'ai';
+      STATE.gamePhase = 'playing';
+      STATE.statusMsg = `Khách ra <b>${choiceNames[aiChoice]}</b> thắng <b>${choiceNames[playerChoice]}</b>! <b>Khách được đi trước</b> 👀`;
+      playSound('drop');
+      checkTurnStart();
+    }
+
+    STATE.rpsResult = { player: playerChoice, ai: aiChoice, result };
+    render();
+
+    if (STATE.currentTurn === 'ai' && STATE.gamePhase === 'playing') {
+      setTimeout(() => triggerAITurn(), 900);
+    }
+  }
+
+  // --- KIỂM TRA ĐẦU LƯỢT: TRÍCH TRÂN CHÂU KHI HẾT Ở 5 KHAY ---
+  function checkTurnStart() {
+    if (STATE.gamePhase !== 'playing') return;
+
+    const isPlayer = STATE.currentTurn === 'player';
+    const pitRange = isPlayer ? [0, 1, 2, 3, 4] : [6, 7, 8, 9, 10];
+    const totalPiecesOnSide = pitRange.reduce((sum, idx) => sum + STATE.pits[idx].dan, 0);
+
+    if (totalPiecesOnSide === 0) {
+      // Bên này không còn trân châu nào ở 5 khay, phải trích 5 hạt (mỗi khay 1 hạt)
+      const scoreObj = isPlayer ? STATE.playerScore : STATE.aiScore;
+      if (scoreObj.dan >= 5) {
+        scoreObj.dan -= 5;
+      } else {
+        const needBorrow = 5 - scoreObj.dan;
+        scoreObj.debt += needBorrow;
+        scoreObj.dan = 0;
+      }
+
+      pitRange.forEach(idx => {
+        STATE.pits[idx].dan += 1;
+      });
+
+      playSound('drop');
+      const sideName = isPlayer ? 'Bạn' : STATE.opponent.name;
+      STATE.statusMsg = `⚠️ 5 khay topping bên ${sideName} đã hết trân châu! Đã trích 5 hạt từ giỏ điểm vào 5 khay để tiếp tục! 🧋`;
+      render();
+    }
+  }
+
+  // --- DI CHUYỂN & RẢI TRÂN CHÂU (MOVE & DISTRIBUTE) ---
+  async function makeMove(startPit, dir) {
+    if (STATE.gamePhase !== 'playing') return;
+    STATE.gamePhase = 'animating';
+    STATE.selectedPit = null;
+
+    let cur = startPit;
+    let hand = STATE.pits[cur].dan;
+    STATE.pits[cur].dan = 0;
+    STATE.handPieces = hand;
+    render();
+    playSound('drop');
+    await sleep(getDelay());
+
+    let loopSafety = 0;
+    while (loopSafety++ < 200) {
+      // 1. Rải từng hạt trân châu trên tay vào các ô kế tiếp
+      while (hand > 0) {
+        cur = (cur + dir + 12) % 12;
+        STATE.pits[cur].dan++;
+        hand--;
+        STATE.handPieces = hand;
+        STATE.activeHighlightPit = cur;
+        render();
+        playSound('drop');
+        await sleep(getDelay());
+      }
+
+      // 2. Xét ô tiếp theo khi đã rải hết trân châu trên tay
+      const nextPit = (cur + dir + 12) % 12;
+
+      // TH1: Ô tiếp theo là KHAY TOPPING CÓ TRÂN CHÂU -> Bốc tiếp toàn bộ rải tiếp
+      if (nextPit !== 5 && nextPit !== 11 && STATE.pits[nextPit].dan > 0) {
+        cur = nextPit;
+        hand = STATE.pits[cur].dan;
+        STATE.pits[cur].dan = 0;
+        STATE.handPieces = hand;
+        STATE.statusMsg = `${STATE.currentTurn === 'player' ? 'Bạn' : STATE.opponent.name} bốc tiếp Khay ${cur} có ${hand} trân châu rải liên hoàn... ✨`;
+        render();
+        playSound('drop');
+        await sleep(getDelay());
+        continue;
+      }
+
+      // TH2: Ô tiếp theo là NỒI TRÂN CHÂU CÓ TRÂN CHÂU -> Mất lượt (Chạm Nồi Trân Châu)
+      if ((nextPit === 5 || nextPit === 11) && (STATE.pits[nextPit].dan > 0 || STATE.pits[nextPit].quan > 0)) {
+        STATE.statusMsg = `Chạm Nồi Trân Châu! Rơi ngay trước Nồi Topping có trân châu, lượt đi kết thúc! 🛑`;
+        STATE.activeHighlightPit = nextPit;
+        render();
+        await sleep(getDelay() + 200);
+        break;
+      }
+
+      // TH3: Ô tiếp theo là KHAY TRỐNG (0 Trân Châu Đen, 0 Đại Trân Châu)
+      if (STATE.pits[nextPit].dan === 0 && STATE.pits[nextPit].quan === 0) {
+        // Xét ô kế tiếp sau ô trống để thu hoạch trân châu
+        let checkEmptyPit = nextPit;
+        let chainAte = false;
+
+        while (true) {
+          const targetPit = (checkEmptyPit + dir + 12) % 12;
+          const targetHasPieces = (STATE.pits[targetPit].dan > 0 || STATE.pits[targetPit].quan > 0);
+
+          if (!targetHasPieces) {
+            // Ô kế tiếp cũng trống: Dừng lượt
+            if (!chainAte) {
+              STATE.statusMsg = `Cách 1 khay trống nhưng khay sau đó cũng trống! Chưa thể múc trân châu. 💨`;
+            }
+            break;
+          }
+
+          // Kiểm tra nếu là Nồi Trân Châu:
+          if (targetPit === 5 || targetPit === 11) {
+            const isNotReady = (STATE.pits[targetPit].quan > 0 && STATE.pits[targetPit].dan < 5);
+            if (isNotReady) {
+              STATE.statusMsg = `⚠️ Nồi Trân Châu đang ủ (chưa đủ 5 hạt)! Cần ngâm đủ độ ngọt mới được múc nhé! 🍯✨`;
+              break;
+            }
+          }
+
+          // ĐƯỢC THU HOẠCH TẠI targetPit!
+          const eatenQuan = STATE.pits[targetPit].quan;
+          const eatenDan = STATE.pits[targetPit].dan;
+          STATE.pits[targetPit].quan = 0;
+          STATE.pits[targetPit].dan = 0;
+
+          const scoreObj = STATE.currentTurn === 'player' ? STATE.playerScore : STATE.aiScore;
+          scoreObj.quan += eatenQuan;
+          scoreObj.dan += eatenDan;
+
+          chainAte = true;
+          STATE.capturedHighlightPit = targetPit;
+          playSound('capture');
+
+          const eatenName = eatenQuan > 0 ? `🍮 ${eatenQuan} Đại Trân Châu + ${eatenDan} Trân Châu Đen` : `${eatenDan} Trân Châu Đen`;
+          STATE.statusMsg = `🎉 ${STATE.currentTurn === 'player' ? 'BẠN THU HOẠCH' : STATE.opponent.name + ' THU HOẠCH'}: ${eatenName}! 🧋`;
+          render();
+          await sleep(getDelay() + 300);
+
+          // Kiểm tra thu hoạch liên hoàn (cách 1 ô trống ăn tiếp ô sau):
+          const nextEmptyCheck = (targetPit + dir + 12) % 12;
+          if (STATE.pits[nextEmptyCheck].dan === 0 && STATE.pits[nextEmptyCheck].quan === 0) {
+            checkEmptyPit = nextEmptyCheck;
+            continue; // Lặp tiếp thu hoạch liên hoàn!
+          } else {
+            break;
+          }
+        }
+
+        break; // Kết thúc chuỗi thu hoạch / dừng lượt
+      }
+
+      break;
+    }
+
+    STATE.activeHighlightPit = null;
+    STATE.capturedHighlightPit = null;
+    STATE.handPieces = 0;
+
+    // 3. Kiểm tra kết thúc ván chơi
+    if (checkGameOver()) {
+      endGame();
+      return;
+    }
+
+    // 4. Đổi lượt
+    STATE.currentTurn = STATE.currentTurn === 'player' ? 'ai' : 'player';
+    STATE.gamePhase = 'playing';
+    checkTurnStart();
+    render();
+
+    if (STATE.currentTurn === 'ai') {
+      setTimeout(() => triggerAITurn(), 600);
+    }
+  }
+
+  // --- AI TỰ ĐỘNG CHƠI (KHÁCH HÀNG THÂN THIẾT) ---
+  function triggerAITurn() {
+    if (STATE.gamePhase !== 'playing' || STATE.currentTurn !== 'ai') return;
+
+    const availablePits = [6, 7, 8, 9, 10].filter(idx => STATE.pits[idx].dan > 0);
+    if (availablePits.length === 0) {
+      checkTurnStart();
+      const retryPits = [6, 7, 8, 9, 10].filter(idx => STATE.pits[idx].dan > 0);
+      if (retryPits.length === 0) {
+        checkGameOver();
+        return;
+      }
+    }
+
+    // AI mô phỏng tìm nước đi tối ưu (hoặc ngẫu nhiên thông minh)
+    const validMoves = [];
+    const pitsToCheck = [6, 7, 8, 9, 10].filter(idx => STATE.pits[idx].dan > 0);
+
+    pitsToCheck.forEach(pit => {
+      [1, -1].forEach(dir => {
+        const simScore = evaluateMove(pit, dir);
+        validMoves.push({ pit, dir, score: simScore });
+      });
+    });
+
+    validMoves.sort((a, b) => b.score - a.score);
+    // Chọn nước đi tốt nhất hoặc top 2 để giữ độ tự nhiên
+    const chosen = (validMoves.length > 1 && Math.random() < 0.25) ? validMoves[1] : validMoves[0];
+
+    if (chosen) {
+      makeMove(chosen.pit, chosen.dir);
+    }
+  }
+
+  // Đánh giá nước đi mô phỏng
+  function evaluateMove(startPit, dir) {
+    let cur = startPit;
+    let hand = STATE.pits[cur].dan;
+    let virtualPits = STATE.pits.map(p => ({ dan: p.dan, quan: p.quan }));
+    virtualPits[cur].dan = 0;
+    let points = 0;
+
+    let steps = 0;
+    while (steps++ < 30) {
+      while (hand > 0) {
+        cur = (cur + dir + 12) % 12;
+        virtualPits[cur].dan++;
+        hand--;
+      }
+
+      const nextPit = (cur + dir + 12) % 12;
+      if (nextPit !== 5 && nextPit !== 11 && virtualPits[nextPit].dan > 0) {
+        cur = nextPit;
+        hand = virtualPits[cur].dan;
+        virtualPits[cur].dan = 0;
+        continue;
+      }
+      if (nextPit === 5 || nextPit === 11) break;
+
+      if (virtualPits[nextPit].dan === 0 && virtualPits[nextPit].quan === 0) {
+        let emptyPit = nextPit;
+        while (true) {
+          const target = (emptyPit + dir + 12) % 12;
+          if (virtualPits[target].dan === 0 && virtualPits[target].quan === 0) break;
+          if (target === 5 || target === 11) {
+            if (virtualPits[target].quan > 0 && virtualPits[target].dan < 5) break;
+            points += virtualPits[target].quan * 5 + virtualPits[target].dan;
+          } else {
+            points += virtualPits[target].dan;
+          }
+          virtualPits[target].dan = 0;
+          virtualPits[target].quan = 0;
+
+          const nextEmpty = (target + dir + 12) % 12;
+          if (virtualPits[nextEmpty].dan === 0 && virtualPits[nextEmpty].quan === 0) {
+            emptyPit = nextEmpty;
+          } else break;
+        }
+        break;
+      }
+      break;
+    }
+
+    return points + Math.random() * 0.5;
+  }
+
+  // --- KIỂM TRA HẾT VÁN & TÍNH ĐIỂM ---
+  function checkGameOver() {
+    // Trò chơi kết thúc khi cả 2 Nồi Trân Châu đều không còn trân châu
+    const leftEmpty = (STATE.pits[11].quan === 0 && STATE.pits[11].dan === 0);
+    const rightEmpty = (STATE.pits[5].quan === 0 && STATE.pits[5].dan === 0);
+    return leftEmpty && rightEmpty;
+  }
+
+  function endGame() {
+    STATE.gamePhase = 'ended';
+
+    // Thu hồi toàn bộ trân châu còn lại trên các khay về người tương ứng
+    let playerSweep = 0;
+    for (let i = 0; i <= 4; i++) {
+      playerSweep += STATE.pits[i].dan;
+      STATE.pits[i].dan = 0;
+    }
+    STATE.playerScore.dan += playerSweep;
+
+    let aiSweep = 0;
+    for (let i = 6; i <= 10; i++) {
+      aiSweep += STATE.pits[i].dan;
+      STATE.pits[i].dan = 0;
+    }
+    STATE.aiScore.dan += aiSweep;
+
+    // Tính điểm: Mỗi Trân Châu Đen 1 điểm, mỗi Đại Trân Châu 5 điểm, trừ nợ nếu có
+    const pTotal = STATE.playerScore.dan * 1 + STATE.playerScore.quan * 5 - STATE.playerScore.debt;
+    const aiTotal = STATE.aiScore.dan * 1 + STATE.aiScore.quan * 5 - STATE.aiScore.debt;
+
+    let outcome = 'draw';
+    if (pTotal > aiTotal) outcome = 'win';
+    else if (pTotal < aiTotal) outcome = 'lose';
+
+    const oppName = STATE.opponent ? STATE.opponent.name : 'Khách hàng';
+
+    if (outcome === 'win') {
+      playSound('win');
+      if (STATE.bet > 0) {
+        const reward = STATE.bet * 2;
+        if (window.S) window.S.money = (window.S.money || 0) + reward;
+        STATE.statusMsg = `🏆 <b>CHÚC MỪNG BẠN THẮNG TRẬN!</b> Điểm số: <b>${pTotal}</b> vs <b>${aiTotal}</b>! Bạn đã ẵm trọn tiền cược: <b>+${formatMoney(reward)}</b> (lời <b>+${formatMoney(STATE.bet)}</b> từ ${oppName})! 🎉`;
+      } else {
+        const tip = 30000;
+        if (window.S) window.S.money = (window.S.money || 0) + tip;
+        STATE.statusMsg = `🏆 <b>CHÚC MỪNG BẠN THẮNG TRẬN!</b> Điểm số: <b>${pTotal}</b> vs <b>${aiTotal}</b>! Khách hàng ${oppName} vui vẻ tip tặng thêm <b>+${formatMoney(tip)}</b> cho quán! 🎉`;
+      }
+      if (typeof window.head === 'function') window.head();
+      if (typeof window.save === 'function') window.save();
+    } else if (outcome === 'lose') {
+      playSound('lose');
+      if (STATE.bet > 0) {
+        STATE.statusMsg = `😢 Khách hàng <b>${oppName}</b> đã chiến thắng với điểm số <b>${aiTotal}</b> vs <b>${pTotal}</b> và ẵm trọn <b>${formatMoney(STATE.bet)}</b> tiền cược! Cố gắng gỡ lại ở ván sau nhé! 💸`;
+      } else {
+        STATE.statusMsg = `😢 Khách hàng <b>${oppName}</b> đã chiến thắng với điểm số <b>${aiTotal}</b> vs <b>${pTotal}</b>! Cố gắng ở ván sau nhé!`;
+      }
+      if (typeof window.head === 'function') window.head();
+      if (typeof window.save === 'function') window.save();
+    } else {
+      playSound('drop');
+      if (STATE.bet > 0) {
+        if (window.S) window.S.money = (window.S.money || 0) + STATE.bet;
+        STATE.statusMsg = `🤝 Hai bên hoà nhau với tỷ số <b>${pTotal}</b> đều! Đã hoàn trả lại <b>${formatMoney(STATE.bet)}</b> tiền cược vào két quán! 🧋`;
+      } else {
+        STATE.statusMsg = `🤝 Hai bên hoà nhau với tỷ số <b>${pTotal}</b> đều! Một trận đấu trí trân châu gay cấn!`;
+      }
+      if (typeof window.head === 'function') window.head();
+      if (typeof window.save === 'function') window.save();
+    }
+
+    render();
+  }
+
+  // --- RENDER GIAO DIỆN HTML ---
+  function render() {
+    const card = document.getElementById('oanquan-card');
+    if (!card) return;
+    card.innerHTML = renderGameBoard();
+    bindEvents();
+  }
+
+  // Màn hình bàn cờ đang chơi
+  function renderGameBoard() {
+    const pScore = STATE.playerScore.dan * 1 + STATE.playerScore.quan * 5 - STATE.playerScore.debt;
+    const aiScore = STATE.aiScore.dan * 1 + STATE.aiScore.quan * 5 - STATE.aiScore.debt;
+
+    const opp = STATE.opponent || {
+      name: 'Khách Hàng',
+      avatar: '🧋'
+    };
+
+    let html = `
+      <div class="oaq-header">
+        <div class="oaq-title-box">
+          <span style="font-size:26px;">🧋🍯</span>
+          <div>
+            <span class="oaq-bet-indicator" style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);color:#065f46;border:1px solid #10b981;">🎮 Giao lưu giải trí</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <h2 class="oaq-title">Ô ĂN QUAN TRÂN CHÂU</h2>
+            </div>
+            <div class="oaq-subtitle">Đại Trân Châu 5đ · Trân Châu Đen 1đ</div>
+          </div>
+        </div>
+        <div class="oaq-head-actions">
+          <button type="button" class="oaq-head-btn" id="oaqRerollBtn" title="Đổi khách hàng khác">🎲 Đổi khách</button>
+          <button type="button" class="oaq-head-btn" id="oaqRestartBtn" title="Chơi ván mới">🔄 Ván mới</button>
+          <button type="button" class="oaq-head-btn oaq-head-close" id="oaqCloseBtn" title="Đóng bảng chơi">✕</button>
+        </div>
+      </div>
+
+      <div class="oaq-status-bar">
+        ${STATE.statusMsg}
+        ${STATE.gamePhase === 'ended' ? `
+          <div style="margin-top:6px;">
+            <button type="button" class="oaq-btn-next-opp" id="oaqBtnNextMatch">
+              🎮 Đấu Trận Mới Cùng Khách Khác
+            </button>
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- Khung Điểm & Avatar 2 Bên -->
+      <div class="oaq-players-wrap">
+        <div class="oaq-player-card ${STATE.currentTurn === 'ai' ? 'active-turn' : ''}">
+          <div class="oaq-avatar">${opp.avatar}</div>
+          <div class="oaq-p-info">
+            <div class="oaq-p-name">${opp.name} (Khách)</div>
+            <div class="oaq-p-score">
+              Điểm: <b>${aiScore}</b> (🍮x${STATE.aiScore.quan} · 🧋x${STATE.aiScore.dan}${STATE.aiScore.debt ? ` · Nợ -${STATE.aiScore.debt}` : ''})
+            </div>
+          </div>
+        </div>
+
+        <div class="oaq-player-card ${STATE.currentTurn === 'player' ? 'active-turn' : ''}">
+          <div class="oaq-avatar">👑</div>
+          <div class="oaq-p-info">
+            <div class="oaq-p-name">Bạn (Chủ Quán)</div>
+            <div class="oaq-p-score">
+              Điểm: <b>${pScore}</b> (🍮x${STATE.playerScore.quan} · 🧋x${STATE.playerScore.dan}${STATE.playerScore.debt ? ` · Nợ -${STATE.playerScore.debt}` : ''})
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Nếu đang ở giai đoạn Oẳn Tù Xì
+    if (STATE.gamePhase === 'rps') {
+      html += `
+        <div class="oaq-rps-box">
+          <div class="oaq-rps-title">OẲN TÙ XÌ TRANH LƯỢT ĐI TRƯỚC</div>
+          <div style="font-size:0.8rem;color:#78350f;">Hãy chọn Búa, Kéo hoặc Bao để đọ tay cùng <b>${opp.name}</b>:</div>
+          <div class="oaq-rps-btns">
+            <button type="button" class="oaq-rps-btn" data-rps="bua" title="Búa">✊</button>
+            <button type="button" class="oaq-rps-btn" data-rps="keo" title="Kéo">✌️</button>
+            <button type="button" class="oaq-rps-btn" data-rps="bao" title="Bao">🖐️</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Bàn Cờ Đấu Trí Trân Châu
+    html += `
+      <div class="oaq-board-outer">
+        <div class="oaq-board-grid">
+          <!-- Nồi Trân Châu Trái (Index 11) -->
+          ${renderQuanPit(11, 'quan-left')}
+
+          <!-- 10 Khay Topping ở giữa -->
+          <div class="oaq-dan-rows">
+            <!-- Hàng trên: Khách hàng (Index 10, 9, 8, 7, 6 từ trái sang phải) -->
+            <div class="oaq-dan-row">
+              ${[10, 9, 8, 7, 6].map(idx => renderDanPit(idx, false)).join('')}
+            </div>
+
+            <!-- Hàng dưới: Người chơi (Index 0, 1, 2, 3, 4 từ trái sang phải) -->
+            <div class="oaq-dan-row">
+              ${[0, 1, 2, 3, 4].map(idx => renderDanPit(idx, true)).join('')}
+            </div>
+          </div>
+
+          <!-- Nồi Trân Châu Phải (Index 5) -->
+          ${renderQuanPit(5, 'quan-right')}
+        </div>
+
+        ${STATE.selectedPit !== null ? renderDirectionPicker() : ''}
+      </div>
+
+      <div class="oaq-footer">
+        <div class="oaq-speed-toggle">
+          <span>Tốc độ:</span>
+          <button type="button" class="oaq-speed-btn ${STATE.speed === 'normal' ? 'on' : ''}" data-speed="normal">Chuẩn</button>
+          <button type="button" class="oaq-speed-btn ${STATE.speed === 'fast' ? 'on' : ''}" data-speed="fast">Nhanh</button>
+          <button type="button" class="oaq-speed-btn ${STATE.speed === 'instant' ? 'on' : ''}" data-speed="instant">Tức thì</button>
+        </div>
+        ${STATE.handPieces > 0 ? `<div class="oaq-hand-pill">🖐️ Đang bốc: <b>${STATE.handPieces}</b> hạt trân châu</div>` : ''}
+      </div>
+    `;
+
+    return html;
+  }
+
+  // Render 1 Nồi Trân Châu bán nguyệt
+  function renderQuanPit(idx, sideClass) {
+    const pit = STATE.pits[idx] || { dan: 0, quan: 0 };
+    const isHighlight = STATE.activeHighlightPit === idx;
+    const isCaptured = STATE.capturedHighlightPit === idx;
+    const isNotReady = (pit.quan > 0 && pit.dan < 5);
+
+    return `
+      <div class="oaq-quan-pit oaq-${sideClass} ${isHighlight ? 'highlight-last' : ''} ${isCaptured ? 'highlight-captured' : ''}">
+        <div class="oaq-quan-label">${idx === 11 ? 'Nồi Trái' : 'Nồi Phải'}</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          ${pit.quan > 0 ? `<div class="oaq-quan-token" title="Đại Trân Châu Hoàng Kim (5 điểm)">🍮</div>` : ''}
+          ${pit.dan > 0 ? `
+            <div class="oaq-pit-pieces">
+              ${Array.from({ length: Math.min(15, pit.dan) }, () => '<span class="oaq-dan-dot"></span>').join('')}
+              ${pit.dan > 15 ? `<span style="font-size:0.65rem;font-weight:900;">+${pit.dan - 15}</span>` : ''}
+            </div>
+          ` : ''}
+        </div>
+        <div class="oaq-pit-count" style="margin-top:4px;">
+          ${pit.quan > 0 ? '🍮 + ' : ''}${pit.dan} hạt
+        </div>
+        ${isNotReady ? `<span style="font-size:0.6rem;color:#b45309;font-weight:800;background:#fef3c7;padding:1px 4px;border-radius:6px;margin-top:2px;">Ủ mật (&lt;5)</span>` : ''}
+      </div>
+    `;
+  }
+
+  // Render 1 Khay Topping hình vuông
+  function renderDanPit(idx, isPlayerRow) {
+    const pit = STATE.pits[idx] || { dan: 0, quan: 0 };
+    const canSelect = STATE.gamePhase === 'playing' && STATE.currentTurn === 'player' && isPlayerRow && pit.dan > 0;
+    const isSelected = STATE.selectedPit === idx;
+    const isHighlight = STATE.activeHighlightPit === idx;
+    const isCaptured = STATE.capturedHighlightPit === idx;
+
+    return `
+      <div class="oaq-pit ${canSelect ? 'selectable' : ''} ${isSelected ? 'selected' : ''} ${isHighlight ? 'highlight-last' : ''} ${isCaptured ? 'highlight-captured' : ''}" 
+           data-pit-idx="${idx}">
+        <div class="oaq-pit-index">Khay ${idx}</div>
+        <div class="oaq-pit-pieces">
+          ${Array.from({ length: Math.min(10, pit.dan) }, () => '<span class="oaq-dan-dot"></span>').join('')}
+          ${pit.dan > 10 ? `<span style="font-size:0.65rem;font-weight:900;">+${pit.dan - 10}</span>` : ''}
+        </div>
+        <div class="oaq-pit-count">${pit.dan}</div>
+      </div>
+    `;
+  }
+
+  // Khung chọn chiều rải trân châu
+  function renderDirectionPicker() {
+    return `
+      <div class="oaq-dir-picker">
+        <span style="font-size:0.8rem;font-weight:800;color:#78350f;">Chọn chiều rải Khay ${STATE.selectedPit}:</span>
+        <button type="button" class="oaq-dir-btn" data-dir="-1" title="Rải sang trái">
+          ⬅️ Sang Trái
+        </button>
+        <button type="button" class="oaq-dir-btn" data-dir="1" title="Rải sang phải">
+          ➡️ Sang Phải
+        </button>
+      </div>
+    `;
+  }
+
+  // Gắn sự kiện tương tác
+  function bindEvents() {
+    const card = document.getElementById('oanquan-card');
+    if (!card) return;
+
+    // Nút đóng
+    const closeBtn = card.querySelector('#oaqCloseBtn');
+    if (closeBtn) closeBtn.onclick = close;
+
+    // Nút đổi khách
+    const rerollBtn = card.querySelector('#oaqRerollBtn');
+    if (rerollBtn) {
+      rerollBtn.onclick = () => {
+        playSound('drop');
+        startMatch(true);
+      };
+    }
+
+    // Nút chơi ván mới (trên header)
+    const restartBtn = card.querySelector('#oaqRestartBtn');
+    if (restartBtn) {
+      restartBtn.onclick = () => {
+        playSound('drop');
+        startMatch(false);
+      };
+    }
+
+    // Nút đấu trận mới cùng khách khác (khi ván đã kết thúc)
+    const nextMatchBtn = card.querySelector('#oaqBtnNextMatch');
+    if (nextMatchBtn) {
+      nextMatchBtn.onclick = () => {
+        playSound('drop');
+        startMatch(true);
+      };
+    }
+
+    // Nút chọn Oẳn tù xì
+    card.querySelectorAll('[data-rps]').forEach(b => {
+      b.onclick = () => playRPS(b.dataset.rps);
+    });
+
+    // Chọn khay topping của người chơi
+    card.querySelectorAll('.oaq-pit.selectable').forEach(el => {
+      el.onclick = () => {
+        const idx = parseInt(el.dataset.pitIdx, 10);
+        if (STATE.selectedPit === idx) {
+          STATE.selectedPit = null;
+        } else {
+          STATE.selectedPit = idx;
+          playSound('drop');
+        }
+        render();
+      };
+    });
+
+    // Chọn chiều rải
+    card.querySelectorAll('[data-dir]').forEach(b => {
+      b.onclick = () => {
+        const dir = parseInt(b.dataset.dir, 10);
+        if (STATE.selectedPit !== null) {
+          makeMove(STATE.selectedPit, dir);
+        }
+      };
+    });
+
+    // Chuyển đổi tốc độ
+    card.querySelectorAll('[data-speed]').forEach(b => {
+      b.onclick = () => {
+        STATE.speed = b.dataset.speed;
+        render();
+      };
+    });
+  }
+
+  // --- MỞ & ĐÓNG MODAL ---
+  function open() {
+    const modal = document.getElementById('oanquan-modal');
+    if (!modal) return;
+    modal.hidden = false;
+    if (!STATE.opponent || STATE.gamePhase === 'ended') {
+      startMatch(true);
+    } else {
+      render();
+    }
+  }
+
+  function close() {
+    const modal = document.getElementById('oanquan-modal');
+    if (modal) modal.hidden = true;
+  }
+
+  // Public API
+  window.OAnQuan = {
+    open,
+    close,
+    initBoard
+  };
+  window.DauTriTranChau = window.OAnQuan;
+
+  // Tự động gán phím Escape để đóng
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('oanquan-modal');
+      if (modal && !modal.hidden) close();
+    }
+  });
+
+})();

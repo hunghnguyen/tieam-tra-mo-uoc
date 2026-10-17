@@ -1,0 +1,1678 @@
+/* ========================================================
+   🍬 TRÀ SỮA CRUSH (CANDY CRUSH PHIÊN BẢN TRÀ SỮA)
+   Minigame Xếp 3 Ngọt Ngào - Tiệm Trà Mơ Ước
+   Match-3 Topping: Trân Châu, Dâu Tây, Matcha, Xoài, Việt Quất, Pudding
+   Special Candies: Trà Sọc Siêu Cấp ⚡, Kem Cheese Nổ Bung 💣, Cầu Vồng Hoàng Gia 🌈
+   ======================================================== */
+
+.codam-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 12, 18, 0.94);
+  display: flex;
+  align-items: center; /* Center modal card vertically */
+  justify-content: center;
+  z-index: 300000 !important;
+  padding: max(4px, env(safe-area-inset-top, 4px)) max(4px, env(safe-area-inset-right, 4px)) max(8px, env(safe-area-inset-bottom, 8px)) max(4px, env(safe-area-inset-left, 4px));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+}
+
+.codam-modal[hidden] {
+  display: none !important;
+}
+
+/* Ẩn hoàn toàn thông báo Toast và Thanh nhân viên để không che màn hình chơi kẹo */
+body.codam-active #toast,
+body.codam-active .toast,
+body:has(#codam-modal:not([hidden])) #toast,
+body:has(#codam-modal:not([hidden])) .toast {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body.codam-active .staff-bar-wrap,
+body:has(#codam-modal:not([hidden])) .staff-bar-wrap {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.codam-card {
+  margin: auto;
+  background: linear-gradient(180deg, #fff9f6 0%, #fff1f2 100%);
+  border: 2.5px solid #f472b6;
+  border-radius: 18px;
+  box-shadow: 0 16px 45px rgba(190, 24, 93, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  max-width: min(420px, 98vw);
+  width: 100%;
+  max-height: calc(100vh - 12px);
+  max-height: calc(100dvh - 12px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 8px 8px;
+  box-sizing: border-box;
+  font-family: inherit;
+  color: #500724;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  animation: bobaPop 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes bobaPop {
+  from { transform: scale(0.9) translateY(12px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Header */
+.crush-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1.5px dashed #fbcfe8;
+  padding-bottom: 3px;
+  margin-bottom: 3px;
+  gap: 6px;
+}
+
+.crush-title-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.crush-logo {
+  font-size: 1.55rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(236, 72, 153, 0.4));
+  animation: floatBoba 2.5s ease-in-out infinite;
+}
+
+@keyframes floatBoba {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px) rotate(4deg); }
+}
+
+.crush-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #db2777 0%, #be185d 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: -0.02em;
+}
+
+.crush-subtitle {
+  font-size: 0.68rem;
+  color: #9d174d;
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+.crush-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.crush-head-btn {
+  background: #fff;
+  border: 1.5px solid #fbcfe8;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #db2777;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: transform 0.1s, background 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.crush-head-btn:hover {
+  background: #fdf2f8;
+  transform: translateY(-1px);
+}
+
+.crush-head-btn:active {
+  transform: scale(0.95);
+}
+
+.crush-head-close {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1rem;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+
+.crush-head-close:hover {
+  color: #ef4444;
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+/* Stats Dashboard Bar */
+.crush-dashboard {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 5px;
+  background: #fff;
+  border: 1.5px solid #fbcfe8;
+  border-radius: 12px;
+  padding: 3px 8px;
+  margin-bottom: 3px;
+  box-shadow: 0 2px 6px rgba(244, 114, 182, 0.1);
+}
+
+.crush-stat-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.crush-stat-label {
+  font-size: 0.64rem;
+  color: #9d174d;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.crush-stat-val {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #831843;
+  line-height: 1.15;
+}
+
+.crush-moves-badge {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+  color: #fff;
+  border-radius: 12px;
+  padding: 4px 12px;
+  text-align: center;
+  box-shadow: 0 3px 8px rgba(219, 39, 119, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 58px;
+}
+
+.crush-moves-num {
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.crush-moves-txt {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  opacity: 0.95;
+  letter-spacing: 0.04em;
+  margin-top: 1px;
+}
+
+.crush-target-block {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.crush-stars-row {
+  display: flex;
+  gap: 2px;
+  font-size: 1rem;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.crush-star {
+  filter: grayscale(100%) opacity(0.35);
+  transition: transform 0.25s, filter 0.25s;
+}
+
+.crush-star.active {
+  filter: grayscale(0%) opacity(1);
+  transform: scale(1.15);
+  animation: starPop 0.35s ease;
+}
+
+@keyframes starPop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.35); }
+  100% { transform: scale(1.15); }
+}
+
+/* Star Progress Bar */
+.crush-progress-bar-wrap {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background: #fce7f3;
+  border-radius: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.crush-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #f472b6, #fbbf24);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Turn Countdown Timer Bar */
+.crush-timer-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1.5px solid #fbcfe8;
+  border-radius: 10px;
+  padding: 2px 6px;
+  margin-top: 2px;
+  margin-bottom: 3px;
+  box-shadow: 0 1px 4px rgba(244, 114, 182, 0.1);
+}
+
+.crush-timer-track {
+  flex: 1;
+  height: 6px;
+  background: #fce7f3;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.crush-timer-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #34d399 50%, #fbbf24 100%);
+  border-radius: 6px;
+  transform-origin: left;
+  transform: scaleX(1);
+  transition: transform 0.18s linear;
+}
+
+.crush-timer-wrap.warning .crush-timer-fill {
+  background: linear-gradient(90deg, #ef4444 0%, #f97316 100%) !important;
+}
+
+.crush-timer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #831843;
+  min-width: 40px;
+  justify-content: flex-end;
+}
+
+.crush-timer-icon {
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.crush-timer-wrap.warning .crush-timer-badge {
+  color: #ef4444;
+  animation: timerTextBlink 0.4s ease-in-out infinite alternate;
+}
+
+@keyframes timerTextBlink {
+  from { transform: scale(1); }
+  to { transform: scale(1.1); }
+}
+
+/* Status / Combo Banner */
+.crush-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #fdf2f8, #fce7f3);
+  border: 1px solid #fbcfe8;
+  border-radius: 8px;
+  padding: 2px 6px;
+  margin-bottom: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9d174d;
+  min-height: 22px;
+  box-sizing: border-box;
+}
+
+.crush-status-msg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.crush-combo-badge {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 8px;
+  animation: comboPulse 0.4s ease-in-out infinite alternate;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+}
+
+@keyframes comboPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+
+/* Main Board Grid Outer */
+.crush-board-outer {
+  background: #fff0f5;
+  border: 2.5px solid #ec4899;
+  border-radius: 18px;
+  padding: 5px;
+  box-shadow: 0 4px 16px rgba(190, 24, 93, 0.2);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  margin: 0 auto;
+  width: 100%;
+  max-width: min(380px, 94vw, calc(100dvh - 210px), calc(100vh - 210px));
+  box-sizing: border-box;
+  contain: layout paint;
+}
+
+.crush-board-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(7, 1fr);
+  gap: 4px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  position: relative;
+  touch-action: none;
+  contain: layout paint;
+}
+
+/* Cell Slots (Candy Pockets) */
+.crush-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(244, 114, 182, 0.25);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+  box-sizing: border-box;
+  padding: 1px;
+  overflow: hidden;
+}
+
+.crush-cell.checker {
+  background: rgba(253, 242, 248, 0.92);
+}
+
+/* Candy / Topping Items - Ultra Fast 2.5D Mobile Rendering */
+.crush-tile {
+  width: 90%;
+  height: 90%;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 0.12s ease-out, opacity 0.12s ease-out;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.crush-tile:hover {
+  transform: scale(1.06);
+}
+
+/* Large, High-Contrast Emoji Icon */
+.crush-tile-icon {
+  font-size: clamp(1.6rem, 5.8vw, 2.35rem);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2;
+  transform: translateY(0.5px);
+}
+
+.crush-tile:active .crush-tile-icon {
+  transform: scale(0.92);
+}
+
+/* Selected Candy */
+.crush-tile.selected {
+  transform: scale(1.15) !important;
+  box-shadow: 0 0 0 2.5px #fff, 0 0 0 5px #ec4899 !important;
+  z-index: 10;
+}
+
+/* 6 CANDY TYPES: CLEAN, VIVID, 60FPS STYLES */
+
+/* 0: Trân Châu Boba */
+.crush-type-0 {
+  background: #713f12;
+  border: 2px solid #271207;
+  border-radius: 50% !important;
+  box-shadow: 0 3px 0 #180903;
+}
+
+/* 1: Dâu Tây */
+.crush-type-1 {
+  background: #e11d48;
+  border: 2px solid #50071c;
+  border-radius: 14px 14px 20px 20px !important;
+  box-shadow: 0 3px 0 #4c0519;
+}
+
+/* 2: Matcha Uji */
+.crush-type-2 {
+  background: #059669;
+  border: 2px solid #022c22;
+  border-radius: 11px !important;
+  box-shadow: 0 3px 0 #022c22;
+}
+
+/* 3: Xoài Cát */
+.crush-type-3 {
+  background: #f97316;
+  border: 2px solid #63220a;
+  border-radius: 20px 8px 20px 8px !important;
+  box-shadow: 0 3px 0 #571e08;
+}
+
+/* 4: Việt Quất */
+.crush-type-4 {
+  background: #9333ea;
+  border: 2px solid #311161;
+  border-radius: 16px !important;
+  box-shadow: 0 3px 0 #2e1065;
+}
+
+/* 5: Pudding Custard */
+.crush-type-5 {
+  background: #facc15;
+  border: 2px solid #713f12;
+  border-radius: 20px 20px 10px 10px !important;
+  box-shadow: 0 3px 0 #63360b;
+}
+
+/* SPECIAL CANDIES */
+/* 1. Striped Horizontal ⚡ */
+.crush-tile.special-striped_h::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.8),
+    rgba(255, 255, 255, 0.8) 5px,
+    transparent 5px,
+    transparent 11px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 2. Striped Vertical ⚡ */
+.crush-tile.special-striped_v::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.8),
+    rgba(255, 255, 255, 0.8) 5px,
+    transparent 5px,
+    transparent 11px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 3. Wrapped Bomb 💣 */
+.crush-tile.special-wrapped {
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.85), inset 0 0 8px rgba(255, 255, 255, 0.95);
+  animation: wrappedGlow 0.9s ease-in-out infinite alternate;
+}
+@keyframes wrappedGlow {
+  from { transform: scale(1) translateZ(0); }
+  to { transform: scale(1.06) translateZ(0); }
+}
+
+/* 4. Color Bomb (Cầu Vồng Hoàng Gia) 🌈 */
+.crush-tile.special-color_bomb {
+  background: radial-gradient(circle at 35% 35%, #fff 0%, #f472b6 25%, #60a5fa 50%, #facc15 75%, #4ade80 100%) !important;
+  border: 2.5px solid #fff !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 14px rgba(236, 72, 153, 0.8), 0 3px 0 #db2777, inset 0 0 6px #fff !important;
+  animation: discoSpin 4s linear infinite !important;
+}
+@keyframes discoSpin {
+  0% { transform: rotate(0deg) translateZ(0); }
+  100% { transform: rotate(360deg) translateZ(0); }
+}
+
+/* 5. Con Cá (Jelly Fish 🐟) */
+.crush-tile.special-fish {
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.85), inset 0 0 6px rgba(255, 255, 255, 0.9);
+  animation: fishTileWiggle 1.4s ease-in-out infinite alternate;
+}
+@keyframes fishTileWiggle {
+  0% { transform: scale(1) rotate(-3deg) translateZ(0); }
+  100% { transform: scale(1.05) rotate(3deg) translateZ(0); }
+}
+
+.crush-tile.special-fish .crush-special-badge.fish-badge {
+  border-color: #38bdf8;
+  background: #f0f9ff;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.5);
+  font-size: 0.82rem;
+}
+
+/* Prominent Floating Special Badge */
+.crush-special-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.5px solid #f59e0b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  line-height: 1;
+  z-index: 4;
+  pointer-events: none;
+  animation: badgeBounce 0.8s ease-in-out infinite alternate;
+}
+@keyframes badgeBounce {
+  from { transform: scale(0.95); }
+  to { transform: scale(1.18); }
+}
+
+/* Animations */
+/* 3D Pop Out & Shatter */
+.crush-tile.pop-out {
+  transform: scale(1.28) rotate(-10deg) translateZ(0) !important;
+  opacity: 0 !important;
+  transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.2s ease-out !important;
+}
+
+.crush-tile.spawn-in {
+  animation: dropIn 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+@keyframes dropIn {
+  from { transform: translateY(-40px) scale(0.5); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* 3D Shuffle Spin Animation */
+.crush-tile.shuffle-spin {
+  animation: shuffleSpin 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes shuffleSpin {
+  0% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(0.15) rotate(180deg); opacity: 0.3; }
+  100% { transform: scale(1) rotate(360deg); opacity: 1; }
+}
+
+/* 3D Flying Sparkle Particles */
+.crush-particle-3d {
+  position: absolute;
+  font-size: 1.15rem;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 105;
+  animation: particleBurst 0.55s ease-out forwards;
+}
+
+@keyframes particleBurst {
+  0% {
+    transform: translate(-50%, -50%) scale(1.4) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.2) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+/* Laser Beams for Line Blast ⚡ */
+.crush-laser-beam-h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14px;
+  background: linear-gradient(90deg, transparent, #fff, #38bdf8, #fff, transparent);
+  box-shadow: 0 0 20px #38bdf8, 0 0 40px #fff;
+  border-radius: 7px;
+  pointer-events: none;
+  z-index: 100;
+  transform: translateY(-50%) scaleY(0.2);
+  animation: laserSweepH 0.38s ease-out forwards;
+}
+
+@keyframes laserSweepH {
+  0% { transform: translateY(-50%) scaleY(0.2) scaleX(0.1); opacity: 0; }
+  50% { transform: translateY(-50%) scaleY(1.8) scaleX(1); opacity: 1; }
+  100% { transform: translateY(-50%) scaleY(0.1) scaleX(1); opacity: 0; }
+}
+
+.crush-laser-beam-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  background: linear-gradient(180deg, transparent, #fff, #38bdf8, #fff, transparent);
+  box-shadow: 0 0 20px #38bdf8, 0 0 40px #fff;
+  border-radius: 7px;
+  pointer-events: none;
+  z-index: 100;
+  transform: translateX(-50%) scaleX(0.2);
+  animation: laserSweepV 0.38s ease-out forwards;
+}
+
+@keyframes laserSweepV {
+  0% { transform: translateX(-50%) scaleX(0.2) scaleY(0.1); opacity: 0; }
+  50% { transform: translateX(-50%) scaleX(1.8) scaleY(1); opacity: 1; }
+  100% { transform: translateX(-50%) scaleX(0.1) scaleY(1); opacity: 0; }
+}
+
+/* Shockwave for Wrapped Bombs 💣 */
+.crush-shockwave-ring {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 4px solid #f59e0b;
+  box-shadow: 0 0 25px #f59e0b, inset 0 0 15px #fef08a;
+  transform: translate(-50%, -50%) scale(0.5);
+  pointer-events: none;
+  z-index: 110;
+  animation: shockwaveExpand 0.45s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+
+@keyframes shockwaveExpand {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(4.5); opacity: 0; }
+}
+
+/* Flying Fish Arc Animation 🐟 */
+.crush-flying-fish {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  margin-left: -22px;
+  margin-top: -22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 180;
+  animation: fishFlyArc 0.46s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+.crush-flying-fish-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 12px #38bdf8;
+  animation: fishFinSwim 0.15s ease-in-out infinite alternate;
+}
+
+@keyframes fishFinSwim {
+  from { transform: scaleY(0.9) scaleX(1.05); }
+  to { transform: scaleY(1.05) scaleX(0.95); }
+}
+
+@keyframes fishFlyArc {
+  0% {
+    transform: translate(0, 0) scale(0.9) rotate(0deg);
+    opacity: 0.9;
+  }
+  40% {
+    transform: translate(calc(var(--dx, 0px) * 0.4), calc(var(--dy, 0px) * 0.4 - 55px)) scale(1.4) rotate(var(--fly-angle, 0deg));
+    opacity: 1;
+  }
+  80% {
+    transform: translate(calc(var(--dx, 0px) * 0.85), calc(var(--dy, 0px) * 0.85 - 20px)) scale(1.2) rotate(var(--fly-angle, 0deg));
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(1.05) rotate(var(--fly-angle, 0deg));
+    opacity: 1;
+  }
+}
+
+/* Water Ripple Shockwave */
+.crush-water-ripple {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3.5px solid #38bdf8;
+  box-shadow: 0 0 20px #38bdf8, inset 0 0 12px #bae6fd;
+  transform: translate(-50%, -50%) scale(0.4);
+  pointer-events: none;
+  z-index: 110;
+  animation: rippleExpand 0.48s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+
+@keyframes rippleExpand {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(4.2); opacity: 0; }
+}
+
+/* Bubble Trail Behind Fish */
+.crush-bubble-trail {
+  position: absolute;
+  font-size: 1.05rem;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 140;
+  transform: translate(-50%, -50%);
+  animation: bubbleFloat 0.4s ease-out forwards;
+}
+
+@keyframes bubbleFloat {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.9; }
+  50% { transform: translate(-50%, calc(-50% - 10px)) scale(1.2); opacity: 0.8; }
+  100% { transform: translate(-50%, calc(-50% - 22px)) scale(0.4); opacity: 0; }
+}
+
+/* Screen Shake */
+.crush-board-outer.screen-shake {
+  animation: boardShake 0.22s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.crush-board-outer.screen-shake-heavy {
+  animation: boardShakeHeavy 0.32s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.crush-board-outer.screen-shake-ultra {
+  animation: boardShakeUltra 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  box-shadow: 0 0 35px rgba(255, 215, 0, 0.85), 0 0 65px rgba(236, 72, 153, 0.65) !important;
+}
+
+@keyframes boardShake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(2.5px, 1px, 0); }
+  30%, 50%, 70% { transform: translate3d(-2.5px, -1px, 0); }
+  40%, 60% { transform: translate3d(2px, 1px, 0); }
+}
+
+@keyframes boardShakeHeavy {
+  10%, 90% { transform: translate3d(-4px, -1px, 0); }
+  20%, 80% { transform: translate3d(4.5px, 2px, 0); }
+  30%, 50%, 70% { transform: translate3d(-4.5px, -2px, 0); }
+  40%, 60% { transform: translate3d(4px, 2px, 0); }
+}
+
+@keyframes boardShakeUltra {
+  10%, 90% { transform: translate3d(-6px, -2px, 0) scale(1.02); }
+  20%, 80% { transform: translate3d(6px, 3px, 0) scale(1.02); }
+  30%, 50%, 70% { transform: translate3d(-6px, -3px, 0) scale(1.02); }
+  40%, 60% { transform: translate3d(6px, 3px, 0) scale(1.02); }
+}
+
+/* 3D Floating Score Number */
+.crush-floating-txt {
+  position: absolute;
+  font-weight: 900;
+  color: #fef08a;
+  -webkit-text-stroke: 1.5px #78350f;
+  text-shadow: 0 3px 0 #78350f, 0 5px 10px rgba(0, 0, 0, 0.5);
+  font-size: 1.35rem;
+  pointer-events: none;
+  z-index: 120;
+  animation: floatUp3D 0.75s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+
+@keyframes floatUp3D {
+  0% { transform: translate(-50%, 0) scale(0.3) rotate(-8deg); opacity: 0; }
+  35% { transform: translate(-50%, -15px) scale(1.3) rotate(4deg); opacity: 1; }
+  70% { transform: translate(-50%, -30px) scale(1.1) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-50%, -50px) scale(0.8); opacity: 0; }
+}
+
+/* 3D Floating Flying Combo Banner */
+.crush-combo-fly-banner {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 250;
+  width: 92%;
+  max-width: 320px;
+  box-sizing: border-box;
+  text-align: center;
+  animation: comboFly3D 0.95s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+
+.combo-fly-inner {
+  display: inline-block;
+  width: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: clamp(0.95rem, 4.4vw, 1.35rem);
+  font-weight: 900;
+  padding: 6px 16px;
+  border-radius: 22px;
+  color: #fff;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.25;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  border: 2.5px solid #fff;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5), 0 3px 0 #991b1b, inset 0 1px 3px rgba(255, 255, 255, 0.8);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6), 0 0 8px rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.02em;
+  transform: rotate(-2deg);
+}
+
+.combo-lvl-3 .combo-fly-inner {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  box-shadow: 0 6px 20px rgba(236, 72, 153, 0.5), 0 3px 0 #831843;
+}
+
+.combo-lvl-4 .combo-fly-inner {
+  background: linear-gradient(135deg, #f97316, #e11d48);
+  box-shadow: 0 8px 24px rgba(234, 88, 12, 0.6), 0 3px 0 #7c2d12;
+  transform: rotate(2deg);
+}
+
+.combo-lvl-5 .combo-fly-inner {
+  background: linear-gradient(135deg, #ff007f, #7928ca, #0070f3, #00dfd8);
+  box-shadow: 0 10px 28px rgba(255, 0, 128, 0.7), 0 3px 0 #4c0519;
+  transform: rotate(-2deg);
+}
+
+.combo-lvl-6 .combo-fly-inner {
+  background: linear-gradient(135deg, #06b6d4, #3b82f6, #8b5cf6, #ec4899);
+  background-size: 200% 200%;
+  animation: rainbowShift 1.4s ease infinite alternate;
+  box-shadow: 0 10px 30px rgba(6, 182, 212, 0.7), 0 3px 0 #1e3a8a, inset 0 1px 3px #fff;
+  transform: rotate(2deg);
+}
+
+.combo-lvl-7 .combo-fly-inner {
+  background: linear-gradient(135deg, #f59e0b, #eab308, #ef4444, #f43f5e);
+  box-shadow: 0 12px 32px rgba(245, 158, 11, 0.8), 0 3px 0 #78350f, inset 0 1px 3px #fff;
+  border-color: #fef08a;
+  transform: rotate(-2deg);
+}
+
+.combo-lvl-8 .combo-fly-inner {
+  background: linear-gradient(135deg, #8b5cf6, #d946ef, #f43f5e, #06b6d4);
+  background-size: 200% 200%;
+  animation: rainbowShift 1.2s ease infinite alternate;
+  box-shadow: 0 14px 36px rgba(139, 92, 246, 0.8), 0 4px 0 #4c1d95, inset 0 1px 3px #fff;
+  border-color: #fbcfe8;
+  transform: rotate(2deg);
+}
+
+.combo-lvl-9 .combo-fly-inner {
+  background: linear-gradient(135deg, #ff007f, #f59e0b, #10b981, #06b6d4);
+  background-size: 250% 250%;
+  animation: rainbowShift 1s ease infinite alternate;
+  box-shadow: 0 14px 40px rgba(255, 0, 127, 0.85), 0 4px 0 #831843, inset 0 1px 3px #fff;
+  border-color: #fef08a;
+  transform: rotate(-2deg);
+}
+
+.combo-lvl-10 .combo-fly-inner {
+  background: linear-gradient(135deg, #ffd700, #ff416c, #8a2be2, #00f2fe, #ffd700);
+  background-size: 300% 300%;
+  animation: rainbowShift 0.8s ease infinite alternate;
+  box-shadow: 0 16px 45px rgba(255, 215, 0, 0.85), 0 0 25px rgba(255, 65, 108, 0.7), 0 4px 0 #78350f, inset 0 2px 4px #fff;
+  border: 3px solid #fff;
+  transform: rotate(0deg);
+  filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+}
+
+.combo-fly-sub {
+  display: block;
+  font-size: clamp(0.6rem, 2.7vw, 0.74rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 3px;
+  color: #fef08a;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+.combo-fly-sub.cosmic {
+  color: #a5f3fc;
+  text-shadow: 0 0 8px rgba(6, 182, 212, 0.9), 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.combo-fly-sub.godlike {
+  color: #fef08a;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 1), 0 2px 4px rgba(0, 0, 0, 0.9);
+  animation: comboPulse 0.4s ease-in-out infinite alternate;
+}
+
+@keyframes rainbowShift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+@keyframes comboFly3D {
+  0% {
+    transform: translate(-50%, -30%) scale(0.3) rotate(-10deg);
+    opacity: 0;
+  }
+  25% {
+    transform: translate(-50%, -50%) scale(1.08) rotate(0deg);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(-50%, -52%) scale(1.0) rotate(1deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -90%) scale(0.88) rotate(-3deg);
+    opacity: 0;
+  }
+}
+
+/* Sugar / Boba Crush Big Banner */
+.crush-praise-banner {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  background: linear-gradient(135deg, #db2777, #f59e0b);
+  color: #fff;
+  font-size: clamp(0.95rem, 4.2vw, 1.25rem);
+  font-weight: 900;
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: 2px solid #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 200;
+  width: 90%;
+  max-width: 310px;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.25;
+  animation: praisePop 0.85s ease-out forwards;
+}
+@keyframes praisePop {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+  35% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  75% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -60%) scale(0.8); opacity: 0; }
+}
+
+/* Footer Controls & Rules Tip */
+.crush-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  gap: 6px;
+}
+
+.crush-tip {
+  font-size: 0.68rem;
+  color: #9d174d;
+  line-height: 1.3;
+  flex: 1;
+}
+
+@media (max-height: 750px), (max-width: 480px) {
+  .crush-footer {
+    display: none !important;
+  }
+}
+
+.crush-btn {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(219, 39, 119, 0.3);
+  transition: transform 0.12s, box-shadow 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.crush-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 12px rgba(219, 39, 119, 0.4);
+}
+
+.crush-btn:active {
+  transform: scale(0.96);
+}
+
+.crush-btn.sec {
+  background: #fff;
+  color: #db2777;
+  border: 1.5px solid #fbcfe8;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+/* Victory / Game Over Overlay */
+.crush-result-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 8, 20, 0.94);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  text-align: center;
+  z-index: 150;
+  animation: resultFade 0.35s ease-out;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+}
+@keyframes resultFade {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.crush-result-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  margin-bottom: 2px;
+  filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.5));
+}
+
+.crush-result-title {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #fff;
+  margin: 0 0 2px;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.crush-result-desc {
+  font-size: 0.76rem;
+  color: #fce7f3;
+  margin-bottom: 5px;
+  line-height: 1.3;
+}
+
+.crush-reward-badge {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(234, 88, 12, 0.35));
+  border: 1.5px solid #f59e0b;
+  border-radius: 10px;
+  padding: 4px 10px;
+  color: #fef08a;
+  font-weight: 800;
+  font-size: 0.78rem;
+  margin-bottom: 8px;
+  max-width: 95%;
+  box-sizing: border-box;
+}
+
+.crush-result-btns {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 290px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.crush-result-btns .crush-btn {
+  padding: 8px 14px;
+  font-size: 0.86rem;
+  font-weight: 900;
+  box-shadow: 0 3px 10px rgba(236, 72, 153, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ========================================================
+   🎯 MỤC TIÊU MÀN CHƠI (LEVEL OBJECTIVES ROW)
+   ======================================================== */
+.crush-objectives-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border: 1.5px solid #fbcfe8;
+  border-radius: 10px;
+  padding: 2px 8px;
+  margin-top: 2px;
+  margin-bottom: 3px;
+  box-shadow: 0 1px 4px rgba(244, 114, 182, 0.1);
+  gap: 6px;
+}
+
+.crush-obj-title {
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #db2777;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.crush-obj-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.crush-obj-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fdf2f8;
+  border: 1.5px solid #fbcfe8;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #831843;
+  transition: all 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.crush-obj-item.done {
+  background: #dcfce7;
+  border-color: #4ade80;
+  color: #15803d;
+  animation: objDonePulse 0.4s ease-out;
+}
+
+@keyframes objDonePulse {
+  0% { transform: scale(0.9); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.crush-obj-icon {
+  font-size: 0.88rem;
+  line-height: 1;
+}
+
+/* ========================================================
+   🍮 CHƯỚNG NGẠI VẬT: THẠCH (JELLY 1 & 2 LỚP)
+   TRONG SUỐT NHƯ THỦY TINH, VIÊN KẸO BÊN TRONG RÕ NÉT 100%
+   ======================================================== */
+
+/* Giữ viên kẹo bên trong ô thạch rõ nét, sắc sảo, không làm mờ mịt */
+.crush-cell.has-jelly-1 .crush-tile,
+.crush-cell.has-jelly-2 .crush-tile {
+  opacity: 1 !important;
+  filter: none !important;
+  transform: scale(0.96);
+  transition: transform 0.15s ease;
+}
+
+/* Lớp phủ thạch Gelatin trong suốt như kính bảo bọc quanh ô */
+.crush-jelly-coating {
+  position: absolute;
+  inset: 0px;
+  border-radius: 14px;
+  pointer-events: none;
+  z-index: 5;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Thạch 1 Lớp (Gelatin Hồng Ngọc Trong Suốt Crystal) */
+.crush-jelly-coating.has-jelly-1 {
+  background: rgba(244, 63, 94, 0.13);
+  border: 2.5px solid #ec4899;
+  box-shadow: inset 0 0 7px rgba(236, 72, 153, 0.45), 0 0 5px rgba(244, 63, 94, 0.35);
+}
+
+/* Thạch 2 Lớp (Thạch Caramel Hổ Phách Trong Veo Dày 2 Lớp) */
+.crush-jelly-coating.has-jelly-2 {
+  background: rgba(245, 158, 11, 0.18);
+  border: 3px solid #f59e0b;
+  box-shadow: inset 0 0 9px rgba(245, 158, 11, 0.55), 0 0 6px rgba(245, 158, 11, 0.4);
+}
+
+/* Ánh bóng kính tinh tế ở góc trên của thạch (Thanh mảnh, không che kẹo) */
+.crush-jelly-glaze {
+  position: absolute;
+  top: 1px;
+  left: 6px;
+  right: 6px;
+  height: 6px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.6) 0%, transparent 100%);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+/* Tag huy hiệu thạch góc dưới xinh xắn */
+.crush-jelly-tag {
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  font-size: 11px;
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.7));
+}
+
+.has-jelly-2 .crush-jelly-tag {
+  font-size: 11px;
+  font-weight: 900;
+  color: #fef08a;
+}
+
+/* ========================================================
+   ❄️ CHƯỚNG NGẠI VẬT: BĂNG TUYẾT / DÂY XÍCH (ICE LOCK)
+   ======================================================== */
+.crush-tile.is-locked {
+  box-shadow: 0 0 6px #38bdf8;
+}
+
+.crush-tile.is-locked::after {
+  content: '❄️';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  background: rgba(224, 242, 254, 0.75);
+  border-radius: 12px;
+  border: 1.5px solid #7dd3fc;
+  box-shadow: inset 0 0 8px rgba(56, 189, 248, 0.6);
+  pointer-events: none;
+}
+
+/* ========================================================
+   🍒 NGUYÊN LIỆU: QUẢ CHERRY RƠI XUỐNG ĐÁY
+   ======================================================== */
+.crush-tile.special-ingredient {
+  background: radial-gradient(circle at 35% 35%, #fecdd3, #e11d48) !important;
+  border: 2px solid #be123c !important;
+  border-radius: 50% !important;
+  box-shadow: 0 4px 10px rgba(225, 29, 72, 0.5) !important;
+  animation: ingredientBounce 1.5s ease-in-out infinite;
+}
+
+.crush-tile.special-ingredient::after {
+  content: '⬇️';
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  font-size: 10px;
+  background: #fff;
+  border-radius: 50%;
+  padding: 1px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+@keyframes ingredientBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* ========================================================
+   ⚡ GIANT CROSS BEAM & MEGA EXPLOSION EFFECTS
+   ======================================================== */
+.crush-laser-beam-giant-h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 48px;
+  transform: translateY(-50%);
+  background: linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.95), #fff, rgba(56, 189, 248, 0.95), transparent);
+  box-shadow: 0 0 25px #0284c7, 0 0 50px #38bdf8;
+  z-index: 85;
+  pointer-events: none;
+  animation: giantBeamH 0.45s ease-out forwards;
+}
+
+@keyframes giantBeamH {
+  0% { transform: translateY(-50%) scaleY(0.1); opacity: 0; }
+  50% { transform: translateY(-50%) scaleY(1.4); opacity: 1; }
+  100% { transform: translateY(-50%) scaleY(0); opacity: 0; }
+}
+
+.crush-laser-beam-giant-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 48px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.95), #fff, rgba(56, 189, 248, 0.95), transparent);
+  box-shadow: 0 0 25px #0284c7, 0 0 50px #38bdf8;
+  z-index: 85;
+  pointer-events: none;
+  animation: giantBeamV 0.45s ease-out forwards;
+}
+
+@keyframes giantBeamV {
+  0% { transform: translateX(-50%) scaleX(0.1); opacity: 0; }
+  50% { transform: translateX(-50%) scaleX(1.4); opacity: 1; }
+  100% { transform: translateX(-50%) scaleX(0); opacity: 0; }
+}
+
+/* ========================================================
+   📜 POPUP GIỚI THIỆU MÀN CHƠI (LEVEL INTRO POPUP)
+   ======================================================== */
+.crush-level-intro-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 8, 20, 0.94);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  text-align: center;
+  z-index: 140;
+  animation: resultFade 0.3s ease-out;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+}
+
+.crush-level-intro-card {
+  background: #fff;
+  border: 2px solid #ec4899;
+  border-radius: 16px;
+  padding: 10px 12px;
+  max-width: 295px;
+  width: 92%;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  box-sizing: border-box;
+}
+
+.crush-level-intro-title {
+  margin: 0 0 2px;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #be185d;
+}
+
+.crush-level-intro-sub {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-bottom: 6px;
+  line-height: 1.25;
+}
+
+.crush-level-intro-targets {
+  background: #fdf2f8;
+  border: 1.5px dashed #fbcfe8;
+  border-radius: 10px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.crush-level-intro-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #831843;
+}
+
+/* Thanh Trạng Thái Tự Động Bán Nước Trong Lúc Chơi Kẹo */
+.crush-autosell-bar {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 10px;
+  padding: 3px 8px;
+  margin: 2px 0 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+  font-size: 0.74rem;
+  color: #14532d;
+  box-shadow: 0 1px 6px rgba(34, 197, 94, 0.14);
+  animation: autosellGreenGlow 2.5s infinite alternate;
+}
+.crush-autosell-dot {
+  font-size: 14px;
+  line-height: 1;
+  animation: dotBlink 1.4s infinite ease-in-out;
+}
+.crush-autosell-text {
+  flex: 1;
+  line-height: 1.25;
+}
+@keyframes autosellGreenGlow {
+  from { box-shadow: 0 2px 8px rgba(34, 197, 94, 0.12); }
+  to { box-shadow: 0 4px 14px rgba(34, 197, 94, 0.28); }
+}
+@keyframes dotBlink {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.25); opacity: 0.8; }
+}
+
+@media (max-height: 700px) {
+  .crush-board-outer {
+    max-width: min(350px, 94vw, calc(100dvh - 180px), calc(100vh - 180px));
+  }
+}
+
+@media (max-height: 600px) {
+  .crush-board-outer {
+    max-width: min(310px, 92vw, calc(100dvh - 150px), calc(100vh - 150px));
+  }
+}
+
+/* --- THANH VẬT PHẨM HỖ TRỢ TRÀ SỮA CRUSH (BOOSTER BAR) --- */
+.crush-boosters-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 6px;
+  margin: 5px auto 4px;
+  max-width: min(390px, 96vw);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid #fbcfe8;
+  border-radius: 14px;
+  box-shadow: 0 3px 10px rgba(219, 39, 119, 0.08);
+  box-sizing: border-box;
+}
+
+.crush-boosters-track {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+  gap: 4px;
+}
+
+.crush-booster-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.crush-booster-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 50px;
+  padding: 2px 3px;
+  background: linear-gradient(135deg, #ffffff 0%, #fdf2f8 100%);
+  border: 1.5px solid #f472b6;
+  border-radius: 11px;
+  cursor: pointer;
+  transition: all 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.crush-booster-btn:active {
+  transform: scale(0.92);
+}
+
+.crush-booster-btn.active {
+  border-color: #f59e0b !important;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.6) !important;
+  animation: boosterPulse 1.1s infinite alternate;
+}
+
+@keyframes boosterPulse {
+  0% { transform: scale(1.02); }
+  100% { transform: scale(1.08); }
+}
+
+.crush-booster-btn.empty {
+  opacity: 0.82;
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.crush-booster-icon {
+  font-size: 1.22rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.crush-booster-name {
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: #831843;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+  line-height: 1.1;
+}
+
+.crush-booster-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ec4899;
+  color: #fff;
+  font-size: 0.64rem;
+  font-weight: 900;
+  border-radius: 10px;
+  padding: 1px 5px;
+  min-width: 16px;
+  text-align: center;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  line-height: 1.2;
+}
+
+.crush-booster-badge.zero {
+  background: #94a3b8;
+}
+
+.crush-booster-plus-btn {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 17px;
+  height: 17px;
+  background: #10b981;
+  color: #fff;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 14px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.crush-booster-plus-btn:hover {
+  transform: scale(1.18);
+  background: #059669;
+}
+
+.crush-board-grid.booster-targeting {
+  cursor: crosshair !important;
+}
+
+.crush-board-grid.booster-targeting .crush-cell {
+  animation: cellTargetGlow 1.2s infinite alternate;
+}
+
+@keyframes cellTargetGlow {
+  0% { box-shadow: inset 0 0 4px rgba(245, 158, 11, 0.35); }
+  100% { box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.85); }
+}

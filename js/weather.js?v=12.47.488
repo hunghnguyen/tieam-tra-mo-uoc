@@ -1,0 +1,473 @@
+/* ==========================================================================
+   ☀️ HỆ THỐNG THỜI TIẾT & MÙA (DYNAMIC WEATHER & SEASONS)
+   🎬 REVIEWER & FOOD TIKTOKER TRIỆU VIEW (SỰ KIỆN ĐỘT XUẤT)
+   Tiệm Trà Mơ Ước - Version 12.47.290+
+   ========================================================================== */
+
+(function(){
+  'use strict';
+
+  // 1. CÁC MÙA TRONG NĂM (Mỗi mùa 30 ngày, 1 năm 120 ngày)
+  const SEASONS = {
+    spring: {
+      id: 'spring',
+      name: 'Mùa Xuân',
+      icon: '🌸',
+      color: '#10b981',
+      desc: 'Trăm hoa đua nở, gió xuân mơn man. Khách vui vẻ, hào phóng tip +15%! Chuộng Lục trà & Trà thanh mát.',
+      tipMul: 1.15,
+      custMul: 1.10,
+      onlMul: 1.05,
+      weathers: [
+        { id: 'sp_sunny', name: 'Nắng ấm đầu xuân', icon: '🌤️', temp: '25°C', custMul: 1.15, onlMul: 1.00, iceMul: 1.0, desc: 'Nắng xuân ấm áp, khách dạo phố ghé quán rôm rả.' },
+        { id: 'sp_rain', name: 'Mưa phùn lất phất', icon: '🌧️', temp: '22°C', custMul: 0.85, onlMul: 1.40, iceMul: 0.8, desc: 'Mưa xuân bay bay, đơn online giao tận nơi bùng nổ!' },
+        { id: 'sp_breeze', name: 'Gió xuân mát lành', icon: '🍃', temp: '23°C', custMul: 1.20, onlMul: 1.10, iceMul: 1.0, desc: 'Tiết trời thanh mát, khách thích ngồi quán thưởng trà.' }
+      ]
+    },
+    summer: {
+      id: 'summer',
+      name: 'Mùa Hạ',
+      icon: '☀️',
+      color: '#f59e0b',
+      desc: 'Nắng rực rỡ, ngày dài sôi động. Khách khát nước ghé quán cực đông (+30%), chuộng Trà Trái Cây và nhiều đá!',
+      tipMul: 1.00,
+      custMul: 1.30,
+      onlMul: 1.10,
+      weathers: [
+        { id: 'su_hot', name: 'Nắng chang chang', icon: '☀️', temp: '37°C', custMul: 1.35, onlMul: 1.00, iceMul: 1.5, desc: 'Trời nắng gắt đỉnh điểm, khách đổ xô mua trà trái cây & thêm đá!' },
+        { id: 'su_rain', name: 'Mưa rào bất chợt', icon: '⛈️', temp: '29°C', custMul: 0.70, onlMul: 1.85, iceMul: 1.1, desc: 'Cơn mưa rào trút xuống, khách trú mưa và đơn app nổ tung!' },
+        { id: 'su_breeze', name: 'Chiều hạ lộng gió', icon: '🌅', temp: '32°C', custMul: 1.25, onlMul: 1.15, iceMul: 1.3, desc: 'Gió hè mát rượi, học sinh sinh viên rủ nhau đi trà sữa check-in.' }
+      ]
+    },
+    autumn: {
+      id: 'autumn',
+      name: 'Mùa Thu',
+      icon: '🍂',
+      color: '#d97706',
+      desc: 'Gió heo may se lạnh, lá vàng lãng mạn. Khách chuộng Hồng trà, Trà sữa truyền thống, trân châu dẻo thơm.',
+      tipMul: 1.10,
+      custMul: 1.15,
+      onlMul: 1.15,
+      weathers: [
+        { id: 'au_chill', name: 'Gió heo may se lạnh', icon: '🍂', temp: '22°C', custMul: 1.20, onlMul: 1.10, iceMul: 0.85, desc: 'Gió thu man mác, nhâm nhi hồng trà sữa thơm béo là chuẩn bài.' },
+        { id: 'au_sunny', name: 'Nắng thu trong trẻo', icon: '🌤️', temp: '25°C', custMul: 1.25, onlMul: 1.05, iceMul: 1.0, desc: 'Trời thu xanh ngắt, khách ghé quán check-in sống ảo tấp nập.' },
+        { id: 'au_drizzle', name: 'Mưa thu rả rích', icon: '🌧️', temp: '20°C', custMul: 0.80, onlMul: 1.55, iceMul: 0.7, desc: 'Mưa thu êm đềm, khách thích gọi trà sữa nóng béo ngậy giao tận tay.' }
+      ]
+    },
+    winter: {
+      id: 'winter',
+      name: 'Mùa Đông',
+      icon: '❄️',
+      color: '#0284c7',
+      desc: 'Rét buốt se lạnh, sương mù giăng lối. Khách lười ra đường nên đơn online bùng nổ (+55%), chuộng Matcha ấm.',
+      tipMul: 1.05,
+      custMul: 0.95,
+      onlMul: 1.55,
+      weathers: [
+        { id: 'wi_cold', name: 'Rét ngọt đầu đông', icon: '❄️', temp: '15°C', custMul: 0.90, onlMul: 1.60, iceMul: 0.5, desc: 'Trời lạnh buốt, khách chuộng trà nóng/ít đá, shipper giao hàng liên tục!' },
+        { id: 'wi_fog', name: 'Sương mù giá buốt', icon: '🌫️', temp: '13°C', custMul: 0.85, onlMul: 1.65, iceMul: 0.4, desc: 'Sương lạnh bao phủ, khách thích matcha ấm thơm lừng sưởi ấm tâm hồn.' },
+        { id: 'wi_sunny', name: 'Nắng đông hanh vàng', icon: '⛅', temp: '18°C', custMul: 1.15, onlMul: 1.25, iceMul: 0.65, desc: 'Nắng đông le lói ấm áp, khách rủ bạn bè ghé quán sưởi nắng.' }
+      ]
+    }
+  };
+
+  // 1.1 THÔNG TIN & THỜI TIẾT ĐẶC THÙ THEO 10 VÙNG MIỀN KHỞI NGHIỆP
+  const REGION_CLIMATE = {
+    sapa: {
+      name: 'Sa Pa (Tây Bắc)',
+      climate: 'Khí hậu cận ôn đới vùng cao quanh năm se lạnh, sương mù giăng mắc',
+      evMap: {
+        rain: { name: 'Mưa phùn núi cao', icon: '🌧️', temp: '13°C', desc: 'Mưa phùn lạnh buốt trên triền núi, khách chuộng trà thảo mộc & hồng trà nóng sưởi ấm.' },
+        storm: { name: 'Mưa dông đèo Ô Quy Hồ', icon: '⛈️', temp: '11°C', desc: 'Gió rít mạnh qua thung lũng, khách vào quán trú lạnh sưởi ấm.' },
+        hot: { name: 'Nắng ấm trốn nóng Fansipan', icon: '🌤️', temp: '22°C', desc: 'Sa Pa mát dịu đón khách thập phương trốn nóng, không khí trong lành dễ chịu.' },
+        cold: { name: 'Băng giá tuyết phủ Fansipan', icon: '❄️', temp: '4°C', desc: 'Rét căm đỉnh đèo, tuyết rơi lất phất, khách cầm ly trà nóng hổi thơm nức tay.' },
+        fog: { name: 'Sương mù dày đặc phố núi', icon: '🌫️', temp: '11°C', desc: 'Sương giăng mờ mịt lối đi, khách ngắm cảnh thơ mộng nhâm nhi tách trà ấm.' },
+        sunny: { name: 'Nắng dịu thung lũng Mường Hoa', icon: '🌤️', temp: '18°C', desc: 'Nắng ấm chan hòa đồi chè, khách du lịch ghé quán check-in tấp nập.' }
+      }
+    },
+    hcm: {
+      name: 'TP. Hồ Chí Minh',
+      climate: 'Nhiệt đới Nam Bộ 2 mùa Mưa - Nắng rõ rệt, ấm áp sôi động quanh năm',
+      evMap: {
+        rain: { name: 'Mưa rào chiều Nam Bộ', icon: '⛈️', temp: '28°C', desc: 'Cơn mưa rào bất chợt làm dịu mát phố phường, khách trú mưa và đơn app nổ tung!' },
+        storm: { name: 'Dông lốc chiều ngập phố', icon: '⛈️', temp: '27°C', desc: 'Mưa lớn đường phố hối hả, tài xế công nghệ giao trà sữa tận tay khách.' },
+        hot: { name: 'Nắng gắt phương Nam', icon: '☀️', temp: '36°C', desc: 'Trời nắng chói chang đỉnh điểm, khách đổ xô mua trà trái cây & thêm nhiều đá giải nhiệt!' },
+        cold: { name: 'Gió chướng se nhẹ phố Sài Gòn', icon: '🍃', temp: '24°C', desc: 'Tiết trời se mát hiếm hoi cuối năm, khách rủ nhau ra đường thưởng trà tán gẫu.' },
+        fog: { name: 'Sương sớm sông Sài Gòn', icon: '🌤️', temp: '26°C', desc: 'Sáng sớm mát mẻ thanh bình, khách mua ly trà thanh mát khởi đầu ngày mới.' },
+        sunny: { name: 'Nắng vàng phố đi bộ', icon: '🌤️', temp: '33°C', desc: 'Nắng rực rỡ phố xá nhộn nhịp, giới trẻ tụ tập uống trà sữa đông đúc.' }
+      }
+    },
+    hue: {
+      name: 'Cố đô Huế',
+      climate: 'Duyên hải Bắc Trung Bộ, mùa mưa dầm rả rích cổ kính, mùa hè nắng rát gió Lào',
+      evMap: {
+        rain: { name: 'Mưa dầm xứ Huế', icon: '🌧️', temp: '20°C', desc: 'Mưa dầm êm đềm rả rích, khách ngồi quán lắng nghe tiếng mưa rơi trên mái ngói.' },
+        storm: { name: 'Bão dông qua phá Tam Giang', icon: '🌪️', temp: '22°C', desc: 'Gió dông cuồn cuộn ngoài đầm phá, khách chuộng trà gừng ấm bụng.' },
+        hot: { name: 'Nắng rát gió Lào bỏng cháy', icon: '☀️', temp: '38°C', desc: 'Gió phơn Tây Nam khô nóng bỏng rát, trà thanh nhiệt và nhiều đá cực kỳ đắt hàng!' },
+        cold: { name: 'Mưa phùn rét ẩm cố đô', icon: '❄️', temp: '16°C', desc: 'Cái rét ẩm đặc trưng xứ Huế, khách quây quần thưởng trà nóng đậm đà.' },
+        fog: { name: 'Sương khói sông Hương', icon: '🌫️', temp: '19°C', desc: 'Màn sương thơ mộng bao phủ cầu Tràng Tiền, khách ghé quán thả hồn cùng trà.' },
+        sunny: { name: 'Nắng thu dịu dàng Đại Nội', icon: '🌤️', temp: '26°C', desc: 'Trời thu trong vắt bóng hoàng thành, khách du lịch ghé quán thưởng trà cung đình.' }
+      }
+    },
+    cantho: {
+      name: 'Cần Thơ (Tây Đô)',
+      climate: 'Sông nước Cửu Long trù phú, nắng ấm hiền hòa quanh năm',
+      evMap: {
+        rain: { name: 'Mưa phù sa sông Hậu', icon: '🌧️', temp: '27°C', desc: 'Mưa rào tắm mát vườn cây trái miệt vườn, khách ghé uống trà trò chuyện xôm tụ.' },
+        storm: { name: 'Dông mưa sông nước', icon: '⛈️', temp: '26°C', desc: 'Gió giật trên sông, ghe thuyền neo đậu, đơn giao trà sữa giao tới tấp.' },
+        hot: { name: 'Nắng ấm bến Ninh Kiều', icon: '☀️', temp: '34°C', desc: 'Nắng vàng soi bóng dòng sông Hậu, trà trái cây và lục trà đá mát lạnh hút khách.' },
+        cold: { name: 'Gió bấc se mát miệt vườn', icon: '🍃', temp: '23°C', desc: 'Gió bấc thoang thoảng bờ kinh xáng, khách chuộng trà sữa béo ngậy ngọt ngào.' },
+        fog: { name: 'Sương mai chợ nổi Cái Răng', icon: '🌫️', temp: '25°C', desc: 'Sương mờ bồng bềnh trên sông sớm mai, ghe thuyền tấp nập gọi trà.' },
+        sunny: { name: 'Nắng trong Tây Đô', icon: '🌤️', temp: '31°C', desc: 'Tiết trời chan hòa gió mát sông Tiền sông Hậu, buôn bán thuận lợi hanh thông.' }
+      }
+    },
+    camau: {
+      name: 'Cà Mau (Đất Mũi)',
+      climate: 'Cực Nam Tổ quốc, gió biển chan hòa mát mẻ, rừng đước bạt ngàn',
+      evMap: {
+        rain: { name: 'Mưa giông rừng đước Đất Mũi', icon: '🌧️', temp: '26°C', desc: 'Mưa rừng ngập mặn rộn rã, người dân mua trà sữa sum vầy cùng gia đình.' },
+        storm: { name: 'Sóng gió biển Tây', icon: '🌪️', temp: '25°C', desc: 'Gió biển thổi mạnh dạt dào, khách chọn đơn giao tận nhà ấm cúng.' },
+        hot: { name: 'Nắng gió Mũi Cà Mau', icon: '☀️', temp: '33°C', desc: 'Trời nắng trong gió biển lồng lộng, khách thích trà mát thêm trân châu giòn sần sật.' },
+        cold: { name: 'Gió biển cuối năm se mát', icon: '🍃', temp: '24°C', desc: 'Không khí mát mẻ dễ chịu, khách hàng hào sảng bo thêm tiền tip cho tiệm.' },
+        fog: { name: 'Sương mù cửa biển Khai Long', icon: '🌫️', temp: '24°C', desc: 'Hơi biển mang sương lành lạnh sáng sớm, ly trà nóng thơm phức lòng người.' },
+        sunny: { name: 'Nắng vàng mốc tọa độ quốc gia', icon: '🌤️', temp: '30°C', desc: 'Trời trong xanh ngắt cuối trời Tổ quốc, du khách ghé quán rộn vang tiếng cười.' }
+      }
+    },
+    danang: {
+      name: 'Đà Nẵng',
+      climate: 'Đô thị biển miền Trung, nắng vàng cát trắng, mùa mưa bão biển cuối năm',
+      evMap: {
+        rain: { name: 'Mưa dông duyên hải', icon: '🌧️', temp: '26°C', desc: 'Biển động mưa rào trút hạt, khách trú mưa rôm rả thưởng trà.' },
+        storm: { name: 'Áp thấp nhiệt đới bờ biển', icon: '🌪️', temp: '24°C', desc: 'Sóng biển gầm vang gió bão giật, khách gọi đơn online giao tận khách sạn/nhà riêng.' },
+        hot: { name: 'Nắng hè rực rỡ biển Mỹ Khê', icon: '☀️', temp: '36°C', desc: 'Nắng rực rỡ bãi biển đông nghẹt, trà trái cây và kem cheese bán không kịp ngơi tay!' },
+        cold: { name: 'Gió mùa Đông Bắc lướt vịnh', icon: '❄️', temp: '18°C', desc: 'Không khí lạnh tràn về bờ biển, khách tìm đến trà sữa ấm thơm lừng.' },
+        fog: { name: 'Mây phủ đỉnh Bà Nà', icon: '🌫️', temp: '20°C', desc: 'Đỉnh núi bồng bềnh tiên cảnh, quán trà đón nhiều du khách ghé thưởng ngoạn.' },
+        sunny: { name: 'Nắng chan hòa cầu Rồng', icon: '🌤️', temp: '31°C', desc: 'Biển xanh nắng vàng tuyệt đẹp, khách du lịch dạo phố thưởng trà check-in.' }
+      }
+    },
+    buonmethuot: {
+      name: 'Buôn Ma Thuột',
+      climate: 'Tây Nguyên đại ngàn, sáng sương lạnh se sắt, trưa nắng trong, chiều tối buốt lạnh',
+      evMap: {
+        rain: { name: 'Mưa rừng đất đỏ bazan', icon: '🌧️', temp: '21°C', desc: 'Cơn mưa rừng tưới mát nương rẫy cà phê, khách thích trà sữa đậm vị ngọt béo.' },
+        storm: { name: 'Dông gió đại ngàn', icon: '⛈️', temp: '20°C', desc: 'Gió giật từng cơn trên sườn đồi, khách tụ họp trong quán ấm cúng chuyện trò.' },
+        hot: { name: 'Nắng gắt cao nguyên mùa khô', icon: '☀️', temp: '34°C', desc: 'Nắng hanh vàng rực rẫy cà phê nở hoa, khách chuộng trà đá giải khát.' },
+        cold: { name: 'Gió lạnh buốt buôn làng', icon: '❄️', temp: '15°C', desc: 'Chiều tối se lạnh căm căm trên cao nguyên, trà sữa nóng béo ngậy lên ngôi.' },
+        fog: { name: 'Sương sớm đồi thông ngút ngàn', icon: '🌫️', temp: '16°C', desc: 'Màn sương mờ ảo huyền bí ôm lấy phố núi, thưởng trà nóng ngắm sương là chuẩn bài.' },
+        sunny: { name: 'Nắng trong trẻo cao nguyên', icon: '🌤️', temp: '28°C', desc: 'Trời cao trong vắt ngập tràn nắng gió đại ngàn, buôn bán sôi nổi tưng bừng.' }
+      }
+    },
+    halong: {
+      name: 'Hạ Long',
+      climate: 'Vịnh kỳ quan thiên nhiên duyên hải Đông Bắc, 4 mùa rõ rệt hùng vĩ',
+      evMap: {
+        rain: { name: 'Mưa giăng màn ngọc vịnh đảo', icon: '🌧️', temp: '22°C', desc: 'Mưa rơi lất phất trên hàng nghìn đảo đá vôi kỳ vĩ, du khách ghé tiệm ngắm cảnh.' },
+        storm: { name: 'Dông bão biển Đông Bắc', icon: '🌪️', temp: '22°C', desc: 'Thuyền bè neo bến tránh bão, đơn giao tận các khu nghỉ dưỡng bùng nổ.' },
+        hot: { name: 'Nắng hè rực rỡ Bãi Cháy', icon: '☀️', temp: '35°C', desc: 'Khách du lịch tắm biển nườm nượp, trà sữa và trà chanh đá lạnh hút khách tối đa.' },
+        cold: { name: 'Gió bấc hun hút mặt vịnh', icon: '❄️', temp: '13°C', desc: 'Mùa đông se sắt biển đảo, khách quây quần thưởng trà sữa nóng bốc khói.' },
+        fog: { name: 'Sương mờ giăng mắc vịnh kỳ quan', icon: '🌫️', temp: '17°C', desc: 'Hòn Trống Mái ẩn hiện trong sương huyền ảo, khách chụp ảnh check-in nườm nượp.' },
+        sunny: { name: 'Nắng vàng lấp lánh sóng vịnh', icon: '🌤️', temp: '29°C', desc: 'Trời xanh mây trắng nước trong veo, thuyền du lịch cập bến khách ghé đông đảo.' }
+      }
+    },
+    hoangsa: {
+      name: 'Hoàng Sa – Trường Sa',
+      climate: 'Biển đảo tiền tiêu thiêng liêng, nắng gió đại dương quanh năm chan hòa',
+      evMap: {
+        rain: { name: 'Mưa rào biển khơi quý giá', icon: '🌧️', temp: '27°C', desc: 'Cơn mưa mát lành giữa ngàn trùng sóng vỗ, quân dân trên đảo hân hoan thưởng trà.' },
+        storm: { name: 'Bão lớn biển Đông sóng dâng', icon: '🌪️', temp: '25°C', desc: 'Sóng to gió giật cấp bão biển khơi, quán trà là điểm tựa kiên cường ấm áp nghĩa tình.' },
+        hot: { name: 'Nắng chói chang biển đảo san hô', icon: '☀️', temp: '34°C', desc: 'Nắng rực rỡ chan hòa rạn san hô, quân dân giải nhiệt với ly trà trái cây thơm mát.' },
+        cold: { name: 'Gió mùa lướt sóng biển đảo', icon: '🍃', temp: '22°C', desc: 'Gió đông bắc lướt sóng dạt dào se lạnh, tách trà ấm trao tay đong đầy nghĩa đồng bào.' },
+        fog: { name: 'Sương mù rạng đông biển Đông', icon: '🌫️', temp: '25°C', desc: 'Sáng sớm chân trời ửng hồng mờ sương, tiệm trà mở cửa đón ngày mới bình yên.' },
+        sunny: { name: 'Biển xanh nắng vàng tấc đất thiêng', icon: '🌤️', temp: '31°C', desc: 'Trời trong vắt cờ đỏ sao vàng tung bay kiêu hãnh, 100% khách gửi trọn tin yêu 5 sao.' }
+      }
+    },
+    hanoi: {
+      name: 'Thủ đô Hà Nội',
+      climate: 'Đồng bằng Bắc Bộ 4 mùa rõ nét: Xuân ẩm nồm, Hạ oi ả, Thu heo may, Đông rét buốt',
+      evMap: {
+        rain: { name: 'Mưa rào phố cổ', icon: '🌧️', temp: '25°C', desc: 'Mưa rào mát rượi 36 phố phường, đơn online giao tận văn phòng tấp nập.' },
+        storm: { name: 'Dông lốc hạ nhiệt thủ đô', icon: '⛈️', temp: '24°C', desc: 'Gió giật làm nghiêng cành lá, khách trú mưa rôm rả tại quầy trà.' },
+        hot: { name: 'Nắng hè oi ả phố phường', icon: '☀️', temp: '37°C', desc: 'Nhiệt độ mặt đường tăng cao, khách gọi trà trái cây đá tuyết giải nhiệt đỉnh điểm!' },
+        cold: { name: 'Gió mùa Đông Bắc rét căm', icon: '❄️', temp: '13°C', desc: 'Rét buốt tê tái cành bàng, khách co ro gọi trà sữa nóng béo ngậy giao tận chăn ấm.' },
+        fog: { name: 'Mưa phùn sương nồm ẩm', icon: '🌫️', temp: '18°C', desc: 'Đặc sản nồm ẩm Bắc Bộ, sương mờ Hồ Gươm, nhâm nhi ly trà nóng ấm lòng.' },
+        sunny: { name: 'Nắng thu heo may hoa sữa', icon: '🌤️', temp: '26°C', desc: 'Tiết trời thu Hà Nội đẹp mê hoặc, gió heo may lãng mạn, khách ghé quán đông kín chỗ.' }
+      }
+    }
+  };
+
+  function getRegionProfile(locId) {
+    const id = (locId && REGION_CLIMATE[locId]) ? locId : 'hanoi';
+    return REGION_CLIMATE[id];
+  }
+
+  function getSeasonKey(day) {
+    const d = Math.max(1, day || 1);
+    const dayInYear = ((d - 1) % 120) + 1; // 1..120
+    if (dayInYear <= 30) return 'spring';
+    if (dayInYear <= 60) return 'summer';
+    if (dayInYear <= 90) return 'autumn';
+    return 'winter';
+  }
+
+  function getSeason(day) {
+    const key = getSeasonKey(day);
+    return SEASONS[key] || SEASONS.spring;
+  }
+
+  function getDailyWeather(day) {
+    const s = getSeason(day);
+    const locId = (window.S && window.S.startupLocation) ? window.S.startupLocation : 'hanoi';
+    const prof = getRegionProfile(locId);
+
+    // Nếu xem ngày hôm nay và đang có sự kiện thời tiết kích hoạt từ game.js (S.ev)
+    const isToday = (window.S && window.S.day === day);
+    const curEvId = (isToday && window.S && window.S.ev) ? window.S.ev.id : null;
+
+    if (curEvId && prof.evMap && prof.evMap[curEvId]) {
+      const sp = prof.evMap[curEvId];
+      let custMul = 1.0, onlMul = 1.0, iceMul = 1.0;
+      if (curEvId === 'rain') { custMul = 0.8; onlMul = 1.6; iceMul = 0.8; }
+      else if (curEvId === 'storm') { custMul = 0.55; onlMul = 2.0; iceMul = 0.7; }
+      else if (curEvId === 'hot') { custMul = 1.35; onlMul = 1.05; iceMul = 1.5; }
+      else if (curEvId === 'cold') { custMul = 0.85; onlMul = 1.5; iceMul = 0.45; }
+      else if (curEvId === 'fog') { custMul = 0.95; onlMul = 1.25; iceMul = 0.7; }
+      else if (curEvId === 'sunny') { custMul = 1.25; onlMul = 1.05; iceMul = 1.1; }
+
+      return {
+        seasonKey: s.id,
+        seasonName: s.name,
+        seasonIcon: s.icon,
+        id: `reg_${locId}_${curEvId}`,
+        name: sp.name,
+        icon: sp.icon,
+        temp: sp.temp,
+        desc: sp.desc,
+        custMul,
+        onlMul,
+        iceMul,
+        regionName: prof.name,
+        regionClimate: prof.climate
+      };
+    }
+
+    // Nếu là ngày thường hoặc xem dự báo ngày mai: Lấy thời tiết ổn định theo seed ngày game + bản sắc vùng miền
+    const seed = (day * 9301 + 49297) % 233280;
+    const idx = Math.floor((seed / 233280) * s.weathers.length);
+    const w = s.weathers[idx] || s.weathers[0];
+
+    // Thích ứng nhiệt độ & mô tả theo vùng miền
+    let adaptTemp = w.temp;
+    let adaptName = w.name;
+    let adaptDesc = w.desc;
+
+    if (locId === 'sapa') {
+      // Sa Pa luôn se lạnh / mát lạnh
+      if (w.id.includes('hot')) { adaptTemp = '23°C'; adaptName = 'Nắng mát trốn nóng'; adaptDesc = 'Trời mát lạnh trong lành, Sa Pa đón du khách đổ về trốn nóng.'; }
+      else if (w.id.includes('cold')) { adaptTemp = '5°C'; adaptName = 'Rét buốt mờ tuyết'; adaptDesc = 'Khí trời lạnh căm, khách thích cầm ly trà nóng hổi sưởi ấm bàn tay.'; }
+      else if (w.id.includes('fog')) { adaptTemp = '11°C'; adaptName = 'Sương mờ đỉnh đèo'; adaptDesc = 'Sương phủ trắng xóa, khách ngồi quán ngắm sương nhâm nhi trà thơm.'; }
+      else { adaptTemp = '16°C'; }
+    } else if (locId === 'hcm' || locId === 'cantho' || locId === 'camau') {
+      // Nam Bộ quanh năm ấm áp không có rét buốt
+      if (w.id.includes('cold')) { adaptTemp = '24°C'; adaptName = 'Gió chướng se mát'; adaptDesc = 'Tiết trời se lạnh hiếm có, khách rủ nhau đi thưởng trà sữa xôm tụ.'; }
+      else if (w.id.includes('fog')) { adaptTemp = '26°C'; adaptName = 'Sương mai bờ sông'; adaptDesc = 'Nắng sớm dịu mát trên sông nước, khách mua trà tươi khởi đầu ngày mới.'; }
+      else if (w.id.includes('hot')) { adaptTemp = '36°C'; adaptName = 'Nắng vàng rực rỡ'; adaptDesc = 'Trời nắng chan hòa rực rỡ, trà trái cây và lục trà đá đắt hàng.'; }
+      else { adaptTemp = '31°C'; }
+    } else if (locId === 'hue') {
+      if (w.id.includes('rain')) { adaptTemp = '20°C'; adaptName = 'Mưa dầm xứ Huế'; adaptDesc = 'Mưa dầm rả rích trên sông Hương, khách ghé thưởng trà đàm đạo chuyện xưa.'; }
+      else if (w.id.includes('hot')) { adaptTemp = '37°C'; adaptName = 'Nắng rát gió Lào'; adaptDesc = 'Gió phơn khô nóng thổi qua đèo, trà giải nhiệt và nhiều đá cực kỳ đắt khách.'; }
+    } else if (locId === 'hoangsa') {
+      if (w.id.includes('rain') || w.id.includes('storm')) { adaptTemp = '26°C'; adaptName = 'Mưa gió biển Đông'; adaptDesc = 'Mưa gió biển khơi dạt dào, quán trà là điểm tựa ấm lòng quân dân.'; }
+      else { adaptTemp = '31°C'; adaptName = 'Nắng gió biển trời thiêng liêng'; adaptDesc = 'Biển xanh ngắt chan hòa nắng gió đại dương, quán phục vụ trà thơm mát.'; }
+    }
+
+    return {
+      seasonKey: s.id,
+      seasonName: s.name,
+      seasonIcon: s.icon,
+      ...w,
+      temp: adaptTemp,
+      name: adaptName,
+      desc: adaptDesc,
+      regionName: prof.name,
+      regionClimate: prof.climate
+    };
+  }
+
+  // Quản lý Hệ Thống Thời Tiết
+  const WeatherSystem = {
+    getSeason,
+    getDailyWeather,
+
+    getToday() {
+      const day = (window.S && S.day) ? S.day : 1;
+      return getDailyWeather(day);
+    },
+
+    getTomorrow() {
+      const day = (window.S && S.day) ? S.day + 1 : 2;
+      return getDailyWeather(day);
+    },
+
+    // Hiệu ứng thời tiết trực quan trên màn hình bán hàng
+    renderSellingFx(container) {
+      this.cleanupSellingFx();
+      if (!container) return;
+      const w = this.getToday();
+      
+      // Nếu có mưa
+      if (w.id.includes('rain') || w.id.includes('shower') || (window.evIs && (evIs('rain') || evIs('storm')))) {
+        const rainLayer = document.createElement('div');
+        rainLayer.id = 'weatherFxRain';
+        rainLayer.className = 'weather-fx-rain-layer';
+        for (let i = 0; i < 24; i++) {
+          const drop = document.createElement('div');
+          drop.className = 'weather-raindrop';
+          drop.style.left = (Math.random() * 100) + '%';
+          drop.style.animationDuration = (0.55 + Math.random() * 0.45) + 's';
+          drop.style.animationDelay = (Math.random() * 0.8) + 's';
+          rainLayer.appendChild(drop);
+        }
+        container.appendChild(rainLayer);
+      }
+      // Nếu trời nắng gắt
+      else if (w.id.includes('sunny') || w.id.includes('hot') || (window.evIs && (evIs('hot') || evIs('sunny')))) {
+        const sunLayer = document.createElement('div');
+        sunLayer.id = 'weatherFxSun';
+        sunLayer.className = 'weather-fx-sun-layer';
+        container.appendChild(sunLayer);
+      }
+    },
+
+    cleanupSellingFx() {
+      const r = document.getElementById('weatherFxRain');
+      if (r) r.remove();
+      const s = document.getElementById('weatherFxSun');
+      if (s) s.remove();
+    },
+
+    openModal() {
+      if (typeof window.ask !== 'function') return;
+      const today = this.getToday();
+      const tom = this.getTomorrow();
+      const season = getSeason((window.S && S.day) || 1);
+
+      const viralDays = (window.S && S.tiktokerViralDays) ? S.tiktokerViralDays : 0;
+      const viralBadge = viralDays > 0 ? `
+        <div style="background:linear-gradient(135deg,#fe2c55,#ff0050);color:#fff;border-radius:12px;padding:8px 12px;margin-bottom:12px;font-size:0.84rem;font-weight:700;display:flex;align-items:center;gap:8px;box-shadow:0 3px 10px rgba(254,44,85,0.35);">
+          <span>🔥</span>
+          <div>CLIP TIKTOK TRIỆU VIEW ĐANG TRENDING! Lượng khách hôm nay tăng vọt <b>+35%</b> (Còn ${viralDays} ngày buff)</div>
+        </div>
+      ` : '';
+
+      const organicBuff = (window.S && S.garden && S.garden.organicBuffDays > 0) ? `
+        <div style="background:#ecfdf5;border:1.5px solid #10b981;color:#065f46;border-radius:12px;padding:8px 12px;margin-bottom:12px;font-size:0.84rem;font-weight:700;display:flex;align-items:center;gap:8px;">
+          <span>🌿</span>
+          <div>Lá Bạc Hà Vườn Nhà: Giá bán mọi ly Trà Trái Cây &amp; Lục Trà được cộng thêm <b>+20%</b> hôm nay!</div>
+        </div>
+      ` : '';
+
+      const html = `
+        <div class="pbig" style="font-size:44px;line-height:1;margin-bottom:6px;">${today.icon}</div>
+        <h2 style="margin:2px 0 6px;color:#1e293b;font-size:1.25rem;">THỜI TIẾT &amp; DỰ BÁO TIỆM TRÀ</h2>
+        <div style="font-size:0.86rem;color:#64748b;margin-bottom:8px;">Ngày ${window.S ? S.day : 1} · Chu kỳ 4 mùa sống động</div>
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:6px 12px;margin-bottom:12px;font-size:0.82rem;color:#0369a1;text-align:left;">
+          📍 Khởi nghiệp tại: <b>${today.regionName || 'Thủ đô Hà Nội'}</b><br>
+          <span style="font-size:0.77rem;color:#0284c7;opacity:0.9;">🌱 ${today.regionClimate || '4 mùa rõ rệt'}</span>
+        </div>
+
+        ${viralBadge}
+        ${organicBuff}
+
+        <!-- THỜI TIẾT HÔM NAY -->
+        <div style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:16px;padding:12px 14px;margin-bottom:10px;text-align:left;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="font-size:0.95rem;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:6px;">
+              <span>${today.icon}</span> <span>Hôm nay: ${today.name}</span>
+            </div>
+            <span style="font-weight:800;color:#e11d48;background:#ffe4e6;padding:2px 8px;border-radius:10px;font-size:0.85rem;">${today.temp}</span>
+          </div>
+          <div style="font-size:0.83rem;color:#475569;line-height:1.45;margin-bottom:6px;">${today.desc}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:0.75rem;">
+            <span style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:6px;font-weight:700;">Khách quầy: x${today.custMul.toFixed(2)}</span>
+            <span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:6px;font-weight:700;">Đơn Online: x${today.onlMul.toFixed(2)}</span>
+            <span style="background:#f1f5f9;color:#475569;padding:2px 6px;border-radius:6px;font-weight:700;">Tiêu thụ đá: x${today.iceMul.toFixed(2)}</span>
+          </div>
+        </div>
+
+        <!-- MÙA TRONG NĂM -->
+        <div style="background:#fffbeb;border:2px solid #fde68a;border-radius:16px;padding:12px 14px;margin-bottom:10px;text-align:left;">
+          <div style="font-size:0.95rem;font-weight:800;color:#92400e;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span>${season.icon}</span> <span>${season.name}</span>
+          </div>
+          <div style="font-size:0.83rem;color:#78350f;line-height:1.45;">${season.desc}</div>
+        </div>
+
+        <!-- DỰ BÁO NGÀY MAI -->
+        <div style="background:#f1f5f9;border:1.5px dashed #cbd5e1;border-radius:14px;padding:10px 12px;text-align:left;font-size:0.82rem;color:#475569;">
+          🔮 <b>Dự báo ngày mai:</b> ${tom.icon} <b>${tom.name}</b> (${tom.temp}) - ${tom.desc}
+        </div>
+      `;
+
+      window.ask(html, [['Đã hiểu, cảm ơn', () => {}, 1]]);
+    }
+  };
+
+  // 2. FOOD TIKTOKER / REVIEWER TRIỆU VIEW ĐỘT XUẤT
+  const TIKTOKER_CHANNELS = [
+    { name: 'Khoai Mê Trà Sữa 🧋', followers: '2.5M', quote: 'Chào cả nhà, nay cùng Khoai ghé thẩm quán trà sữa hot hit này nha!', channel: '@khoaitrasua_official' },
+    { name: 'Hôm Nay Ăn Gì? 🎬', followers: '1.8M', quote: 'Hello các bác! Nghe đồn quán này trân châu tự nấu mềm dẻo đỉnh chóp, để tôi test liền!', channel: '@homnayangi_review' },
+    { name: 'Cô Gái Có Nơ Mỏ Khoét 🎀', followers: '1.2M', quote: 'Ghé thẩm quán theo yêu cầu của 500 anh em! Camera zoom cận cảnh từng giọt kem cheese luôn nè!', channel: '@mocuakhauvi' },
+    { name: 'Food Tour Sài Gòn Phố 🛵', followers: '950K', quote: 'Quán ruột của tui đây rồi! Cùng xem tay nghề chủ quán hôm nay có giữ vững phong độ không nhé!', channel: '@saigonfoodtour' }
+  ];
+
+  const TiktokerSystem = {
+    // Kiểm tra xem khách có phải là Food Tiktoker không
+    checkShouldSpawn(day) {
+      if (window.R && window.R.tiktokerTodayDone) return false;
+      // Nếu có event reviewer hoặc có tỉ lệ đột xuất 20% mỗi ngày
+      const isEvent = typeof window.evIs === 'function' && window.evIs('reviewer');
+      if (isEvent) return true;
+      if (day >= 2 && Math.random() < 0.20) return true;
+      return false;
+    },
+
+    getRandomTiktoker() {
+      const idx = Math.floor(Math.random() * TIKTOKER_CHANNELS.length);
+      return TIKTOKER_CHANNELS[idx];
+    },
+
+    // Khi phục vụ xong cho Tiktoker
+    onServed(c, isCorrect) {
+      if (!c || !c.isTiktoker) return;
+      const t = c.tiktokerInfo || TIKTOKER_CHANNELS[0];
+      if (isCorrect) {
+        // Nhận clip viral triệu view
+        if (!window.S.tiktokerViralDays) window.S.tiktokerViralDays = 0;
+        window.S.tiktokerViralDays = Math.max(window.S.tiktokerViralDays, 2); // Buff 2 ngày
+
+        const sponsorMoney = 300000 + Math.floor(Math.random() * 300000);
+        window.S.money = (window.S.money || 0) + sponsorMoney;
+        if (window.S.cur) {
+          window.S.cur.gift = (window.S.cur.gift || 0) + sponsorMoney;
+        }
+        if (window.S.totalRev) window.S.totalRev += sponsorMoney;
+
+        setTimeout(() => {
+          if (typeof window.toast === 'function') {
+            window.toast(`🔥 CLIP TIKTOK CỦA ${t.name} ĐẠT 1M VIEW! Kênh tài trợ nóng +${fmt(sponsorMoney)} và quán được buff +35% khách trong 2 ngày tới! 🎉`, 6000, 1);
+          }
+        }, 1200);
+      } else {
+        setTimeout(() => {
+          if (typeof window.toast === 'function') {
+            window.toast(`🎬 ${t.name} đăng clip review: "Hụt hẫng vì phục vụ sai món..." Quán cần chú ý hơn nha! 🥺`, 5000);
+          }
+        }, 1200);
+      }
+    }
+  };
+
+  window.WeatherSystem = WeatherSystem;
+  window.TiktokerSystem = TiktokerSystem;
+
+})();

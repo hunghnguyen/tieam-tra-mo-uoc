@@ -1,0 +1,763 @@
+/* ========================================================
+   🧋 ĐẤU TRÍ TRÂN CHÂU - MINIGAME TRÀ SỮA ĐỘC BẢN TIỆM TRÀ MƠ ƯỚC
+   Bản Trà Sữa Độc Bản: Trân Châu Đen (1đ), Đại Trân Châu Hoàng Kim (5đ)
+   ======================================================== */
+
+.oanquan-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(35, 18, 10, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 8px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.oanquan-modal[hidden] {
+  display: none !important;
+}
+
+.oanquan-card {
+  background: #fdfbf7;
+  border: 3.5px solid #854d0e;
+  border-radius: 22px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  max-width: min(600px, 98vw);
+  width: 100%;
+  max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 14px 16px;
+  box-sizing: border-box;
+  font-family: inherit;
+  color: #3b2214;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  animation: oaqPop 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes oaqPop {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Header */
+.oaq-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px dashed #e2cbb2;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+.oaq-title-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oaq-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #78350f;
+  letter-spacing: 0.3px;
+}
+
+.oaq-subtitle {
+  font-size: 0.75rem;
+  color: #92400e;
+  font-weight: 600;
+}
+
+.oaq-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.oaq-head-btn {
+  background: #fef3c7;
+  border: 1.5px solid #fde68a;
+  border-radius: 10px;
+  padding: 5px 9px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #92400e;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.oaq-head-btn:hover {
+  background: #fde68a;
+  transform: scale(1.05);
+}
+
+.oaq-head-close {
+  background: #fee2e2;
+  border: 1.5px solid #fca5a5;
+  color: #b91c1c;
+}
+.oaq-head-close:hover {
+  background: #fca5a5;
+}
+
+/* Top Banner Status */
+.oaq-status-bar {
+  background: #fef3c7;
+  border: 1.5px solid #fde68a;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-align: center;
+  color: #78350f;
+  margin-bottom: 10px;
+  line-height: 1.35;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* Player Info / Basket Bars */
+.oaq-players-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.oaq-player-card {
+  background: #fbf7ee;
+  border: 2px solid #e7d8be;
+  border-radius: 14px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.oaq-player-card.active-turn {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+}
+
+.oaq-avatar {
+  font-size: 1.8rem;
+  line-height: 1;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.oaq-avatar img, .oaq-bet-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+.oaq-p-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.oaq-p-name {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #451a03;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oaq-p-score {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #b45309;
+  margin-top: 1px;
+}
+
+/* Board Container */
+.oaq-board-outer {
+  background: #efe4cf;
+  border: 3.5px solid #a16207;
+  border-radius: 20px;
+  padding: 10px 8px;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.15), 0 5px 15px rgba(0,0,0,0.08);
+  margin-bottom: 10px;
+  user-select: none;
+}
+
+.oaq-board-grid {
+  display: grid;
+  grid-template-columns: 78px 1fr 78px;
+  gap: 6px;
+  align-items: stretch;
+}
+
+/* Semi-circular Quan Pits */
+.oaq-quan-pit {
+  background: #ebd8ba;
+  border: 2.5px solid #b45309;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  box-sizing: border-box;
+  position: relative;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.12);
+  min-height: 140px;
+}
+
+.oaq-quan-left {
+  border-radius: 70px 10px 10px 70px;
+}
+
+.oaq-quan-right {
+  border-radius: 10px 70px 70px 10px;
+}
+
+.oaq-quan-label {
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #92400e;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+/* Middle Rows for 10 Dan Pits */
+.oaq-dan-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.oaq-dan-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+/* Square Dan Pits */
+.oaq-pit {
+  background: #fff8eb;
+  border: 2px solid #ca8a04;
+  border-radius: 12px;
+  min-height: 66px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 2px;
+  box-sizing: border-box;
+  cursor: default;
+  position: relative;
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.06);
+}
+
+.oaq-pit.selectable {
+  cursor: pointer;
+  background: #fef08a;
+  border-color: #eab308;
+  box-shadow: 0 0 0 2.5px rgba(234, 179, 8, 0.45);
+}
+
+.oaq-pit.selectable:hover {
+  transform: translateY(-2px) scale(1.04);
+  background: #fde047;
+}
+
+.oaq-pit.highlight-last {
+  background: #fed7aa !important;
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.5) !important;
+}
+
+.oaq-pit.highlight-captured {
+  background: #bbf7d0 !important;
+  border-color: #16a34a !important;
+  animation: pulseGreen 0.4s 2 alternate;
+}
+
+@keyframes pulseGreen {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); background: #86efac; }
+}
+
+.oaq-pit-index {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #a16207;
+  opacity: 0.75;
+}
+
+.oaq-pit-count {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: #713f12;
+}
+
+.oaq-pit-pieces {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  max-width: 100%;
+  margin: 2px 0;
+}
+
+/* Individual Boba Tokens */
+.oaq-dan-dot {
+  width: 9px;
+  height: 9px;
+  background: radial-gradient(circle at 30% 30%, #52382c, #1f140e 70%);
+  border: 0.8px solid #000;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  display: inline-block;
+}
+
+.oaq-quan-token {
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle at 35% 35%, #fef08a, #eab308 65%, #ca8a04 100%);
+  border: 1.5px solid #854d0e;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* Direction Picker Popup inside Board */
+.oaq-dir-picker {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  background: rgba(254, 243, 199, 0.96);
+  border: 2px solid #f59e0b;
+  border-radius: 14px;
+  padding: 6px 14px;
+  margin: 6px auto;
+  width: fit-content;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  animation: bcPop 0.2s ease;
+}
+
+.oaq-dir-btn {
+  background: #f59e0b;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 900;
+  padding: 6px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 2px 5px rgba(245, 158, 11, 0.35);
+  transition: transform 0.15s;
+}
+
+.oaq-dir-btn:hover {
+  transform: scale(1.07);
+}
+
+.oaq-dir-btn:active {
+  transform: scale(0.95);
+}
+
+/* Oẳn Tù Xì Modal View */
+.oaq-rps-box {
+  background: #fffbeb;
+  border: 2px dashed #f59e0b;
+  border-radius: 16px;
+  padding: 12px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.oaq-rps-title {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #92400e;
+  margin-bottom: 8px;
+}
+
+.oaq-rps-btns {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.oaq-rps-btn {
+  background: #fff;
+  border: 2px solid #fbbf24;
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 1.6rem;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.06);
+}
+
+.oaq-rps-btn:hover {
+  transform: translateY(-3px) scale(1.1);
+  border-color: #f59e0b;
+  background: #fef3c7;
+}
+
+/* Footer / Controls */
+.oaq-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.oaq-speed-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #78350f;
+}
+
+.oaq-speed-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.oaq-speed-btn.on {
+  background: #f59e0b;
+  color: #fff;
+  border-color: #d97706;
+}
+
+/* Hand holding pieces token visual */
+.oaq-hand-pill {
+  background: #78350f;
+  color: #fff;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  margin-top: 4px;
+}
+
+/* Responsive adjustments for narrow screens */
+@media (max-width: 440px) {
+  .oaq-board-grid {
+    grid-template-columns: 58px 1fr 58px;
+    gap: 4px;
+  }
+  .oaq-pit {
+    min-height: 56px;
+  }
+  .oaq-quan-token {
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
+  .oaq-dan-dot {
+    width: 7px;
+    height: 7px;
+  }
+}
+
+/* ===== GIAO DIỆN ĐẶT CƯỢC & CHỌN KHÁCH ĐẤU TRÍ TRÂN CHÂU ===== */
+.oaq-bet-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: oaqPop 0.25s ease;
+}
+
+.oaq-bet-opponent-card {
+  background: #fffbeb;
+  border: 2px solid #fcd34d;
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  box-shadow: 0 3px 8px rgba(245, 158, 11, 0.1);
+}
+
+.oaq-bet-avatar {
+  font-size: 2.3rem;
+  line-height: 1;
+  background: #fef3c7;
+  border: 2px solid #f59e0b;
+  border-radius: 50%;
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.oaq-bet-opp-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.oaq-bet-opp-tag {
+  font-size: 0.65rem;
+  font-weight: 900;
+  color: #b45309;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.oaq-bet-opp-name {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #78350f;
+  margin: 1px 0;
+}
+
+.oaq-bet-opp-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #92400e;
+  background: #fde68a;
+  padding: 2px 7px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+
+.oaq-bet-opp-quote {
+  font-size: 0.76rem;
+  font-style: italic;
+  color: #451a03;
+  line-height: 1.35;
+  background: #ffffff;
+  border-left: 3px solid #f59e0b;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.oaq-btn-reroll-opp {
+  background: #fef3c7;
+  border: 1.5px solid #fbbf24;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #92400e;
+  cursor: pointer;
+  flex: none;
+  align-self: flex-start;
+  transition: all 0.15s;
+}
+
+.oaq-btn-reroll-opp:hover {
+  background: #fde68a;
+  transform: scale(1.05);
+}
+
+.oaq-bet-form-card {
+  background: #ffffff;
+  border: 2px solid #e7d8be;
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.oaq-bet-wallet-bar {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #166534;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.oaq-bet-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #78350f;
+}
+
+.oaq-bet-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.oaq-bet-chip {
+  background: #fdfbf7;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 4px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #334155;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.oaq-bet-chip:hover:not(:disabled) {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
+.oaq-bet-chip.active {
+  background: #f59e0b;
+  border-color: #d97706;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+}
+
+.oaq-bet-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.oaq-bet-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oaq-bet-custom-row label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #78350f;
+  flex: none;
+}
+
+.oaq-bet-input {
+  flex: 1;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e293b;
+  box-sizing: border-box;
+}
+
+.oaq-bet-max-btn {
+  background: #fee2e2;
+  border: 1.5px solid #fca5a5;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #b91c1c;
+  cursor: pointer;
+  flex: none;
+}
+
+.oaq-bet-max-btn:hover {
+  background: #fca5a5;
+}
+
+.oaq-bet-preview-box {
+  background: #fbf7ee;
+  border: 1.5px dashed #ca8a04;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #451a03;
+}
+
+.oaq-btn-start-game {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  border-radius: 14px;
+  color: #ffffff;
+  padding: 12px;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.oaq-btn-start-game:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(217, 119, 6, 0.45);
+}
+
+.oaq-btn-start-game:active {
+  transform: scale(0.98);
+}
+
+/* Badge mức cược trên bàn cờ */
+.oaq-bet-indicator {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #92400e;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.oaq-btn-next-opp {
+  background: #f59e0b;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 900;
+  cursor: pointer;
+  margin-top: 8px;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+  transition: transform 0.15s;
+}
+
+.oaq-btn-next-opp:hover {
+  transform: scale(1.05);
+}

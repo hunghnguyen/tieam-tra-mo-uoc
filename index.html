@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z8V5V4RYCP"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-Z8V5V4RYCP');
+  </script>
+  <!-- Game Safety Shield: Ngăn chặn triệt để lỗi làm văng game trên Safari / iOS WebKit -->
+  <script>
+    window.addEventListener('error', function(e) {
+      console.warn('[Game Safety Shield] Handled error:', e.error || e.message);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      console.warn('[Game Safety Shield] Handled rejection:', e.reason);
+    });
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="color-scheme" content="only light">
+  <title>🧋 Tiệm Trà Mơ Ước</title>
+  <meta name="theme-color" content="#fdf3e4">
+  <link rel="icon" href="img/icon-192.png">
+  <link rel="apple-touch-icon" href="img/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Tiệm Trà Mơ Ước">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest.html">
+
+  <!-- Google Fonts: Baloo 2 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Anti-cache Meta Tags for HTML -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+    <!-- Tự động phát hiện phiên bản mới và làm mới cache ngay lập tức -->
+  <script>
+    (function(){
+      try{
+        var invite = '';
+        if(window.location.search){
+          var p = new URLSearchParams(window.location.search);
+          invite = p.get('invite') || p.get('code') || '';
+        }
+        if(!invite && window.location.hash){
+          var h = window.location.hash.substring(1);
+          if(h.startsWith('invite=')) invite = decodeURIComponent(h.slice(7));
+          else if(h.startsWith('code=')) invite = decodeURIComponent(h.slice(5));
+          else if(h.startsWith('FS-') || h.startsWith('F-') || h.startsWith('G-') || h.startsWith('S-') || h.startsWith('C-') || h.startsWith('TTN-') || /^[A-Za-z0-9]{4,10}$/.test(h)) invite = decodeURIComponent(h);
+        }
+        if(invite){
+          window._pendingInvite = invite;
+        }
+      }catch(e){}
+
+      // Dọn dẹp query param rác nếu có ngay lập tức (loại bỏ _v=, _t=, from=) để triệt tiêu vĩnh viễn lỗi "Site not found"
+      try {
+        if(window.location.search && (window.location.search.includes('_v=') || window.location.search.includes('_t=') || window.location.search.includes('from='))){
+          if(window.location.search.includes('from=classic')) {
+            sessionStorage.setItem('fromClassic', '1');
+            localStorage.setItem('fromClassic', '1');
+          }
+          var cleanUrl = window.location.href.split('?')[0];
+          try { history.replaceState(null, '', cleanUrl); } catch(e){}
+        }
+      } catch(e){}
+
+      // Kiểm tra phiên bản mới từ version.json ngay khi vừa mở trang (Bỏ qua cache hoàn toàn)
+      if(window.location.protocol.startsWith('http')){
+        try{
+          fetch('version.json', { cache: 'no-store' })
+            .then(function(res){ if(res.ok) return res.json(); })
+            .then(function(data){
+              if(data && data.version){
+                // Kiểm tra tính khả dụng của Storage (Tránh reload lặp trên Private/Incognito Mode)
+                var canWriteStorage = false;
+                try {
+                  var testKey = '__ts_storage_test__';
+                  sessionStorage.setItem(testKey, '1');
+                  sessionStorage.removeItem(testKey);
+                  canWriteStorage = true;
+                } catch(e) {
+                  canWriteStorage = false;
+                }
+
+                // Nếu Storage bị chặn hoặc ném lỗi, TUYỆT ĐỐI KHÔNG tự động reload vì không thể lưu cờ chống lặp
+                if(!canWriteStorage || window._tsReloadLock){
+                  return;
+                }
+
+                var storedVer = '';
+                try { storedVer = localStorage.getItem('ts_app_version') || ''; } catch(e){}
+                
+                // Cơ chế chống reload lặp vô tận (Anti-Loop Guard): Mỗi phiên chỉ reload tối đa 1 lần cho mỗi version
+                var reloadGuardKey = 'ts_reload_guard_' + data.version;
+                var hasReloaded = false;
+                try {
+                  hasReloaded = (sessionStorage.getItem(reloadGuardKey) === '1');
+                  var lastSync = parseInt(localStorage.getItem('ts_last_sync_ver_' + data.version) || '0', 10);
+                  if (Date.now() - lastSync < 10 * 60 * 1000) hasReloaded = true;
+                } catch(e){}
+
+                // Nếu đã mang đúng version hoặc đã reload cho bản này rồi => Ghi nhớ và KHÔNG reload nữa
+                if(storedVer === data.version || hasReloaded){
+                  try { localStorage.setItem('ts_app_version', data.version); } catch(e){}
+                  return;
+                }
+
+                // Không bao giờ reload nếu người chơi đang trong game (tránh văng game)
+                var isPlaying = (typeof window.R !== 'undefined' && window.R && (window.R.running || window.R.mode === 'sell'));
+                if(isPlaying){
+                  try { localStorage.setItem('ts_app_version', data.version); } catch(e){}
+                  return;
+                }
+
+                // Đặt cờ khóa bộ nhớ
+                window._tsReloadLock = true;
+
+                // Nếu là bản mới hơn và chưa từng reload trong phiên này: xoá cache & reload sạch
+                try { sessionStorage.setItem(reloadGuardKey, '1'); } catch(e){}
+                try {
+                  localStorage.setItem('ts_app_version', data.version);
+                  localStorage.setItem('ts_last_sync_ver_' + data.version, Date.now().toString());
+                } catch(e){}
+                if('caches' in window){
+                  caches.keys().then(function(ks){
+                    ks.forEach(function(k){ caches.delete(k); });
+                  });
+                }
+                if(navigator.serviceWorker){
+                  navigator.serviceWorker.getRegistrations().then(function(rs){
+                    rs.forEach(function(r){ r.unregister(); });
+                  });
+                }
+                var cleanTarget = window.location.href.split('?')[0];
+                try { history.replaceState(null, '', cleanTarget); } catch(e){}
+                window.location.reload();
+              }
+            }).catch(function(){});
+        }catch(e){}
+      }
+    })();
+  </script>
+
+  <!-- Stylesheet (Cache Busting) -->
+  <link rel="stylesheet" href="css/style.css%3Fv=12.47.579.css">
+  <link rel="stylesheet" href="css/banbe.css%3Fv=12.47.515.css">
+  <link rel="stylesheet" href="css/collection.css%3Fv=12.47.541.css">
+  <link rel="stylesheet" href="css/oanquan.css%3Fv=12.47.515.css">
+  <link rel="stylesheet" href="css/codam.css%3Fv=12.47.531.css">
+  <link rel="stylesheet" href="css/garden.css%3Fv=12.47.576.css">
+  <link rel="stylesheet" href="css/lobby.css%3Fv=12.47.576.css">
+  <link rel="stylesheet" href="css/trend.css%3Fv=12.47.515.css">
+  <!-- Minigames Stylesheets (Đã khoá mã nguồn, mở lại khi cần)
+  <link rel="stylesheet" href="css/baucua.css?v=12.47.270">
+  <link rel="stylesheet" href="css/xidach.css?v=12.47.270">
+  -->
+</head>
+<body>
+
+  <!-- Khung tự động scale theo tỉ lệ chéo khi ở chế độ cửa sổ nhỏ -->
+  <div class="app-scaler" id="appScaler">
+  <div class="app">
+    <header>
+      <div class="h-l">
+        <div class="h-l-controls">
+          <!-- <button id="classicSwitchBtn" type="button" aria-label="Tiệm Trà Nhỏ" title="Chuyển sang bản Tiệm Trà Nhỏ hoài niệm" onclick="openClassicGame()">
+            <span>🍵 Trà Nhỏ</span>
+          </button> -->
+          <div class="h-btns-grid">
+            <button id="pauseBtn" class="pbtn" aria-label="Tạm dừng"><img class="ico" src="img/ic_pause.png" alt=""></button>
+            <button id="volQuickBtn" class="pbtn vol" aria-label="Âm lượng" title="Tăng giảm âm lượng"><span style="font-size:1.05rem;line-height:1;display:grid;place-items:center;">🔊</span></button>
+            <button id="setBtn" class="pbtn gear" aria-label="Cài đặt" title="Cài đặt quán"><img class="ico" src="img/ic_set.png" alt=""></button>
+            <button id="oaqBtn" class="pbtn" aria-label="Ô Ăn Quan Trân Châu" title="Ô Ăn Quan Trân Châu" onclick="window.OAnQuan &amp;&amp; window.OAnQuan.open()"><img class="ico" src="img/ic_pearlbowl.png" alt="Ô Ăn Quan Trân Châu"></button>
+            <!-- Bầu Cua & Xì Dách (Đã khoá mã nguồn, mở lại khi cần)
+            <button id="bcBtn" class="pbtn" aria-label="Bầu Cua" title="Bầu Cua Trân Châu" onclick="window.openBaucua ? window.openBaucua() : (window.BauCua &amp;&amp; window.BauCua.open())"><img class="ico" src="img/ic_pearlbowl.png" alt="Bầu Cua"></button>
+            <button id="xdBtn" class="pbtn" aria-label="Xì Dách" title="Xì Dách Quán Trà" onclick="window.openXidach ? window.openXidach() : (window.XiDach &amp;&amp; window.XiDach.open())"><span style="font-size:1.15rem;display:grid;place-items:center;line-height:1;">🧋</span></button>
+            -->
+          </div>
+        </div>
+        <div class="h-day-weather-col">
+          <div class="h-day-row">Ngày <span id="hDay">1</span><small id="hSub">Chuẩn bị</small></div>
+          <button id="hWeatherBtn" class="weather-pill-btn" type="button" aria-label="Thời tiết" title="Thời tiết & Mùa (Nhấn để xem dự báo)" onclick="window.WeatherSystem &amp;&amp; window.WeatherSystem.openModal()">
+            <span>🌤️ Xuân · 25°C</span>
+          </button>
+        </div>
+      </div>
+      <div class="h-m"><small id="hName">Tiệm Trà Mơ Ước</small><span id="hMoney">0đ</span></div>
+      <div class="h-r">
+        <div class="h-actions-col">
+          <button id="frontBtn" class="front-btn-megah" aria-label="Chi Nhánh" title="Quản lý Chuỗi Chi Nhánh">
+            <span class="front-btn-text">Chi nhánh</span>
+          </button>
+          <button id="collectionBtn" class="collection-btn-text" aria-label="Sưu Tầm" title="Bộ Sưu Tập & Gacha Nguyên Liệu" onclick="window.Collection &amp;&amp; window.Collection.open()">
+            <span class="collection-btn-text-label">Sưu tầm</span>
+            <span class="collection-badge" id="collectionPackBadge" style="display:none;">0</span>
+          </button>
+        </div>
+        <div class="h-rate-box">
+          <span class="stars" id="hStars">★★★★☆</span>
+          <small id="hRate">4,0</small>
+        </div>
+      </div>
+    </header>
+    <div class="awning"></div>
+    <main id="view"></main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="modal" id="modal" hidden><div class="card" id="card"></div></div>
+  <div class="splash" id="splash" hidden></div>
+
+  <!-- Ô Ăn Quan Trân Châu Modal -->
+  <div class="oanquan-modal" id="oanquan-modal" hidden><div class="oanquan-card" id="oanquan-card"></div></div>
+
+  <!-- Milk Tea Crush Modal -->
+  <div class="codam-modal" id="codam-modal" hidden><div class="codam-card" id="codam-card"></div></div>
+
+  <!-- Bầu Cua & Xì Dách Modals (Đã khoá mã nguồn, mở lại khi cần)
+  <div class="baucua-modal" id="baucua-modal" hidden><div class="baucua-card" id="baucua-card"></div></div>
+  <div class="xidach-modal" id="xidach-modal" hidden><div class="xidach-card" id="xidach-card"></div></div>
+  -->
+
+  <!-- Modal Chi Nhánh trong ca bán -->
+  <div class="chinhanh-modal" id="chinhanh-modal" hidden>
+    <div class="chinhanh-modal-card">
+      <div class="chinhanh-modal-header">
+        <div class="chinhanh-modal-title">🏢 QUẢN LÝ CHUỖI CHI NHÁNH &amp; NHƯỢNG QUYỀN</div>
+        <button class="chinhanh-modal-close" id="chiNhanhModalClose" title="Đóng quay lại quầy pha">🧋 Vào Quầy</button>
+      </div>
+      <div class="chinhanh-modal-body" id="chiNhanhModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Modal Mạng Xã Hội (Trà Sữa Feed) trong ca bán -->
+  <div class="mxh-modal" id="mxh-modal" hidden>
+    <div class="mxh-modal-card">
+      <div class="mxh-modal-header">
+        <div class="mxh-modal-title">📱 TRÀ SỮA FEED · MẠNG XÃ HỘI</div>
+        <button class="mxh-modal-close" id="mxhModalClose" title="Đóng quay lại quầy pha">🧋 Vào Quầy</button>
+      </div>
+      <div class="mxh-modal-body" id="mxhModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Modal Bộ Sưu Tập Nguyên Liệu & Gacha Công Thức -->
+  <div class="collection-modal" id="collection-modal" hidden>
+    <div class="collection-modal-card">
+      <div class="collection-modal-header">
+        <div class="collection-modal-title">🏆 BỘ SƯU TẬP NGUYÊN LIỆU &amp; CÔNG THỨC</div>
+        <button class="collection-modal-close" id="collectionModalClose" title="Đóng" onclick="window.Collection &amp;&amp; window.Collection.close()">✕</button>
+      </div>
+      <div class="collection-modal-body" id="collectionModalBody"></div>
+    </div>
+  </div>
+  <!-- Modal Sảnh Tiệm (Hàng Chờ & Sảnh Bàn Ghế Khách Ngồi) -->
+  <div class="lobby-modal" id="lobby-modal" hidden>
+    <header class="lobby-nav">
+      <button type="button" class="lobby-back-btn" onclick="window.closeLobbyView()" title="Quay lại quầy pha chế">
+        ⬅ Vào quầy pha chế
+      </button>
+      <div class="lobby-stats-bar">
+        <div class="lobby-stat-item" title="Số khách đang đứng chờ tại quầy">
+          <span>👥 Chờ: <b id="lobbyStatQueue" style="color:#b8406a;">0 khách</b></span>
+        </div>
+        <div class="lobby-stat-divider"></div>
+        <div class="lobby-stat-item" title="Số bàn đang phục vụ">
+          <span>🪑 Bàn: <b id="lobbyStatTables" style="color:#2b7d63;">0/4 bàn</b></span>
+        </div>
+        <div class="lobby-stat-divider"></div>
+        <div class="lobby-stat-item" title="Két quán">
+          <span>💰 <b id="lobbyStatMoney" style="color:#16a34a;">0đ</b></span>
+        </div>
+      </div>
+    </header>
+
+    <main class="lobby-main" id="lobbyMain">
+      <!-- Thông Báo Khi Sảnh Trà Đang Đóng Cửa -->
+      <div class="lobby-closed-notice" id="lobbyClosedNotice" style="display:none;">
+        <span style="font-size:18px;line-height:1;flex-shrink:0;">🏮</span>
+        <span>Sảnh trà chỉ mở cửa khi vào ngày mới, hiện sảnh trà đang đóng cửa</span>
+      </div>
+
+      <!-- Section 1: Quầy Gọi Món & Hàng Chờ -->
+      <section class="lobby-card lobby-counter-card">
+        <div class="lobby-card-header">
+          <div class="lobby-card-title">
+            <span style="font-size:18px;">🧋</span>
+            <div>
+              <h3>Quầy Pha Chế &amp; Hàng Chờ</h3>
+              <small>Khách tự động đến xếp hàng (tối đa 5 khách chờ)</small>
+            </div>
+          </div>
+          <span class="lobby-queue-badge idle" id="lobbyQueueBadge">Quầy vắng khách (0)</span>
+        </div>
+        <div class="lobby-counter-viewport" id="lobbyCounterViewport" onclick="window.Lobby.cleanAll()" title="Quầy gọi món và hàng chờ">
+          <img id="lobbyCounterImg" class="lobby-counter-img" src="sanh-tiem/quầy.jpg%3Fv=12.47.576" loading="lazy" decoding="async" alt="Quầy pha chế">
+          <!-- Giao diện quầy pha chế trực quan tại vị trí khung đỏ (Live Barista Counter) -->
+          <div class="lobby-barista-live-hud" id="lobbyBaristaLiveHud" style="display:none;" onclick="event.stopPropagation(); window.closeLobbyView();" title="Chạm để chuyển sang Quầy Pha Chế">
+            <!-- Nội dung được cập nhật thời gian thực bởi lobby.js -->
+          </div>
+        </div>
+        <div class="lobby-hint-bar" id="lobbyQueueHint">
+          ⏳ Đang đợi khách ghé quầy gọi món...
+        </div>
+      </section>
+
+      <!-- Section 2: Sảnh Bàn Ghế Khách Ngồi -->
+      <section class="lobby-card lobby-tables-card">
+        <div class="lobby-card-header">
+          <div class="lobby-card-title">
+            <span style="font-size:18px;">🪑</span>
+            <div>
+              <h3>Khu Bàn Ghế Khách Ngồi</h3>
+              <small>Khách chỉ vào ngồi khi bàn được dọn sạch sẽ (✨)</small>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button type="button" class="lobby-btn-sm" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;font-weight:800;" onclick="window.Lobby.openUpgradeModal()" title="Nâng cấp sảnh tiệm">
+              ✨ Nâng cấp sảnh
+            </button>
+            <span class="lobby-dinein-badge">🪑 +30% ngồi tại quán</span>
+            <button type="button" class="lobby-btn-sm pri" onclick="window.Lobby.cleanAll()" title="Dọn tất cả bàn dơ">
+              🧹 Dọn bàn dơ
+            </button>
+          </div>
+        </div>
+        <!-- Thanh 4 Phòng Sảnh Tiệm (Bấm để nhảy nhanh tới phòng) -->
+        <div class="lobby-room-tabs" id="lobbyRoomTabs"></div>
+        <!-- Danh sách 4 phòng riêng biệt cuộn dọc xem toàn bộ -->
+        <div class="lobby-rooms-scroll-list" id="lobbyRoomsScrollList">
+          <!-- Được render động bởi lobby.js với 4 phòng riêng biệt -->
+        </div>
+        <div class="lobby-hint-bar">
+          💡 Kéo xuống để xem toàn bộ 4 phòng! Chạm bàn dơ (🧹) để dọn. Khách từ quầy tự động vào khi bàn sạch!
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal Chi Tiết Bàn Khách Ngồi -->
+  <div class="lobby-detail-modal" id="lobbyTableDetailModal" hidden onclick="if(event.target===this) window.Lobby.closeTableModal()">
+    <div class="lobby-detail-card">
+      <div class="lobby-detail-head">
+        <h3 id="lobbyDetailModalTitle">Chi tiết bàn</h3>
+        <button type="button" onclick="window.Lobby.closeTableModal()">✕</button>
+      </div>
+      <div class="lobby-detail-body" id="lobbyDetailModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Modal Nâng Cấp Sảnh Tiệm -->
+  <div class="lobby-detail-modal" id="lobbyUpgradeModal" hidden onclick="if(event.target===this) window.Lobby.closeUpgradeModal()">
+    <div class="lobby-detail-card" style="max-width:480px;">
+      <div class="lobby-detail-head">
+        <h3 id="lobbyUpgradeModalTitle">🏮 NÂNG CẤP SẢNH TIỆM</h3>
+        <button type="button" onclick="window.Lobby.closeUpgradeModal()">✕</button>
+      </div>
+      <div class="lobby-detail-body" id="lobbyUpgradeModalBody"></div>
+    </div>
+  </div>
+  </div> <!-- /appScaler -->
+
+  <!-- Game Engine Script (Cache Busting) -->
+  <script src="js/banbe.js%3Fv=12.47.456"></script>
+  <!-- Minigames Scripts (Đã khoá mã nguồn, mở lại khi cần)
+  <script src="js/baucua.js?v=12.47.370"></script>
+  <script src="js/xidach.js?v=12.47.370"></script>
+  -->
+  <script src="js/collection.js%3Fv=12.47.541"></script>
+  <script src="js/oanquan.js%3Fv=12.47.456"></script>
+  <script src="js/codam.js%3Fv=12.47.531"></script>
+  <script src="js/pet_run.js%3Fv=12.47.488"></script>
+  <script src="js/weather.js%3Fv=12.47.488"></script>
+  <script src="js/garden.js%3Fv=12.47.592"></script>
+  <script src="js/lobby.js%3Fv=12.47.592"></script>
+  <script src="js/trend.js%3Fv=12.47.456"></script>
+  <script src="js/game.js%3Fv=12.47.592"></script>
+  <script>
+    // Tự động kiểm tra và phục hồi màn hình (Self-Healing Watchdog - tăng thời gian chờ lên 8s để an toàn trên mạng 4G/iOS Safari)
+    setTimeout(function(){
+      if (typeof window.S !== 'undefined') return;
+      var view = document.getElementById('view');
+      var splash = document.getElementById('splash');
+      var hasContent = (view && view.innerHTML.trim().length > 20) || (splash && !splash.hidden && splash.innerHTML.trim().length > 20);
+      if (!hasContent) {
+        console.warn('[Watchdog] Phát hiện màn hình chưa hoàn tất nạp, gọi chế độ an toàn...');
+        if (typeof window.initSafeRecovery === 'function') {
+          window.initSafeRecovery();
+        } else {
+          var banner = document.createElement('div');
+          banner.style.cssText = 'position:fixed;inset:0;background:rgba(253,243,228,0.95);z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:sans-serif;box-sizing:border-box;';
+          banner.innerHTML = '<div style="font-size:48px;margin-bottom:12px;">🧋</div><h3 style="color:#78350f;margin:0 0 8px 0;font-size:20px;">Tiệm Trà Mơ Ước Đang Đồng Bộ</h3><p style="color:#92400e;max-width:320px;font-size:14px;line-height:1.5;margin:0 0 16px 0;">Trình duyệt đang tải bản cập nhật mới. Nhấn nút dưới đây để làm mới sạch và vào chơi ngay:</p><button onclick="window.location.replace(window.location.href.split(\'?\')[0])" style="background:#0284c7;color:#fff;border:none;padding:12px 28px;border-radius:14px;font-weight:bold;cursor:pointer;font-size:15px;box-shadow:0 6px 16px rgba(2,132,199,0.35);">🔄 Tải lại trang ngay</button>';
+          document.body.appendChild(banner);
+        }
+      }
+    }, 8000);
+  </script>
+
+</body>
+</html>

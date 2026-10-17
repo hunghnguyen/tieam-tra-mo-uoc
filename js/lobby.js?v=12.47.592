@@ -1,0 +1,1866 @@
+/**
+ * ============================================================================
+ * SẢNH TIỆM TRÀ SỮA (HÀNG CHỜ & 4 PHÒNG BÀN GHẾ CUỘN XEM TOÀN BỘ)
+ * Tích hợp chính thức vào Tiệm Trà Mơ Ước
+ * - 4 Phòng riêng biệt cuộn dọc xem toàn bộ:
+ *   + Phòng 1 (Phòng Trà Chính): sanh-tiem/bg.jpg - 10.000.000đ (Mở sẵn)
+ *   + Phòng 2 (Phòng VIP Anh Đào): sanh-tiem/bg2.jpg - 20.000.000đ
+ *   + Phòng 3 (Phòng Hội Ngộ Cozy): sanh-tiem/bg3.jpg - 30.000.000đ
+ *   + Phòng 4 (Phòng Thượng Uyển): sanh-tiem/bg4.jpg - 40.000.000đ
+ * - Mỗi phòng 4 bàn (Tổng cộng 16 bàn)
+ * - Khách ngồi sảnh phụ thu thêm +30% giá trị bill
+ * - Khách uống xong để lại bàn dơ, chủ tiệm tự dọn dẹp để đón khách
+ * - Thú cưng lon ton chạy chơi ở sảnh khách ngồi
+ * ============================================================================
+ */
+
+(function () {
+  'use strict';
+
+  // Tọa độ chuẩn của Sảnh Bàn Ghế (1024 x 572)
+  const VIEW = { width: 1024, height: 572 };
+
+  // Danh mục 4 phòng của sảnh tiệm
+  const LOBBY_ROOMS = [
+    { id: 0, name: "Phòng 1", title: "Phòng Trà Chính", bg: "sanh-tiem/bg.jpg?v=12.47.572", cost: 10000000, icon: "🍵" },
+    { id: 1, name: "Phòng 2", title: "Phòng VIP Anh Đào", bg: "sanh-tiem/bg2.jpg?v=12.47.572", cost: 20000000, icon: "🌸" },
+    { id: 2, name: "Phòng 3", title: "Phòng Hội Ngộ Cozy", bg: "sanh-tiem/bg3.jpg?v=12.47.572", cost: 30000000, icon: "🪴" },
+    { id: 3, name: "Phòng 4", title: "Phòng Thượng Uyển", bg: "sanh-tiem/bg4.jpg?v=12.47.572", cost: 40000000, icon: "👑" }
+  ];
+
+  // Vị trí 6 bàn ghế trong mỗi phòng (Bố cục 2 hàng x 3 cột)
+  const TABLE_SLOTS = [
+    { id: 0, label: "Bàn 1", x: 75, y: 270, w: 255, h: 165, bottomY: 435 },
+    { id: 1, label: "Bàn 2", x: 385, y: 270, w: 255, h: 165, bottomY: 435 },
+    { id: 2, label: "Bàn 3", x: 695, y: 270, w: 255, h: 165, bottomY: 435 },
+    { id: 3, label: "Bàn 4", x: 55, y: 385, w: 285, h: 191, bottomY: 576 },
+    { id: 4, label: "Bàn 5", x: 370, y: 385, w: 285, h: 191, bottomY: 576 },
+    { id: 5, label: "Bàn 6", x: 685, y: 385, w: 285, h: 191, bottomY: 576 }
+  ];
+
+  // Helper lấy ảnh bàn ghế theo phong cách phòng hoặc tùy chọn nâng cấp
+  function getTableImgInfo(roomId, guests) {
+    const g = Math.max(0, Math.min(4, guests));
+    let style = 'classic';
+    if (window.S && window.S.lobbyUpgrades && window.S.lobbyUpgrades.style && window.S.lobbyUpgrades.style[roomId]) {
+      style = window.S.lobbyUpgrades.style[roomId];
+    } else {
+      if (roomId === 1) style = 'soft';
+      else if (roomId === 2) style = 'wood';
+      else if (roomId === 3) style = 'royal';
+      else style = 'classic';
+    }
+
+    if (style === 'soft') {
+      const ars = [560/334, 560/361, 560/293, 560/307, 560/385];
+      return { src: `sanh-tiem/table-soft-${g}.webp?v=12.47.572`, ar: ars[g] || 1.6 };
+    } else if (style === 'wood') {
+      const ars = [560/533, 560/410, 560/530, 560/306, 560/308];
+      return { src: `sanh-tiem/table-wood-${g}.webp?v=12.47.572`, ar: ars[g] || 1.5 };
+    } else if (style === 'royal') {
+      const ars = [560/276, 560/382, 560/264, 560/294, 560/307];
+      return { src: `sanh-tiem/table-royal-${g}.webp?v=12.47.572`, ar: ars[g] || 1.8 };
+    } else {
+      // Classic
+      const ars = [1024/611, 1024/660, 1024/536, 1024/561, 1024/674, 904/454];
+      const cg = Math.min(5, guests);
+      return { src: `sanh-tiem/table-${cg}.png?v=12.47.572`, ar: ars[cg] || (1024/611) };
+    }
+  }
+
+  // Thông tin nhóm khách
+  const GROUP_INFO = {
+    1: {
+      title: "Bé An · Học sinh",
+      desc: "Uống trà sữa một mình, ngồi học bài chăm chỉ",
+      quotes: ["Trà sữa ngọt béo vừa vặn!", "Trân châu dai dẻo nhai thích ghê!", "Góc bàn này yên tĩnh học bài thật."]
+    },
+    2: {
+      title: "Minh Quân & Thảo Vy",
+      desc: "Cặp đôi hẹn hò uống trà sữa",
+      quotes: ["Trà đào thơm nức mũi luôn nè!", "Quán trang trí xinh xắn quá!", "Ly trà sữa ngọt ngào như tình yêu tụi mình!"]
+    },
+    3: {
+      title: "Hội Bạn Thân (Na, Duy, Kiệt)",
+      desc: "Họp nhóm bạn thân tám chuyện rôm rả",
+      quotes: ["Full topping luôn chủ quán ơi!", "Cạn ly trà sữa xả stress cuối tuần!", "Uống trà sữa ngắm phố chill thật sự!"]
+    },
+    4: {
+      title: "Gia Đình Hạnh Phúc",
+      desc: "Gia đình 4 người cùng ghé tiệm thưởng thức đồ uống",
+      quotes: ["Cả nhà ai cũng khen trà ngon!", "Topping tươi sạch, vị trà đậm đà!", "Chấm quán 5 sao phục vụ quá chu đáo!"]
+    },
+    5: {
+      title: "Hội Bạn Trẻ Đại Gia Đình",
+      desc: "Nhóm 5 bạn trẻ tụ tập vui vẻ",
+      quotes: ["Bàn 5 người đông vui rôm rả ghê!", "Vừa uống trà vừa ngắm thú cưng cưng xỉu!", "Cạn ly cả nhóm ơi, trà ngon 10 điểm!"]
+    }
+  };
+
+  // Kiểm tra phòng đã mở khoá chưa
+  function isRoomUnlocked(roomId) {
+    if (!window.S) return roomId === 0;
+    if (!window.S.lobbyRooms || !Array.isArray(window.S.lobbyRooms)) {
+      window.S.lobbyRooms = [true, false, false, false];
+    }
+    return !!window.S.lobbyRooms[roomId];
+  }
+
+  // Khởi tạo 6 bàn cho 1 phòng
+  function createRoomTables(roomId) {
+    const list = [];
+    for (let i = 0; i < TABLE_SLOTS.length; i++) {
+      list.push({
+        roomId,
+        slotId: i,
+        status: 'empty', // 'empty' | 'dining' | 'dirty'
+        guests: 0,
+        orders: [],
+        rawPrice: 0,
+        dineInSurcharge: 0,
+        price: 0,
+        tip: 0,
+        timeLeft: 0,
+        duration: 0,
+        speech: ''
+      });
+    }
+    return list;
+  }
+
+  function ensureRoomTablesCapacity(roomId) {
+    if (!state.rooms[roomId]) state.rooms[roomId] = createRoomTables(roomId);
+    while (state.rooms[roomId].length < TABLE_SLOTS.length) {
+      const slotId = state.rooms[roomId].length;
+      state.rooms[roomId].push({
+        roomId,
+        slotId,
+        status: 'empty',
+        guests: 0,
+        orders: [],
+        rawPrice: 0,
+        dineInSurcharge: 0,
+        price: 0,
+        tip: 0,
+        timeLeft: 0,
+        duration: 0,
+        speech: ''
+      });
+    }
+  }
+
+  // Sức chứa hàng chờ tối đa tại quầy sảnh: 5 khách mặc định, mở rộng lên 10 khách nếu đã mở trang bị Nâng Tầng (floor2)
+  function getMaxWaitingCapacity() {
+    if (window.S && window.S.upg && window.S.upg.floor2) {
+      return 10;
+    }
+    return 5;
+  }
+
+  // Trạng thái Sảnh Tiệm
+  const state = {
+    currentRoom: 0,
+    rooms: [createRoomTables(0), createRoomTables(1), createRoomTables(2), createRoomTables(3)],
+    waitingCustomers: 1, // Số khách chờ tại quầy
+    waitingQueue: [1],   // Hàng đợi các nhóm khách
+    autoClean: false,
+    pet: {
+      x: 50,      // % từ 18% đến 82%
+      y: 84,      // % từ 74% đến 90%
+      facing: 1,  // 1: phải, -1: trái
+      action: 'sit', // 'sit', 'walk', 'cheer', 'sleep'
+      bubble: '',
+      bubbleTimer: null
+    }
+  };
+
+  // Getter tương thích ngược cho state.tables
+  Object.defineProperty(state, 'tables', {
+    get() {
+      return this.rooms[this.currentRoom] || this.rooms[0];
+    },
+    configurable: true
+  });
+
+  function pickRandom(arr) {
+    if (!arr || !arr.length) return null;
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  function randomRange(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function formatMoneyShort(amount) {
+    if (typeof fmt === 'function') return fmt(amount);
+    return new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
+  }
+
+  // Kiểm tra Sảnh Trà có đang mở trên màn hình không (tránh render SVG ngầm làm tràn RAM GPU trên iOS Safari)
+  function isLobbyModalOpen() {
+    const modal = document.getElementById('lobby-modal') || document.getElementById('lobbyModal');
+    return !!(modal && !modal.hidden);
+  }
+
+  // Khách mới đến quầy xếp hàng
+  function arrivalCustomerAtCounter(forceCount) {
+    if (!window.R || window.R.mode !== 'sell' || !window.R.running) return;
+    const maxWait = getMaxWaitingCapacity();
+    if (state.waitingCustomers >= maxWait) return;
+
+    const remaining = maxWait - state.waitingCustomers;
+    let newGroup = 1;
+    if (forceCount && forceCount <= remaining) {
+      newGroup = forceCount;
+    } else {
+      const isCleaner = (typeof window.isStaffActive === 'function' && window.isStaffActive('staffCleaner'));
+      const pool = (isCleaner 
+        ? [2, 3, 3, 4, 4, 5, 5] 
+        : [1, 2, 2, 3, 3, 4, 5]
+      ).filter(s => s <= remaining);
+      newGroup = pool.length > 0 ? pickRandom(pool) : Math.min(remaining, 1);
+    }
+
+    state.waitingCustomers = Math.min(maxWait, state.waitingCustomers + newGroup);
+    state.waitingQueue.push(newGroup);
+
+    if (isLobbyModalOpen()) {
+      try { if (typeof sfx === 'function') sfx('bell'); } catch (_) {}
+    }
+    checkAndSeatWaitingCustomers();
+    if (isLobbyModalOpen()) {
+      renderLobbyCounter();
+      updateLobbyStats();
+    }
+    updateLobbyBtnBadge();
+  }
+
+  // Khách từ hàng chờ vào bàn sạch (Tìm trên tất cả các phòng đã mở khoá)
+  function checkAndSeatWaitingCustomers() {
+    if (!window.R || window.R.mode !== 'sell' || !window.R.running) return;
+
+    // Tự động phục hồi đồng bộ hàng đợi nếu bị lệch
+    if (state.waitingCustomers > 0 && state.waitingQueue.length === 0) {
+      let rem = state.waitingCustomers;
+      while (rem > 0) {
+        const sz = Math.min(5, rem);
+        state.waitingQueue.push(sz);
+        rem -= sz;
+      }
+    } else if (state.waitingCustomers <= 0 && state.waitingQueue.length > 0) {
+      state.waitingCustomers = state.waitingQueue.reduce((a, b) => a + b, 0);
+    }
+
+    if (state.waitingCustomers <= 0 || state.waitingQueue.length === 0) {
+      renderLobbyCounter();
+      return;
+    }
+
+    let seatedAny = false;
+    // Xếp khách vào tất cả các bàn sạch đang trống trên mọi phòng đã mở khoá
+    while (state.waitingCustomers > 0 && state.waitingQueue.length > 0) {
+      let foundRoom = -1;
+      let foundTableIdx = -1;
+      for (let r = 0; r < 4; r++) {
+        if (!isRoomUnlocked(r)) continue;
+        const tables = state.rooms[r];
+        for (let i = 0; i < tables.length; i++) {
+          if (tables[i].status === 'empty') {
+            foundRoom = r;
+            foundTableIdx = i;
+            break;
+          }
+        }
+        if (foundRoom !== -1) break;
+      }
+
+      if (foundRoom === -1) break; // Không còn bàn trống ở phòng nào
+
+      const table = state.rooms[foundRoom][foundTableIdx];
+      const groupSize = Math.max(1, Math.min(5, state.waitingQueue.shift() || 1));
+      state.waitingCustomers = Math.max(0, state.waitingCustomers - groupSize);
+      seatedAny = true;
+
+      // Tạo đơn nước thật cho từng người trong nhóm
+      const orders = [];
+      let rawPrice = 0;
+      for (let g = 0; g < groupSize; g++) {
+        let ord = null;
+        if (typeof window.genOrder === 'function') {
+          try { ord = window.genOrder(); } catch (_) {}
+        }
+        if (!ord) {
+          ord = { base: 'tra', flav: null, tops: ['tcden'], size: 'M', sugar: 70, ice: 'Ít đá' };
+        }
+        orders.push(ord);
+
+        let p = 25000;
+        if (typeof window.price === 'function') {
+          try { p = window.price(ord); } catch (_) {}
+        }
+        rawPrice += p;
+      }
+
+      // PHỤ THU SẢNH: +30% TIỀN BILL (Và +15% tổng bill bàn sảnh nếu Zọn Zẹp đạt Cấp 5)
+      const dineInSurcharge = Math.round(rawPrice * 0.30);
+      const isCleanerActive = (typeof window.isStaffActive === 'function' && window.isStaffActive('staffCleaner'));
+      const cleanerTrainLv = (isCleanerActive && typeof window.getStaffTrainLv === 'function') ? window.getStaffTrainLv('staffCleaner') : 0;
+      const baseLobbyBill = rawPrice + dineInSurcharge;
+      const totalPrice = cleanerTrainLv >= 5 ? Math.round(baseLobbyBill * 1.15) : baseLobbyBill;
+
+      const upgs = (window.S && window.S.lobbyUpgrades) || {};
+      const turnoverFactor = Math.max(0.40, 1 - (upgs.turnover || 0) * 0.12);
+      const duration = Math.max(5, Math.round(randomRange(12, 19) * turnoverFactor));
+
+      let tip = groupSize * randomRange(6, 14) * 1000;
+      const tipBonusFactor = 1 + (upgs.tip || 0) * 0.25 + (cleanerTrainLv * 0.05);
+      tip = Math.round(tip * tipBonusFactor);
+      if (isCleanerActive) {
+        // Nhân viên Zọn Zẹp: Sảnh luôn sạch bóng, thơm tho - khách bo hào phóng (+50% tiền tip & thưởng nóng 5.000đ/người)
+        tip = Math.round(tip * 1.50) + (groupSize * 5000);
+      }
+      const info = GROUP_INFO[groupSize] || GROUP_INFO[1];
+
+      table.status = 'dining';
+      table.guests = groupSize;
+      table.orders = orders;
+      table.rawPrice = rawPrice;
+      table.dineInSurcharge = dineInSurcharge;
+      table.price = totalPrice;
+      table.tip = tip;
+      table.timeLeft = duration;
+      table.duration = duration;
+
+      // Câu thoại khách
+      const firstDrinkName = (orders[0] && typeof window.dname === 'function') ? window.dname(orders[0]) : "Trà sữa";
+      table.speech = Math.random() < 0.65 
+        ? `"${firstDrinkName} thơm béo ngon xuất sắc!"` 
+        : pickRandom(info.quotes || ["Trà sữa ngon quá!"]);
+
+      renderRoomSvg(foundRoom);
+    }
+
+    if (seatedAny) {
+      renderLobbyCounter();
+      renderRoomTabs();
+      updateLobbyStats();
+      updateLobbyBtnBadge();
+    }
+  }
+
+  // Khách uống xong: thanh toán & bàn chuyển sang BÀN DƠ (dirty)
+  function finishDining(roomId, tableIndex) {
+    const table = state.rooms[roomId] && state.rooms[roomId][tableIndex];
+    if (!table || table.status !== 'dining') return;
+
+    const totalMoney = (table.price || 0) + (table.tip || 0);
+
+    // Cộng tiền vào két của tiệm trà
+    const guestCups = Math.max(1, Number(table.guests) || 1);
+    if (window.S) {
+      window.S.money = (window.S.money || 0) + totalMoney;
+      window.S.totalRev = (window.S.totalRev || 0) + totalMoney;
+      window.S.served = (window.S.served || 0) + guestCups;
+    }
+
+    // Đồng bộ vào doanh thu ca bán hôm nay
+    if (window.R && window.R.today) {
+      window.R.today.rev = (window.R.today.rev || 0) + table.price;
+      window.R.today.tip = (window.R.today.tip || 0) + table.tip;
+      window.R.today.served = (window.R.today.served || 0) + guestCups;
+      if (window.S) {
+        window.S.bestDayServed = Math.max(window.S.bestDayServed || 0, window.R.today.served || 0);
+        window.S.bestDayRev = Math.max(window.S.bestDayRev || 0, window.R.today.rev || 0);
+      }
+    }
+
+    // Đồng bộ vào sổ kế toán P&L (S.cur) chống rò rỉ dòng tiền ngoài ca
+    if (window.S && window.S.cur) {
+      window.S.cur.lobbyRev = (window.S.cur.lobbyRev || 0) + (table.price || 0);
+      if (table.tip > 0) {
+        window.S.cur.lobbyTips = (window.S.cur.lobbyTips || 0) + table.tip;
+        window.S.cur.tips = (window.S.cur.tips || 0) + table.tip;
+      }
+      if (Array.isArray(table.orders) && table.orders.length > 0 && typeof window.recSale === 'function') {
+        const perCupPrice = Math.round((table.price || 0) / table.orders.length);
+        table.orders.forEach(ord => {
+          window.recSale(ord, perCupPrice);
+        });
+      } else {
+        const sl = window.S.cur.sales = window.S.cur.sales || {};
+        const x = sl['lobby_dining'] = sl['lobby_dining'] || { q: 0, a: 0 };
+        x.q += guestCups;
+        x.a += (table.price || 0);
+        window.S.cur.served = (window.S.cur.served || 0) + guestCups;
+        window.S.bestDayServed = Math.max(window.S.bestDayServed || 0, window.S.cur.served || 0);
+      }
+    }
+
+    try {
+      if (typeof sfx === 'function') sfx('coin');
+    } catch (_) {}
+
+    // Hiệu ứng tiền bay tại phòng tương ứng
+    showFloatingTip(roomId, tableIndex, `+${formatMoneyShort(totalMoney)}`);
+
+    // Bàn chuyển thành BÀN DƠ (Dirty)
+    table.status = 'dirty';
+    table.speech = '';
+
+    renderRoomTabs();
+    renderRoomSvg(roomId);
+    renderLobbyCounter();
+    updateLobbyStats();
+    updateLobbyBtnBadge();
+
+    // Nhân viên Zọn Zẹp: Tự động dọn dẹp sạch sẽ bàn dơ
+    if (typeof window.isStaffActive === 'function' && window.isStaffActive('staffCleaner')) {
+      setTimeout(() => {
+        if (state.rooms[roomId] && state.rooms[roomId][tableIndex] && state.rooms[roomId][tableIndex].status === 'dirty') {
+          cleanTable(roomId, tableIndex, true);
+          showFloatingTip(roomId, tableIndex, '🧹 Đã dọn sạch!');
+        }
+      }, 650);
+    }
+  }
+
+  // Dọn bàn sạch sẽ
+  function cleanTable(roomId, tableIndex, isAuto = false) {
+    const table = state.rooms[roomId] && state.rooms[roomId][tableIndex];
+    if (!table || table.status !== 'dirty') return;
+
+    table.status = 'empty';
+    table.guests = 0;
+    table.orders = [];
+    table.rawPrice = 0;
+    table.dineInSurcharge = 0;
+    table.price = 0;
+    table.tip = 0;
+    table.timeLeft = 0;
+    table.duration = 0;
+    table.speech = '';
+
+    try {
+      if (typeof sfx === 'function') sfx('tap');
+    } catch (_) {}
+
+    renderRoomTabs();
+    renderRoomSvg(roomId);
+    updateLobbyStats();
+    updateLobbyBtnBadge();
+
+    if (!isAuto && typeof toast === 'function') {
+      const room = LOBBY_ROOMS[roomId] || LOBBY_ROOMS[0];
+      toast(`Đã dọn dẹp sạch sẽ Bàn ${tableIndex + 1} (${room.name})! ✨`);
+    }
+
+    // Đón khách từ quầy vào ngay
+    setTimeout(() => {
+      checkAndSeatWaitingCustomers();
+    }, 350);
+  }
+
+  // Dọn tất cả bàn dơ trong tất cả các phòng
+  let _lastCleanAll = 0;
+  function cleanAll() {
+    const now = Date.now();
+    if (now - _lastCleanAll < 300) return;
+    _lastCleanAll = now;
+    let cleaned = 0;
+    for (let r = 0; r < 4; r++) {
+      if (!isRoomUnlocked(r)) continue;
+      ensureRoomTablesCapacity(r);
+      const tables = state.rooms[r];
+      for (let i = 0; i < tables.length; i++) {
+        if (tables[i].status === 'dirty') {
+          cleanTable(r, i, true);
+          cleaned++;
+        }
+      }
+    }
+    if (typeof toast === 'function') {
+      toast(cleaned > 0 ? `Đã dọn sạch ${cleaned} bàn dơ trong tất cả các phòng! ✨` : "Không có bàn nào đang dơ!");
+    }
+  }
+
+  // Render Quầy & Hàng chờ
+  function renderLobbyCounter() {
+    if (!isLobbyModalOpen()) return;
+    const counterImg = document.getElementById('lobbyCounterImg');
+    const queueBadge = document.getElementById('lobbyQueueBadge');
+    const queueHint = document.getElementById('lobbyQueueHint');
+    const closedNotice = document.getElementById('lobbyClosedNotice');
+    if (!counterImg) return;
+
+    const isSelling = !!(window.R && window.R.mode === 'sell' && window.R.running);
+
+    if (closedNotice) {
+      closedNotice.style.display = isSelling ? 'none' : 'flex';
+    }
+
+    if (!isSelling) {
+      const closedSrc = 'sanh-tiem/quầy.jpg?v=12.47.572';
+      if (counterImg.getAttribute('src') !== closedSrc) counterImg.src = closedSrc;
+      if (queueBadge) {
+        queueBadge.textContent = "Sảnh trà đang đóng cửa";
+        queueBadge.className = 'lobby-queue-badge closed';
+      }
+      if (queueHint) {
+        queueHint.innerHTML = "🏮 <b>Sảnh trà chỉ mở cửa khi vào ngày mới, hiện sảnh trà đang đóng cửa.</b>";
+      }
+      renderLobbyBaristaLiveHud();
+      return;
+    }
+
+    const maxWait = getMaxWaitingCapacity();
+    const count = Math.max(0, state.waitingCustomers);
+    const imgCount = Math.min(5, count);
+    const imageMap = {
+      0: 'sanh-tiem/quầy.jpg?v=12.47.572',
+      1: 'sanh-tiem/1 chờ.jpg?v=12.47.572',
+      2: 'sanh-tiem/2 chờ.jpg?v=12.47.572',
+      3: 'sanh-tiem/3 chờ.jpg?v=12.47.572',
+      4: 'sanh-tiem/4 chờ.jpg?v=12.47.572',
+      5: 'sanh-tiem/5 chờ.jpg?v=12.47.572'
+    };
+
+    const nextSrc = imageMap[imgCount] || 'sanh-tiem/5 chờ.jpg?v=12.47.572';
+    if (counterImg.getAttribute('src') !== nextSrc) counterImg.src = nextSrc;
+
+    if (queueBadge) {
+      queueBadge.textContent = count === 0 ? `Quầy vắng khách (0/${maxWait})` : `Đang chờ: ${count}/${maxWait} người`;
+      queueBadge.className = 'lobby-queue-badge ' + (count >= maxWait ? 'full' : count > 0 ? 'active' : 'idle');
+    }
+
+    if (queueHint) {
+      if (count === 0) {
+        queueHint.textContent = "⏳ Đang đợi khách ghé quầy gọi món...";
+      } else {
+        let hasClean = false;
+        for (let r = 0; r < 4; r++) {
+          if (isRoomUnlocked(r) && state.rooms[r].some(t => t.status === 'empty')) {
+            hasClean = true;
+            break;
+          }
+        }
+        if (hasClean) {
+          queueHint.textContent = "✨ Có bàn sạch! Khách đang chuẩn bị vào ngồi...";
+        } else {
+          queueHint.textContent = "⚠️ Tất cả bàn sảnh đều kín hoặc dơ! Hãy dọn dẹp để khách vào!";
+        }
+      }
+    }
+
+    renderLobbyBaristaLiveHud();
+  }
+
+  // Render Giao Diện Quầy Pha Chế Trực Quan tại vị trí khung đỏ
+  // Render Mô Hình Quầy Pha Chế Thu Nhỏ & Hiệu Ứng Bỏ Topping Vào Ly
+  function renderMiniWorkbenchHtml(o, c, step) {
+    const isBusy = !!(o || (c && c.size) || (step && step !== 'idle'));
+    const isDroppingTopping = isBusy && (step === 'top' || step === 'topping' || step === 'tops');
+    const isPouringTea = isBusy && (step === 'tea' || step === 'base');
+    
+    // Màu nước trà dựa trên công thức
+    let liquidColor = '#d4a373';
+    const baseKey = (c && c.base) || (o && o.base) || 'traden';
+    const flavKey = (c && c.flav) || (o && o.flav) || null;
+    if (typeof window.liqCol === 'function') {
+      try {
+        liquidColor = window.liqCol({ base: baseKey, flav: flavKey, mixed: c ? c.mixed : false });
+      } catch (_) {}
+    } else if (window.ITEMS && window.ITEMS[baseKey] && window.ITEMS[baseKey].c) {
+      liquidColor = window.ITEMS[baseKey].c;
+    }
+
+    // Tỉ lệ rót nước trà trong ly (0% -> 85%)
+    let fillRatio = 0.75;
+    if (c && typeof c.fill === 'number' && c.fill > 0) {
+      fillRatio = Math.max(0.2, Math.min(0.85, c.fill));
+    } else if (step === 'tea') {
+      fillRatio = 0.45;
+    } else if (!isBusy) {
+      fillRatio = 0; // Ly trống sạch sẽ đón khách
+    }
+
+    // Tọa độ Y mặt nước trong SVG (Y từ 76 khi rỗng -> 24 khi đầy 80%)
+    const liquidY = fillRatio > 0 ? Math.round(76 - (fillRatio / 0.85) * 52) : 76;
+
+    // Danh sách topping cần chuẩn bị & cho vào ly
+    const tops = (c && c.tops && c.tops.length) ? c.tops : ((o && o.tops) ? o.tops : []);
+    const primaryTop = tops[0] || 'tcden';
+    let topColor = '#2b1d14';
+    if (window.ITEMS && window.ITEMS[primaryTop] && window.ITEMS[primaryTop].c) {
+      topColor = window.ITEMS[primaryTop].c;
+    }
+
+    const hasFoam = tops.some(t => ['cheese', 'fsalt', 'fmatcha', 'fube'].includes(t));
+    const foamColor = tops.includes('fmatcha') ? '#b6d48f' : (tops.includes('fube') ? '#b894d8' : '#fef08a');
+
+    // Các loại hạt / thạch topping bên trong ly (SVG)
+    let innerToppingsSvg = '';
+    if (fillRatio > 0 && tops.length > 0) {
+      tops.forEach(t => {
+        if (t === 'tcden') {
+          innerToppingsSvg += `
+            <g class="mini-svg-tcden">
+              <circle cx="19" cy="72" r="3.6" fill="#24140b" stroke="#120904" stroke-width="0.5"/><circle cx="18" cy="71" r="1.1" fill="#ffffff" opacity="0.6"/>
+              <circle cx="27" cy="73" r="3.7" fill="#24140b" stroke="#120904" stroke-width="0.5"/><circle cx="26" cy="72" r="1.1" fill="#ffffff" opacity="0.6"/>
+              <circle cx="35" cy="73" r="3.6" fill="#24140b" stroke="#120904" stroke-width="0.5"/><circle cx="34" cy="72" r="1.1" fill="#ffffff" opacity="0.6"/>
+              <circle cx="43" cy="72" r="3.7" fill="#24140b" stroke="#120904" stroke-width="0.5"/><circle cx="42" cy="71" r="1.1" fill="#ffffff" opacity="0.6"/>
+              <circle cx="23" cy="65" r="3.6" fill="#24140b" stroke="#120904" stroke-width="0.5"/><circle cx="22" cy="64" r="1.1" fill="#ffffff" opacity="0.6"/>
+              <circle cx="31" cy="66" r="3.7" fill="#24140b" stroke="#120904" stroke-width="0.5"/><circle cx="30" cy="65" r="1.1" fill="#ffffff" opacity="0.6"/>
+              <circle cx="39" cy="65" r="3.6" fill="#24140b" stroke="#120904" stroke-width="0.5"/><circle cx="38" cy="64" r="1.1" fill="#ffffff" opacity="0.6"/>
+            </g>
+          `;
+        } else if (t === 'tcvang') {
+          innerToppingsSvg += `
+            <g class="mini-svg-tcvang">
+              <circle cx="20" cy="72" r="3.6" fill="#e0a526" stroke="#a8740e" stroke-width="0.6"/><circle cx="19" cy="71" r="1.1" fill="#ffffff" opacity="0.7"/>
+              <circle cx="28" cy="73" r="3.7" fill="#e0a526" stroke="#a8740e" stroke-width="0.6"/><circle cx="27" cy="72" r="1.1" fill="#ffffff" opacity="0.7"/>
+              <circle cx="36" cy="73" r="3.6" fill="#e0a526" stroke="#a8740e" stroke-width="0.6"/><circle cx="35" cy="72" r="1.1" fill="#ffffff" opacity="0.7"/>
+              <circle cx="44" cy="72" r="3.7" fill="#e0a526" stroke="#a8740e" stroke-width="0.6"/><circle cx="43" cy="71" r="1.1" fill="#ffffff" opacity="0.7"/>
+              <circle cx="24" cy="65" r="3.6" fill="#e0a526" stroke="#a8740e" stroke-width="0.6"/><circle cx="23" cy="64" r="1.1" fill="#ffffff" opacity="0.7"/>
+              <circle cx="32" cy="66" r="3.7" fill="#e0a526" stroke="#a8740e" stroke-width="0.6"/><circle cx="31" cy="65" r="1.1" fill="#ffffff" opacity="0.7"/>
+              <circle cx="40" cy="65" r="3.6" fill="#e0a526" stroke="#a8740e" stroke-width="0.6"/><circle cx="39" cy="64" r="1.1" fill="#ffffff" opacity="0.7"/>
+            </g>
+          `;
+        } else if (t === 'thachpm' || t === 'pmvien') {
+          const yOff = (tops.includes('tcden') || tops.includes('tcvang')) ? 57 : 65;
+          innerToppingsSvg += `
+            <g class="mini-svg-pm">
+              <rect x="18" y="${yOff}" width="6.8" height="6.8" rx="1.5" fill="#f5e3a0" stroke="#b8923a" stroke-width="0.6"/>
+              <rect x="27" y="${yOff+1}" width="6.8" height="6.8" rx="1.5" fill="#f5e3a0" stroke="#b8923a" stroke-width="0.6"/>
+              <rect x="37" y="${yOff}" width="6.8" height="6.8" rx="1.5" fill="#f5e3a0" stroke="#b8923a" stroke-width="0.6"/>
+              <rect x="23" y="${yOff-7}" width="6.8" height="6.8" rx="1.5" fill="#f5e3a0" stroke="#b8923a" stroke-width="0.6"/>
+              <rect x="33" y="${yOff-6}" width="6.8" height="6.8" rx="1.5" fill="#f5e3a0" stroke="#b8923a" stroke-width="0.6"/>
+            </g>
+          `;
+        } else if (t === 'cunang') {
+          innerToppingsSvg += `
+            <g class="mini-svg-cunang">
+              <rect x="19" y="66" width="6.5" height="6.5" rx="1.5" fill="#9fd49a" stroke="#22c55e" stroke-width="0.6"/>
+              <rect x="28" y="67" width="6.5" height="6.5" rx="1.5" fill="#9fd49a" stroke="#22c55e" stroke-width="0.6"/>
+              <rect x="37" y="66" width="6.5" height="6.5" rx="1.5" fill="#9fd49a" stroke="#22c55e" stroke-width="0.6"/>
+            </g>
+          `;
+        } else if (t === 'suongsao' || t === 'thachcf') {
+          innerToppingsSvg += `
+            <g class="mini-svg-suongsao">
+              <rect x="19" y="66" width="7" height="7" rx="1.5" fill="#1f2a24" stroke="#000000" stroke-width="0.6"/>
+              <rect x="28" y="67" width="7" height="7" rx="1.5" fill="#1f2a24" stroke="#000000" stroke-width="0.6"/>
+              <rect x="37" y="66" width="7" height="7" rx="1.5" fill="#1f2a24" stroke="#000000" stroke-width="0.6"/>
+            </g>
+          `;
+        } else if (t === 'popping' || t === 'thachtc') {
+          innerToppingsSvg += `
+            <g class="mini-svg-popping">
+              <circle cx="21" cy="68" r="4.2" fill="#f28fb0" stroke="#c9587f" stroke-width="0.6"/><circle cx="20" cy="67" r="1.3" fill="#ffffff" opacity="0.8"/>
+              <circle cx="30" cy="69" r="4.2" fill="#f28fb0" stroke="#c9587f" stroke-width="0.6"/><circle cx="29" cy="68" r="1.3" fill="#ffffff" opacity="0.8"/>
+              <circle cx="40" cy="68" r="4.2" fill="#f28fb0" stroke="#c9587f" stroke-width="0.6"/><circle cx="39" cy="67" r="1.3" fill="#ffffff" opacity="0.8"/>
+            </g>
+          `;
+        }
+      });
+    }
+
+    // Bọt kem cheese / foam muối trên bề mặt
+    let foamSvg = '';
+    if (hasFoam && fillRatio > 0.25) {
+      foamSvg = `
+        <path d="M 6 ${liquidY} Q 18 ${liquidY - 5} 32 ${liquidY - 2} T 58 ${liquidY} L 58 ${liquidY + 11} L 6 ${liquidY + 11} Z" fill="${foamColor}" stroke="rgba(255,255,255,0.7)" stroke-width="0.7" />
+      `;
+    }
+
+    // Đá viên bồng bềnh
+    let iceSvg = '';
+    if (fillRatio > 0.25) {
+      iceSvg = `
+        <rect x="17" y="${liquidY + 4}" width="8.5" height="8.5" rx="2" fill="#f0f9ff" fill-opacity="0.85" stroke="#bae6fd" stroke-width="0.8" transform="rotate(-12 21 ${liquidY + 8})" />
+        <rect x="33" y="${liquidY + 5}" width="8.5" height="8.5" rx="2" fill="#f0f9ff" fill-opacity="0.85" stroke="#bae6fd" stroke-width="0.8" transform="rotate(16 37 ${liquidY + 9})" />
+      `;
+    }
+
+    const cupSize = (c && c.size) || (o && o.size) || 'M';
+    const isSealed = !!(c && c.sealed);
+
+    // Hành động mô phỏng
+    let actionTagHtml = '';
+    // Xác định duy nhất 1 loại topping đang được bỏ vào ly (tránh hiển thị dấu +)
+    let currentSingleTopKey = 'tcden';
+    if (tops.length > 0) {
+      // Nếu có nhiều loại topping, hiển thị duy nhất 1 loại đang được múc (luân chuyển mượt mà theo chu kỳ)
+      const topIdx = Math.floor(Date.now() / 2500) % tops.length;
+      currentSingleTopKey = tops[topIdx] || tops[0];
+    }
+    const singleTopName = (window.ITEMS && window.ITEMS[currentSingleTopKey])
+      ? (window.ITEMS[currentSingleTopKey].s || window.ITEMS[currentSingleTopKey].n)
+      : 'topping';
+
+    if (window.ITEMS && window.ITEMS[currentSingleTopKey] && window.ITEMS[currentSingleTopKey].c) {
+      topColor = window.ITEMS[currentSingleTopKey].c;
+    }
+
+    if (isDroppingTopping) {
+      actionTagHtml = `<div class="barista-action-tag">🥄 Đang bỏ ${singleTopName} vào ly...</div>`;
+    } else if (isPouringTea) {
+      actionTagHtml = `<div class="barista-action-tag">🧋 Đang rót cốt trà thơm béo...</div>`;
+    } else if (step === 'sugar_ice') {
+      actionTagHtml = `<div class="barista-action-tag">🧊 Đang thêm đá & lắc đường...</div>`;
+    } else if (step === 'seal' || isSealed) {
+      actionTagHtml = `<div class="barista-action-tag">✨ Dán nắp & chuẩn bị giao!</div>`;
+    } else if (isBusy) {
+      actionTagHtml = `<div class="barista-action-tag">🧑‍🍳 Đang chuẩn bị ly pha chế...</div>`;
+    } else {
+      actionTagHtml = `<div class="barista-action-tag idle">✨ Quầy sẵn sàng đón khách</div>`;
+    }
+
+    return `
+      <div class="barista-stage-wrap">
+        <div class="barista-bench-scene">
+          <!-- Thớt gỗ -->
+          <div class="barista-cutting-board"></div>
+
+          <!-- Khu vực ly pha chế & hiệu ứng rơi topping -->
+          <div class="barista-cup-zone">
+            ${isDroppingTopping ? `
+              <!-- Muỗng múc topping nghiêng -->
+              <div class="barista-mini-spoon" title="Bỏ topping vào ly">🥄</div>
+              <!-- Hạt topping rơi vào ly tuần tự -->
+              <div class="drop-topping-pearl drop-p1" style="background:${topColor};"></div>
+              <div class="drop-topping-pearl drop-p2" style="background:${topColor};"></div>
+              <div class="drop-topping-pearl drop-p3" style="background:${topColor};"></div>
+              <div class="mini-splash-ripple"></div>
+            ` : ''}
+
+            ${isPouringTea ? `
+              <!-- Tia nước rót trà -->
+              <div class="mini-tea-stream" style="background:${liquidColor};"></div>
+            ` : ''}
+
+            <!-- SVG Ly Trà Trực Quan -->
+            <svg class="mini-cup-svg" viewBox="0 0 64 84">
+              <defs>
+                <clipPath id="lobbyMiniCupClip">
+                  <path d="M 6 12 L 58 12 L 51 76 Q 32 80 13 76 Z" />
+                </clipPath>
+              </defs>
+
+              <!-- Bóng đáy ly -->
+              <ellipse cx="32" cy="78" rx="20" ry="3.5" fill="rgba(60,30,10,0.25)" />
+
+              <!-- Thân ly & Nước trà được cắt gọn trong ClipPath -->
+              <g clip-path="url(#lobbyMiniCupClip)">
+                <!-- Nước trà bên trong -->
+                ${fillRatio > 0 ? `
+                  <rect x="0" y="${liquidY}" width="64" height="${84 - liquidY}" fill="${liquidColor}" />
+                  <!-- Vệt sáng 3D cho nước trà -->
+                  <rect x="0" y="${liquidY}" width="16" height="${84 - liquidY}" fill="#ffffff" opacity="0.2" />
+                  <!-- Mặt thoáng sóng nước -->
+                  <path d="M 6 ${liquidY} Q 20 ${liquidY-2} 32 ${liquidY} T 58 ${liquidY}" stroke="#ffffff" stroke-width="1.2" opacity="0.6" fill="none" />
+                ` : ''}
+
+                <!-- Các hạt topping bên trong ly -->
+                ${innerToppingsSvg}
+
+                <!-- Đá viên -->
+                ${iceSvg}
+
+                <!-- Lớp kem cheese / foam -->
+                ${foamSvg}
+              </g>
+
+              <!-- Viền ly thuỷ tinh trong suốt -->
+              <path d="M 6 12 L 58 12 L 51 76 Q 32 80 13 76 Z" fill="none" stroke="#5a3d2b" stroke-width="1.8" />
+              <!-- Miệng ly tròn -->
+              <ellipse cx="32" cy="12" rx="26" ry="3.5" fill="none" stroke="#5a3d2b" stroke-width="1.5" />
+              <!-- Vệt phản quang ánh sáng trên thành ly -->
+              <path d="M 12 18 L 15 70" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.5" />
+
+              ${isSealed ? `
+                <!-- Nắp seal dán kín -->
+                <path d="M 4 12 Q 32 6 60 12 L 57 16 Q 32 10 7 16 Z" fill="#b91c1c" stroke="#5a3d2b" stroke-width="1.2" />
+              ` : `
+                <!-- Vạch chuẩn định lượng -->
+                <line x1="10" y1="28" x2="54" y2="28" stroke="#10b981" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.8" />
+              `}
+
+              <!-- Sticker Size ly M/L -->
+              <g transform="translate(48 68)">
+                <circle r="6" fill="#fffaf0" stroke="#5a3d2b" stroke-width="1.2"/>
+                <text y="2.5" text-anchor="middle" font-family="'Baloo 2', sans-serif" font-weight="900" font-size="8" fill="#5a3d2b">${cupSize}</text>
+              </g>
+
+              <!-- Ống hút đỏ cắm nghiêng nếu ly đã gần xong hoặc đã seal -->
+              ${(fillRatio >= 0.7 || isSealed) ? `
+                <rect x="35" y="-4" width="3.5" height="42" rx="1.5" fill="#f43f5e" transform="rotate(14 36 12)" stroke="#be123c" stroke-width="0.6" />
+              ` : ''}
+            </svg>
+          </div>
+        </div>
+
+        <!-- Tag bước pha chế / Topping đang bỏ vào -->
+        ${actionTagHtml}
+      </div>
+    `;
+  }
+
+  // Render Giao Diện Quầy Pha Chế Trực Quan tại vị trí khung đỏ (chỉ hiển thị khi ĐANG PHA CHẾ)
+  function renderLobbyBaristaLiveHud() {
+    if (!isLobbyModalOpen()) return;
+    try {
+      const hud = document.getElementById('lobbyBaristaLiveHud');
+      if (!hud) return;
+
+      const R = window.R;
+      const S = window.S;
+      const cup = window.cup || {};
+      const fCust = (typeof window.focusCust === 'function') ? window.focusCust() : null;
+
+      // Xác định quầy có đang thực sự trong quá trình pha chế ly trà hay không
+      const isCupActive = !!(cup && cup.size);
+      const isGzWorking = !!(R && R.gzWork && R.gzWork.cId);
+      const isSvWorking = !!(R && R.svWork && R.svWork.cId);
+      const isActivelyBrewing = !!(R && R.mode === 'sell' && R.running && (isCupActive || isGzWorking || isSvWorking));
+
+      // KHI CHƯA PHA CHẾ: Ẩn hoàn toàn ô Live HUD để giữ không gian quầy và sảnh quán trọn vẹn
+      if (!isActivelyBrewing) {
+        hud.style.display = 'none';
+        hud.innerHTML = '';
+        return;
+      }
+
+      // KHI ĐANG PHA CHẾ: Bật hiển thị dạng flex
+      hud.style.display = 'flex';
+
+      let custName = "Quầy đang pha chế";
+      let drinkName = "Ly trà mới";
+      let drinkPriceTxt = "";
+      let drinkOpts = "Đang chế biến...";
+      let statusBadge = "⚡ Đang pha";
+      let isBusy = true;
+      let gaugePct = 0;
+      let staffTxt = "Đang pha chế";
+      let activeStep = 'top';
+      let currentOrder = null;
+
+      if (R && R.mode === 'sell') {
+        if (fCust && fCust.order) {
+          isBusy = true;
+          currentOrder = fCust.order;
+          custName = fCust.name || (fCust.isFriend ? 'Bạn thân ghé tiệm' : 'Khách gọi món');
+          const o = fCust.order;
+          drinkName = (typeof window.dname === 'function') ? window.dname(o) : (window.ITEMS && window.ITEMS[o.base] ? window.ITEMS[o.base].n : 'Trà sữa');
+          
+          let p = 0;
+          try {
+            if (typeof window.price === 'function') p = window.price(o);
+          } catch (_) {}
+          if (p > 0) {
+            drinkPriceTxt = ` · ${formatMoneyShort(p)}`;
+          }
+
+          const tops = (o.tops || []).map(t => (window.ITEMS && window.ITEMS[t]) ? window.ITEMS[t].s : t).join('+');
+          drinkOpts = `${o.size || 'M'} · ${o.sugar != null ? o.sugar + '% đường' : 'Đường chuẩn'} · ${o.ice || 'Đá'}${tops ? ' · ' + tops : ''}`;
+          statusBadge = "⚡ Đang pha";
+          activeStep = 'top';
+        }
+
+        // Ly trà đang pha trên thớt
+        if (cup && cup.size) {
+          const fill = cup.fill || 0;
+          gaugePct = Math.min(100, Math.round(fill * 100));
+          if (fill >= 0.75) {
+            statusBadge = "✨ Gần xong";
+            activeStep = 'seal';
+          } else if (fill >= 0.3) {
+            activeStep = 'top';
+          } else {
+            activeStep = 'tea';
+          }
+        }
+
+        // Trạng thái nhân viên đang làm việc
+        const isGzWorking = !!(R.gzWork && R.gzWork.cId);
+        const isSvWorking = !!(R.svWork && R.svWork.cId);
+        if (isGzWorking) {
+          staffTxt = "⚡ Gen Z đang pha trà";
+          activeStep = (R.gzWork && R.gzWork.step) || 'top';
+        } else if (isSvWorking) {
+          staffTxt = "⚡ Sinh viên đang pha";
+          activeStep = (R.svWork && R.svWork.step) || 'top';
+        } else if (isBusy) {
+          staffTxt = "🧑‍🍳 Quầy đang chuẩn bị";
+        }
+      } else {
+        custName = "Quán đang chuẩn bị";
+        drinkName = "Ca bán chưa mở";
+        drinkPriceTxt = "";
+        drinkOpts = "Kiểm tra kho & nguyên liệu";
+        statusBadge = "⏳ Chuẩn bị";
+      }
+
+      const served = (R && R.today && R.today.served) || 0;
+      const rev = (R && R.today && R.today.rev) || 0;
+      const revStr = (typeof fmt === 'function') ? fmt(rev) : (rev.toLocaleString('vi-VN') + 'đ');
+
+      const miniWorkbenchHtml = renderMiniWorkbenchHtml(currentOrder, cup, activeStep);
+
+      hud.innerHTML = `
+        <div class="barista-live-head">
+          <div class="barista-live-title">
+            <span class="live-dot" style="${isBusy ? 'background:#10b981;' : 'background:#f59e0b;'}"></span>
+            <b>Quầy Pha Chế</b>
+          </div>
+          <span class="barista-live-badge ${isBusy ? 'busy' : ''}">${statusBadge}</span>
+        </div>
+
+        <div class="barista-live-body">
+          <div class="barista-cust-row">
+            <span>👤</span>
+            <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;">${custName}</span>
+          </div>
+          <div class="barista-drink-name" title="${drinkName}">${drinkName}<span class="barista-drink-price">${drinkPriceTxt}</span></div>
+          <div class="barista-drink-opts" title="${drinkOpts}">${drinkOpts}</div>
+          
+          <!-- Khu vực mô hình quầy pha chế thu nhỏ, ly trà & hạt topping rơi -->
+          ${miniWorkbenchHtml}
+
+          <div class="barista-progress-wrap">
+            <div class="barista-gauge-track">
+              <div class="barista-gauge-fill" style="width:${gaugePct}%;"></div>
+            </div>
+            <div class="barista-staff-status">
+              <span>${staffTxt}</span>
+              ${gaugePct > 0 ? `<b style="margin-left:auto;color:#b45309;">${gaugePct}%</b>` : ''}
+            </div>
+          </div>
+        </div>
+
+        <div class="barista-live-foot">
+          <div class="stats">
+            <span>🥤 ${served} ly · ${revStr}</span>
+          </div>
+          <span class="action-hint">Pha chế ➔</span>
+        </div>
+      `;
+    } catch (err) {
+      console.error('Lobby Barista HUD render error:', err);
+    }
+  }
+
+  // Render thanh 4 Tab Phòng (Bấm để cuộn nhanh đến phòng đó)
+  function renderRoomTabs() {
+    if (!isLobbyModalOpen()) return;
+    const tabsContainer = document.getElementById('lobbyRoomTabs');
+    if (!tabsContainer) return;
+
+    tabsContainer.innerHTML = LOBBY_ROOMS.map(r => {
+      const unlocked = isRoomUnlocked(r.id);
+      const tables = state.rooms[r.id] || [];
+      const dirtyCount = tables.filter(t => t.status === 'dirty').length;
+      const diningCount = tables.filter(t => t.status === 'dining').length;
+      const isActive = state.currentRoom === r.id;
+
+      let badgeHtml = '';
+      if (!unlocked) {
+        const costShort = (r.cost / 1000000) + 'tr';
+        badgeHtml = `<span class="lobby-room-tab-badge cost">🔒 ${costShort}</span>`;
+      } else if (dirtyCount > 0) {
+        badgeHtml = `<span class="lobby-room-tab-badge dirty">🧹 ${dirtyCount} dơ</span>`;
+      } else if (diningCount > 0) {
+        badgeHtml = `<span class="lobby-room-tab-badge dining">${diningCount}/${TABLE_SLOTS.length} bàn</span>`;
+      } else {
+        badgeHtml = `<span class="lobby-room-tab-badge" style="background:#e2e8f0;color:#475569;">${TABLE_SLOTS.length} trống</span>`;
+      }
+
+      return `
+        <button type="button" class="lobby-room-tab ${isActive ? 'active' : ''} ${!unlocked ? 'locked' : ''}" onclick="window.Lobby.scrollToRoom(${r.id})">
+          <span>${r.icon} ${r.name}</span>
+          ${badgeHtml}
+        </button>
+      `;
+    }).join('');
+  }
+
+  // Cuộn mượt màn hình tới phòng được chọn
+  function scrollToRoom(roomId) {
+    if (roomId < 0 || roomId >= 4) return;
+    state.currentRoom = roomId;
+    renderRoomTabs();
+
+    const block = document.getElementById(`lobbyRoomBlock_${roomId}`);
+    if (block) {
+      block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  // Modal mở khoá phòng (10tr - 20tr - 30tr - 40tr)
+  function promptUnlockRoom(roomId) {
+    const room = LOBBY_ROOMS[roomId];
+    if (!room) return;
+    const cost = room.cost;
+    const costTxt = (cost / 1000000) + ' triệu đồng (' + formatMoneyShort(cost) + ')';
+    const canAfford = window.S && (window.S.money || 0) >= cost;
+
+    if (typeof ask === 'function') {
+      ask(`
+        <div class="pbig">${room.icon}🚪✨</div>
+        <h2 style="color:#b8406a;margin:4px 0 8px;">MỞ KHOÁ ${room.name.toUpperCase()} - ${room.title.toUpperCase()}</h2>
+        <div style="background:#fff8ee;border:1.5px solid #ebd9c4;border-radius:12px;padding:12px;font-size:0.86rem;line-height:1.55;color:#5a4030;text-align:left;margin:8px 0;">
+          <b>Đặc quyền khu phòng mới:</b><br>
+          • Bổ sung thêm <b>${TABLE_SLOTS.length} bàn khách ngồi</b> riêng biệt (nâng tổng sức chứa sảnh).<br>
+          • Khách sảnh phụ thu thêm <b>+30% giá trị hóa đơn</b>.<br>
+          • Nền không gian mới: <b>${room.bg}</b> trang hoàng ấm cúng, sang trọng.<br>
+          • Chi phí mở khoá vĩnh viễn: <b style="color:#e11d48;font-size:0.95rem;">${costTxt}</b>.<br>
+          ${canAfford ? `<span style="color:#16a34a;font-weight:700;">✅ Két quán đủ tiền (${formatMoneyShort(window.S.money)})</span>` : `<span style="color:#dc2626;font-weight:700;">⚠️ Két quán còn thiếu ${formatMoneyShort(cost - (window.S.money || 0))}</span>`}
+        </div>
+      `, [
+        [`🔓 Mở khoá ngay (-${(cost / 1000000)}tr)`, () => {
+          if (!window.S || (window.S.money || 0) < cost) {
+            if (typeof toast === 'function') toast(`Két quán cần ${costTxt} để mở khoá ${room.name}!`);
+            return;
+          }
+          window.S.money -= cost;
+          if (window.S.cur && Array.isArray(window.S.cur.equip)) {
+            window.S.cur.equip.push({ n: `Mở khoá ${room.name} Sảnh (${room.title})`, v: cost });
+          }
+          window.S.lobbyRooms = window.S.lobbyRooms || [true, false, false, false];
+          window.S.lobbyRooms[roomId] = true;
+          if (typeof save === 'function') save();
+          if (typeof head === 'function') head();
+          try { if (typeof sfx === 'function') sfx('win'); } catch(_) {}
+          state.currentRoom = roomId;
+          renderAllRooms();
+          renderRoomTabs();
+          updateLobbyStats();
+          updateLobbyBtnBadge();
+          if (typeof toast === 'function') toast(`🎉 Mở khoá thành công ${room.name} (${room.title})! ${TABLE_SLOTS.length} bàn mới sẵn sàng đón khách! ✨`, 5000);
+        }, canAfford ? 1 : 0],
+        ['Để sau', () => {}]
+      ]);
+    }
+  }
+
+  // Khởi tạo khung DOM cho cả 4 phòng cuộn dọc nếu chưa có
+  function ensureRoomsDomStructure() {
+    const list = document.getElementById('lobbyRoomsScrollList');
+    if (!list) return;
+
+    if (list.children.length === 4) return;
+
+    list.innerHTML = LOBBY_ROOMS.map(r => `
+      <div class="lobby-room-block" id="lobbyRoomBlock_${r.id}">
+        <div class="lobby-room-block-header">
+          <div class="lobby-room-block-title">
+            <span class="icon">${r.icon}</span>
+            <span>${r.name} · ${r.title}</span>
+          </div>
+          <div id="lobbyRoomBadge_${r.id}"></div>
+        </div>
+        <div class="lobby-room-viewport" id="lobbyRoomViewport_${r.id}">
+          <svg class="lobby-room-svg" id="lobbyRoomSvg_${r.id}" viewBox="0 0 1024 572" preserveAspectRatio="xMidYMid meet" aria-label="${r.name} bàn ghế"></svg>
+          <div id="lobbyRoomOverlay_${r.id}"></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Render SVG và trạng thái cho 1 phòng cụ thể
+  function renderRoomSvg(roomId) {
+    if (!isLobbyModalOpen()) return;
+    ensureRoomsDomStructure();
+    const svg = document.getElementById(`lobbyRoomSvg_${roomId}`);
+    const badgeWrap = document.getElementById(`lobbyRoomBadge_${roomId}`);
+    const overlayWrap = document.getElementById(`lobbyRoomOverlay_${roomId}`);
+    const blockEl = document.getElementById(`lobbyRoomBlock_${roomId}`);
+    if (!svg) return;
+
+    const room = LOBBY_ROOMS[roomId];
+    const unlocked = isRoomUnlocked(roomId);
+    ensureRoomTablesCapacity(roomId);
+    const currentTables = state.rooms[roomId] || [];
+    const dirtyCount = currentTables.filter(t => t.status === 'dirty').length;
+    const diningCount = currentTables.filter(t => t.status === 'dining').length;
+
+    // Cập nhật trạng thái block
+    if (blockEl) {
+      if (!unlocked) blockEl.classList.add('locked');
+      else blockEl.classList.remove('locked');
+    }
+
+    // Cập nhật badge header của phòng
+    if (badgeWrap) {
+      if (!unlocked) {
+        badgeWrap.innerHTML = `<span class="lobby-room-badge-pill locked">🔒 Mở khoá ${(room.cost / 1000000)}tr</span>`;
+      } else if (dirtyCount > 0) {
+        badgeWrap.innerHTML = `<span class="lobby-room-badge-pill dirty">🧹 ${dirtyCount} bàn dơ</span>`;
+      } else if (diningCount > 0) {
+        badgeWrap.innerHTML = `<span class="lobby-room-badge-pill">${diningCount}/${TABLE_SLOTS.length} có khách (+30%)</span>`;
+      } else {
+        badgeWrap.innerHTML = `<span class="lobby-room-badge-pill">✨ ${TABLE_SLOTS.length} bàn sạch (+30%)</span>`;
+      }
+    }
+
+    // Render SVG bàn ghế
+    let elements = [];
+
+    // Nền phòng
+    elements.push({
+      bottomY: 0,
+      svg: `<image href="${room.bg}" width="${VIEW.width}" height="${VIEW.height}" preserveAspectRatio="none" style="${!unlocked ? 'filter:brightness(0.65) saturate(0.85);' : ''}" />`
+    });
+
+    if (unlocked) {
+      for (let i = 0; i < currentTables.length; i++) {
+        const slot = TABLE_SLOTS[i];
+        const table = currentTables[i];
+
+        const guests = table.status === 'dining' ? table.guests : 0;
+        const imgInfo = getTableImgInfo(roomId, guests);
+        const imgSrc = imgInfo.src;
+        const ar = imgInfo.ar;
+        const drawW = slot.w;
+        const drawH = Math.round(drawW / ar);
+        const drawX = slot.x;
+        const drawY = slot.bottomY - drawH;
+
+        let tableSvg = `
+          <g class="scene-table ${table.status}" data-room-id="${roomId}" data-table-id="${i}" style="cursor: pointer; touch-action: manipulation;" onpointerdown="event.stopPropagation(); window.Lobby.onTableClick(${roomId}, ${i})" onclick="window.Lobby.onTableClick(${roomId}, ${i})">
+            <image href="${imgSrc}" x="${drawX}" y="${drawY}" width="${drawW}" height="${drawH}" preserveAspectRatio="none" />
+        `;
+
+        const badgeY = drawY + 16;
+
+        if (table.status === 'dirty') {
+          tableSvg += `
+            <g class="table-dirty-badge" transform="translate(${drawX + drawW / 2 - 58} ${badgeY})">
+              <rect width="116" height="28" rx="14" fill="#ef4444" stroke="#ffffff" stroke-width="2" filter="drop-shadow(0 4px 8px rgba(0,0,0,0.25))" />
+              <text x="58" y="19" text-anchor="middle" font-family="'Baloo 2', sans-serif" font-size="12" font-weight="800" fill="#ffffff">Bàn dơ 🧹 (Chạm để dọn)</text>
+            </g>
+          `;
+        } else if (table.status === 'dining') {
+          const progress = table.duration > 0 ? Math.max(0, Math.min(1, table.timeLeft / table.duration)) : 0;
+          const barWidth = 72;
+          tableSvg += `
+            <g class="table-timer-bar" transform="translate(${drawX + drawW / 2 - barWidth / 2} ${drawY - 14})">
+              <rect width="${barWidth}" height="8" rx="4" fill="rgba(0,0,0,0.35)" />
+              <rect width="${barWidth * progress}" height="8" rx="4" fill="#10b981" />
+            </g>
+          `;
+
+          if (table.speech) {
+            const bubbleW = Math.min(240, table.speech.length * 8.8 + 24);
+            tableSvg += `
+              <g class="bubble-group" transform="translate(${drawX + drawW / 2 - bubbleW / 2} ${drawY - 48})">
+                <rect width="${bubbleW}" height="28" rx="14" fill="#ffffff" stroke="#5a4030" stroke-width="1.8" filter="drop-shadow(0 4px 10px rgba(0,0,0,0.15))" />
+                <polygon points="${bubbleW/2 - 6},28 ${bubbleW/2 + 6},28 ${bubbleW/2},35" fill="#ffffff" stroke="#5a4030" stroke-width="1.8" />
+                <rect x="${bubbleW/2 - 5}" y="26" width="10" height="3" fill="#ffffff" />
+                <text x="${bubbleW / 2}" y="19" text-anchor="middle" font-family="'Baloo 2', sans-serif" font-size="11.5" font-weight="700" fill="#5a4030">${table.speech}</text>
+              </g>
+            `;
+          }
+        } else {
+          tableSvg += `
+            <g class="table-empty-badge" transform="translate(${drawX + drawW / 2 - 46} ${badgeY})">
+              <rect width="92" height="22" rx="11" fill="#fff6ea" stroke="#2b7d63" stroke-width="1.6" opacity="0.95" />
+              <text x="46" y="15" text-anchor="middle" font-family="'Baloo 2', sans-serif" font-size="11" font-weight="700" fill="#2b7d63">✨ ${slot.label} Sạch</text>
+            </g>
+          `;
+        }
+
+        tableSvg += `</g>`;
+
+        elements.push({
+          bottomY: slot.bottomY,
+          svg: tableSvg
+        });
+      }
+    }
+
+    elements.sort((a, b) => a.bottomY - b.bottomY);
+    svg.innerHTML = elements.map(e => e.svg).join('');
+
+    // Overlay khoá nếu phòng chưa mở
+    if (overlayWrap) {
+      if (!unlocked) {
+        overlayWrap.innerHTML = `
+          <div class="lobby-room-locked-overlay">
+            <div class="lobby-room-locked-box">
+              <div class="lock-ico">🔒${room.icon}</div>
+              <h4>${room.name} · ${room.title}</h4>
+              <p>Mở rộng thêm 4 bàn khách ngồi (+30% tiền bill) &amp; không gian ${room.name} rực rỡ!</p>
+              <button type="button" class="lobby-btn-unlock-room" onclick="window.Lobby.promptUnlockRoom(${roomId})">
+                🔓 Mở khoá ngay (${(room.cost / 1000000)}tr)
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        overlayWrap.innerHTML = '';
+      }
+    }
+
+    // Bé thú cưng ở Phòng 1
+    if (roomId === 0) {
+      renderLobbyPet();
+    }
+  }
+
+  // Render toàn bộ 4 phòng cuộn dọc
+  function renderAllRooms() {
+    if (!isLobbyModalOpen()) return;
+    ensureRoomsDomStructure();
+    for (let r = 0; r < 4; r++) {
+      renderRoomSvg(r);
+    }
+  }
+
+  // Render Thú cưng chạy trên sàn Phòng 1
+  function renderLobbyPet() {
+    if (!isLobbyModalOpen()) return;
+    const container = document.getElementById('lobbyRoomViewport_0');
+    if (!container) return;
+
+    let petEl = document.getElementById('lobbyPetWrap');
+    const petData = window.S && window.S.pet;
+
+    if (!petData || !petData.unlocked || petData.ranAway) {
+      if (petEl) petEl.remove();
+      return;
+    }
+
+    const isCat = petData.type === 'cat';
+    const isCapbi = petData.type === 'capybara';
+    const pfx = isCat ? 'Cat' : (isCapbi ? 'Capybara' : 'Dog');
+    const petName = petData.name || (isCat ? 'Mèo Chiêu Tài' : (isCapbi ? 'Cáp Bi Điềm Đạm' : 'Shiba Vàng'));
+
+    if (!petEl) {
+      petEl = document.createElement('div');
+      petEl.id = 'lobbyPetWrap';
+      petEl.className = 'lobby-pet-wrap';
+      petEl.title = `${petName} (Chạm để nựng bé cưng)`;
+      petEl.onclick = onLobbyPetClick;
+      container.appendChild(petEl);
+    }
+
+    const action = state.pet.action || 'sit';
+    let spriteName = 'Sit';
+    if (action === 'walk' || action === 'cheer') {
+      spriteName = 'Play';
+    } else if (action === 'sleep') {
+      spriteName = 'Sleep';
+    } else {
+      spriteName = 'Sit';
+    }
+    const imgSrc = `img/pet/${pfx}_${spriteName}.png`;
+    const fallbackSrc = `img/pet/${pfx}_Sit.png`;
+
+    petEl.style.left = `${state.pet.x}%`;
+    petEl.style.top = `${state.pet.y}%`;
+
+    petEl.innerHTML = `
+      ${state.pet.bubble ? `<div class="lobby-pet-bubble">${state.pet.bubble}</div>` : ''}
+      <img class="lobby-pet-img" src="${imgSrc}" alt="" decoding="async" onerror="this.onerror=null;this.src='${fallbackSrc}';" style="transform: scaleX(${state.pet.facing});">
+      <div class="lobby-pet-shadow"></div>
+    `;
+  }
+
+  // Tương tác nựng thú cưng ở Sảnh
+  function onLobbyPetClick(e) {
+    if (e) e.stopPropagation();
+    const petData = window.S && window.S.pet;
+    if (!petData) return;
+
+    const isCat = petData.type === 'cat';
+    const petName = petData.name || (isCat ? 'Mèo Chiêu Tài' : 'Cún Shiba');
+
+    state.pet.action = 'cheer';
+    state.pet.bubble = isCat ? 'Meo meo~ Khách sảnh thương quá! 🐱✨' : 'Gâu gâu~ Yêu sếp nhất! 🐶💖';
+
+    try {
+      if (typeof sfx === 'function') sfx('coin');
+    } catch (_) {}
+
+    // Tăng EXP cho thú cưng
+    if (typeof addPetExp === 'function') addPetExp(6);
+
+    renderLobbyPet();
+
+    if (typeof toast === 'function') {
+      toast(`🐾 Bé ${petName} tung tăng chạy nhảy ở sảnh khách ngồi! (+6 EXP)`, 3000);
+    }
+
+    clearTimeout(state.pet.bubbleTimer);
+    state.pet.bubbleTimer = setTimeout(() => {
+      state.pet.bubble = '';
+      state.pet.action = 'sit';
+      renderLobbyPet();
+    }, 2800);
+  }
+
+  // Cập nhật bước đi của thú cưng trong sảnh
+  function stepLobbyPet() {
+    if (!isLobbyModalOpen()) return;
+    if (!window.S || !window.S.pet || !window.S.pet.unlocked || window.S.pet.ranAway) return;
+    if (state.pet.action === 'cheer') return;
+
+    if (Math.random() < 0.6) {
+      const targetX = randomRange(18, 82);
+      const targetY = randomRange(76, 88);
+
+      state.pet.facing = targetX > state.pet.x ? 1 : -1;
+      state.pet.action = 'walk';
+      state.pet.x = targetX;
+      state.pet.y = targetY;
+
+      renderLobbyPet();
+
+      setTimeout(() => {
+        if (state.pet.action === 'walk') {
+          state.pet.action = Math.random() < 0.25 ? 'sleep' : 'sit';
+          renderLobbyPet();
+        }
+      }, 2200);
+    }
+  }
+
+  // Hiệu ứng tiền bay tại phòng
+  function showFloatingTip(roomId, tableIndex, text) {
+    if (!isLobbyModalOpen()) return;
+    const slot = TABLE_SLOTS[tableIndex];
+    const container = document.getElementById(`lobbyRoomViewport_${roomId}`);
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const posX = ((slot.x + slot.w / 2) / VIEW.width) * rect.width;
+    const posY = (slot.y / VIEW.height) * rect.height - 18;
+
+    const el = document.createElement('div');
+    el.className = 'lobby-floating-tip';
+    el.textContent = text;
+    el.style.left = `${posX}px`;
+    el.style.top = `${posY}px`;
+
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
+  }
+
+  // Cập nhật thanh chỉ số sảnh (Tính tổng tất cả các phòng đã mở khoá)
+  function updateLobbyStats() {
+    if (!isLobbyModalOpen()) return;
+    let totalUnlockedTables = 0;
+    let occupied = 0;
+    for (let r = 0; r < 4; r++) {
+      if (!isRoomUnlocked(r)) continue;
+      ensureRoomTablesCapacity(r);
+      totalUnlockedTables += TABLE_SLOTS.length;
+      occupied += state.rooms[r].filter(t => t.status === 'dining').length;
+    }
+
+    const statTables = document.getElementById('lobbyStatTables');
+    const statMoney = document.getElementById('lobbyStatMoney');
+    const statQueue = document.getElementById('lobbyStatQueue');
+
+    if (statTables) statTables.textContent = `${occupied}/${totalUnlockedTables} bàn`;
+    if (statMoney && window.S) statMoney.textContent = formatMoneyShort(window.S.money || 0);
+    if (statQueue) statQueue.textContent = `${state.waitingCustomers} khách`;
+  }
+
+  // Cập nhật huy hiệu trên nút "Ra sảnh ➔" ở quầy pha chế
+  function updateLobbyBtnBadge() {
+    const btn = document.getElementById('q3LobbyBtn');
+    const badge = document.getElementById('q3LobbyBadge');
+    if (!btn || !badge) return;
+
+    let totalDirty = 0;
+    let totalDining = 0;
+    let totalUnlockedTables = 0;
+
+    for (let r = 0; r < 4; r++) {
+      if (!isRoomUnlocked(r)) continue;
+      ensureRoomTablesCapacity(r);
+      totalUnlockedTables += TABLE_SLOTS.length;
+      totalDirty += state.rooms[r].filter(t => t.status === 'dirty').length;
+      totalDining += state.rooms[r].filter(t => t.status === 'dining').length;
+    }
+
+    if (totalDirty > 0) {
+      badge.textContent = `🧹 ${totalDirty}`;
+      badge.style.display = 'inline-block';
+      btn.classList.add('has-dirty');
+    } else if (totalDining > 0 || state.waitingCustomers > 0) {
+      badge.textContent = `${totalDining}/${totalUnlockedTables}`;
+      badge.style.display = 'inline-block';
+      btn.classList.remove('has-dirty');
+    } else {
+      badge.style.display = 'none';
+      btn.classList.remove('has-dirty');
+    }
+  }
+
+  // VÒNG LẶP CHÍNH (GAME LOOP) - Chạy đồng thời cho cả 4 phòng
+  setInterval(() => {
+    if (!window.R || window.R.mode !== 'sell' || !window.R.running) return;
+    const modalOpen = isLobbyModalOpen();
+
+    for (let r = 0; r < 4; r++) {
+      if (!isRoomUnlocked(r)) continue;
+      const tables = state.rooms[r];
+      let roomChanged = false;
+      for (let i = 0; i < tables.length; i++) {
+        const table = tables[i];
+        if (table.status === 'dining') {
+          table.timeLeft -= 1;
+          roomChanged = true;
+          if (table.timeLeft <= 0) {
+            finishDining(r, i);
+          }
+        }
+      }
+      if (roomChanged && modalOpen) {
+        renderRoomSvg(r);
+      }
+    }
+
+    if (modalOpen) {
+      renderRoomTabs();
+      renderLobbyBaristaLiveHud();
+    }
+    // Đón khách từ quầy vào bàn sạch nếu có phòng trống
+    checkAndSeatWaitingCustomers();
+
+    // Nhân viên Zọn Zẹp: tự động dọn dẹp bất kỳ bàn dơ nào còn sót lại trên mọi phòng
+    if (typeof window.isStaffActive === 'function' && window.isStaffActive('staffCleaner')) {
+      for (let r = 0; r < 4; r++) {
+        if (!isRoomUnlocked(r)) continue;
+        const tables = state.rooms[r];
+        for (let i = 0; i < tables.length; i++) {
+          if (tables[i].status === 'dirty') {
+            cleanTable(r, i, true);
+          }
+        }
+      }
+    }
+
+    updateLobbyBtnBadge();
+  }, 1000);
+
+  // Khách mới ghé quầy liên tục & nhộn nhịp (Zọn Zẹp & Nâng cấp Lưu lượng giúp khách ghé sảnh đông hơn)
+  setInterval(() => {
+    if (window.R && window.R.mode === 'sell' && window.R.running) {
+      const maxWait = getMaxWaitingCapacity();
+      const isCleaner = (typeof window.isStaffActive === 'function' && window.isStaffActive('staffCleaner'));
+      const upgs = (window.S && window.S.lobbyUpgrades) || {};
+      const trafficLv = upgs.traffic || 0;
+      const spawnChance = isCleaner ? 0.98 : Math.min(0.99, 0.90 + trafficLv * 0.025);
+      if (state.waitingCustomers < maxWait && Math.random() < spawnChance) {
+        arrivalCustomerAtCounter();
+      } else if (isCleaner && state.waitingCustomers === 0) {
+        arrivalCustomerAtCounter();
+      }
+      if (trafficLv >= 2 && state.waitingCustomers < maxWait && Math.random() < (trafficLv * 0.15)) {
+        arrivalCustomerAtCounter();
+      }
+      stepLobbyPet();
+    }
+  }, 2400);
+
+  // Public API
+  window.Lobby = {
+    state,
+    scrollToRoom,
+    promptUnlockRoom,
+
+    onTableClick(roomId, tableIndex) {
+      if (typeof tableIndex === 'undefined') {
+        tableIndex = roomId;
+        roomId = state.currentRoom;
+      }
+      const now = Date.now();
+      const lastKey = `${roomId}_${tableIndex}`;
+      if (this._lastClick && this._lastClickKey === lastKey && (now - this._lastClick) < 300) return;
+      this._lastClick = now;
+      this._lastClickKey = lastKey;
+
+      const currentTables = state.rooms[roomId] || [];
+      const table = currentTables[tableIndex];
+      const slot = TABLE_SLOTS[tableIndex];
+      if (!table) return;
+
+      if (table.status === 'dirty') {
+        cleanTable(roomId, tableIndex);
+        return;
+      }
+
+      if (table.status === 'dining') {
+        this.openTableModal(roomId, tableIndex);
+        return;
+      }
+
+      if (typeof toast === 'function') {
+        const room = LOBBY_ROOMS[roomId];
+        toast(`${slot.label} (${room.name}) đã sạch sẽ, đang đợi khách tiếp theo từ quầy! ✨`);
+      }
+    },
+
+    cleanAll,
+
+    openTableModal(roomId, tableIndex) {
+      if (typeof tableIndex === 'undefined') {
+        tableIndex = roomId;
+        roomId = state.currentRoom;
+      }
+      const currentTables = state.rooms[roomId] || [];
+      const table = currentTables[tableIndex];
+      const slot = TABLE_SLOTS[tableIndex];
+      const room = LOBBY_ROOMS[roomId];
+      if (!table) return;
+
+      const info = GROUP_INFO[table.guests] || GROUP_INFO[1];
+      const modal = document.getElementById('lobbyTableDetailModal');
+      const body = document.getElementById('lobbyDetailModalBody');
+      const title = document.getElementById('lobbyDetailModalTitle');
+      if (!modal || !body) return;
+
+      if (title) title.textContent = `${room.name} - ${slot.label} (${table.guests} người)`;
+
+      const orderListHtml = (table.orders && table.orders.length) 
+        ? table.orders.map((o, idx) => {
+            const drinkName = (typeof window.dname === 'function') ? window.dname(o) : (window.ITEMS && window.ITEMS[o.base] ? window.ITEMS[o.base].n : "Trà sữa");
+            const topNames = (o.tops || []).map(t => (window.ITEMS && window.ITEMS[t]) ? window.ITEMS[t].s : t).join(' + ');
+            const p = (typeof window.price === 'function') ? window.price(o) : 25000;
+            return `
+              <div class="lobby-order-item">
+                <div class="lobby-order-item-left">
+                  <b>Ly ${idx + 1}: ${drinkName} (${o.size || 'M'})</b>
+                  <span>${o.sugar != null ? o.sugar + '% đường' : 'Đường chuẩn'} · ${o.ice || 'Đá thường'}${topNames ? ' · ' + topNames : ''}</span>
+                </div>
+                <div class="lobby-order-item-price">+${formatMoneyShort(p)}</div>
+              </div>
+            `;
+          }).join('')
+        : '<p>Đang chuẩn bị thức uống...</p>';
+
+      const tableImgInfo = getTableImgInfo(roomId, table.guests);
+      body.innerHTML = `
+        <div style="text-align:center;margin-bottom:6px;">
+          <img src="${tableImgInfo.src}" style="width:180px;height:auto;border-radius:12px;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.1));" alt="">
+        </div>
+        <div style="background:#fffaf0;border:1.5px solid #eed6c2;border-radius:12px;padding:8px 12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-weight:800;color:#b8406a;font-size:0.95rem;">${info.title} (${room.name})</div>
+            <span class="lobby-dinein-badge">🪑 Ngồi tại quán (+30%)</span>
+          </div>
+          <div style="font-size:0.78rem;color:#8c7362;margin-top:2px;">${info.desc}</div>
+        </div>
+        <div>
+          <div style="font-size:0.84rem;font-weight:800;color:#5a4030;margin:6px 0 4px;">Chi tiết đồ uống đã gọi:</div>
+          <div class="lobby-order-list">
+            ${orderListHtml}
+          </div>
+        </div>
+        <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;">
+          <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#166534;">
+            <span>Tiền nước gốc:</span>
+            <b>${formatMoneyShort(table.rawPrice)}</b>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#15803d;">
+            <span>Phụ thu ngồi sảnh (+30%):</span>
+            <b>+${formatMoneyShort(table.dineInSurcharge)}</b>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#047857;">
+            <span>Tiền boa dự kiến:</span>
+            <b>+${formatMoneyShort(table.tip)}${typeof window.isStaffActive === 'function' && window.isStaffActive('staffCleaner') ? ' <span style="font-size:0.75rem;color:#059669;font-weight:700;">(🧹 +50%)</span>' : ''}</b>
+          </div>
+          <div style="height:1px;background:#bbf7d0;margin:2px 0;"></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.96rem;font-weight:900;color:#14532d;">
+            <span>Tổng thanh toán:</span>
+            <span>${formatMoneyShort(table.price + table.tip)}</span>
+          </div>
+        </div>
+        <div style="text-align:center;font-size:0.78rem;color:#8c7362;font-style:italic;">
+          💬 "${table.speech || 'Trà thơm béo, topping giòn dai cực đã!'}"
+        </div>
+      `;
+
+      modal.hidden = false;
+    },
+
+    closeTableModal() {
+      const modal = document.getElementById('lobbyTableDetailModal');
+      if (modal) modal.hidden = true;
+    },
+
+    openUpgradeModal() {
+      const modal = document.getElementById('lobbyUpgradeModal');
+      const body = document.getElementById('lobbyUpgradeModalBody');
+      if (!modal || !body) return;
+
+      window.S = window.S || {};
+      window.S.lobbyUpgrades = window.S.lobbyUpgrades || { traffic: 0, turnover: 0, tip: 0, style: {} };
+      const upgs = window.S.lobbyUpgrades;
+      const playerMoney = window.S.money || 0;
+
+      const LOBBY_UPGRADES_CONFIG = {
+        traffic: {
+          name: "Thu Hút Khách Sảnh",
+          desc: "Tăng tỉ lệ và tần suất khách mới ghé xếp hàng tại sảnh tiệm",
+          icon: "📢",
+          max: 5,
+          costs: [500000, 1200000, 2500000, 5000000, 10000000],
+          effect: (lv) => `+${lv * 15}% lưu lượng khách ghé sảnh`
+        },
+        turnover: {
+          name: "Tối Ưu Xoay Vòng Bàn",
+          desc: "Giảm thời gian khách ngồi lại bàn, dùng nước nhanh gọn để giải phóng bàn đón khách mới",
+          icon: "⚡",
+          max: 5,
+          costs: [500000, 1200000, 2500000, 5000000, 10000000],
+          effect: (lv) => `Giảm ${(lv * 12)}% thời gian khách ngồi lại`
+        },
+        tip: {
+          name: "Nghệ Thuật Bo Sảnh",
+          desc: "Nâng cao chất lượng phục vụ tại sảnh, tăng mức tiền bo khách tự nguyện gửi tặng",
+          icon: "💖",
+          max: 5,
+          costs: [800000, 2000000, 4500000, 8000000, 15000000],
+          effect: (lv) => `+${lv * 25}% tiền bo sảnh`
+        }
+      };
+
+      let html = `
+        <div style="font-size:0.83rem;color:#854d0e;background:#fefce8;border:1px solid #fde047;border-radius:10px;padding:8px 12px;margin-bottom:12px;">
+          💡 <b>Nâng cấp chuyên sâu sảnh tiệm:</b> Giúp tăng lượng khách ghé tiệm, tăng tốc độ quay vòng bàn và nhân rộng nguồn thu tiền bo!
+        </div>
+        <div class="lobby-upg-grid" style="display:flex;flex-direction:column;gap:10px;">
+      `;
+
+      for (const [key, item] of Object.entries(LOBBY_UPGRADES_CONFIG)) {
+        const curLv = upgs[key] || 0;
+        const isMax = curLv >= item.max;
+        const nextCost = isMax ? 0 : item.costs[curLv];
+        const canAfford = !isMax && playerMoney >= nextCost;
+
+        html += `
+          <div class="lobby-upg-card" style="display:flex;align-items:center;justify-content:space-between;background:#fffaf0;border:1.5px solid #eed6c2;border-radius:12px;padding:10px 14px;gap:12px;">
+            <div style="font-size:26px;flex-shrink:0;">${item.icon}</div>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <b style="color:#5a4030;font-size:0.92rem;">${item.name}</b>
+                <span style="background:${curLv === item.max ? '#16a34a' : '#b8406a'};color:#fff;font-size:0.72rem;font-weight:800;padding:1px 6px;border-radius:6px;">
+                  ${curLv === item.max ? 'TỐI ĐA' : `Cấp ${curLv}/${item.max}`}
+                </span>
+              </div>
+              <div style="font-size:0.78rem;color:#78350f;margin-top:2px;">${item.desc}</div>
+              <div style="font-size:0.78rem;color:#15803d;font-weight:700;margin-top:2px;">
+                Hiệu ứng: ${curLv > 0 ? item.effect(curLv) : 'Chưa kích hoạt'} 
+                ${!isMax ? `<span style="color:#854d0e;font-weight:normal;">➔ Cấp sau: ${item.effect(curLv + 1)}</span>` : ''}
+              </div>
+            </div>
+            <div>
+              ${isMax ? `
+                <button type="button" class="lobby-upg-btn" disabled style="background:#cbd5e1;color:#64748b;border:none;padding:6px 12px;border-radius:8px;font-size:0.8rem;font-weight:700;">Đã đạt MAX</button>
+              ` : `
+                <button type="button" class="lobby-upg-btn ${canAfford ? 'can-buy' : 'cant-buy'}" onclick="window.Lobby.buyUpgrade('${key}')" style="background:${canAfford ? 'linear-gradient(135deg,#16a34a,#15803d)' : '#94a3b8'};color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:${canAfford ? 'pointer' : 'not-allowed'};white-space:nowrap;">
+                  ${formatMoneyShort(nextCost)}
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      }
+
+      html += `
+        </div>
+        <div style="margin-top:14px;border-top:1.5px dashed #eed6c2;padding-top:12px;">
+          <div style="font-size:0.88rem;font-weight:800;color:#5a4030;margin-bottom:8px;">🎨 Tùy chọn phong cách bộ bàn ghế từng phòng:</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+      `;
+
+      const styleNames = {
+        classic: "Bàn Gỗ Cổ Điển (Classic)",
+        soft: "Pastel Mềm Mại (Soft Pastel)",
+        wood: "Gỗ Mộc Tự Nhiên (Solid Wood)",
+        royal: "Hoàng Gia Sang Trọng (Royal)"
+      };
+
+      for (let r = 0; r < 4; r++) {
+        const room = LOBBY_ROOMS[r];
+        const unlocked = isRoomUnlocked(r);
+        const curStyle = (upgs.style && upgs.style[r]) || (r === 1 ? 'soft' : r === 2 ? 'wood' : r === 3 ? 'royal' : 'classic');
+
+        html += `
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:0.8rem;">
+            <div><b>${room.name}:</b> ${room.title} ${!unlocked ? '<span style="color:#ef4444;">(Chưa mở)</span>' : ''}</div>
+            <select style="font-size:0.78rem;padding:3px 6px;border-radius:6px;border:1px solid #cbd5e1;background:#fffaf0;" onchange="window.Lobby.setRoomTableStyle(${r}, this.value)" ${!unlocked ? 'disabled' : ''}>
+              <option value="classic" ${curStyle === 'classic' ? 'selected' : ''}>${styleNames.classic}</option>
+              <option value="soft" ${curStyle === 'soft' ? 'selected' : ''}>${styleNames.soft}</option>
+              <option value="wood" ${curStyle === 'wood' ? 'selected' : ''}>${styleNames.wood}</option>
+              <option value="royal" ${curStyle === 'royal' ? 'selected' : ''}>${styleNames.royal}</option>
+            </select>
+          </div>
+        `;
+      }
+
+      html += `
+          </div>
+        </div>
+      `;
+
+      body.innerHTML = html;
+      modal.hidden = false;
+    },
+
+    closeUpgradeModal() {
+      const modal = document.getElementById('lobbyUpgradeModal');
+      if (modal) modal.hidden = true;
+    },
+
+    buyUpgrade(key) {
+      const LOBBY_UPGRADES_CONFIG = {
+        traffic: {
+          name: "Thu Hút Khách Sảnh",
+          desc: "Tăng tỉ lệ và tần suất khách mới ghé xếp hàng tại sảnh tiệm",
+          max: 5,
+          costs: [500000, 1200000, 2500000, 5000000, 10000000],
+          effect: (lv) => `+${lv * 15}% lưu lượng khách ghé sảnh`
+        },
+        turnover: {
+          name: "Tối Ưu Xoay Vòng Bàn",
+          desc: "Giảm thời gian khách ngồi lại bàn, dùng nước nhanh gọn để giải phóng bàn đón khách mới",
+          max: 5,
+          costs: [500000, 1200000, 2500000, 5000000, 10000000],
+          effect: (lv) => `Giảm ${(lv * 12)}% thời gian khách ngồi lại`
+        },
+        tip: {
+          name: "Nghệ Thuật Bo Sảnh",
+          desc: "Nâng cao chất lượng phục vụ tại sảnh, tăng mức tiền bo khách tự nguyện gửi tặng",
+          max: 5,
+          costs: [800000, 2000000, 4500000, 8000000, 15000000],
+          effect: (lv) => `+${lv * 25}% tiền bo sảnh`
+        }
+      };
+
+      const cfg = LOBBY_UPGRADES_CONFIG[key];
+      if (!cfg) return;
+
+      window.S = window.S || {};
+      window.S.lobbyUpgrades = window.S.lobbyUpgrades || { traffic: 0, turnover: 0, tip: 0, style: {} };
+      const curLv = window.S.lobbyUpgrades[key] || 0;
+      if (curLv >= cfg.max) return;
+
+      const cost = cfg.costs[curLv];
+      if ((window.S.money || 0) < cost) {
+        if (typeof toast === 'function') toast(`Két quán cần ${formatMoneyShort(cost)} để nâng cấp ${cfg.name}!`);
+        return;
+      }
+
+      window.S.money -= cost;
+      window.S.lobbyUpgrades[key] = curLv + 1;
+
+      if (window.S.cur && Array.isArray(window.S.cur.equip)) {
+        window.S.cur.equip.push({ n: `Nâng cấp Sảnh: ${cfg.name} Cấp ${curLv + 1}`, v: cost });
+      }
+
+      if (typeof save === 'function') save();
+      if (typeof head === 'function') head();
+      try { if (typeof sfx === 'function') sfx('win'); } catch (_) {}
+
+      if (typeof toast === 'function') {
+        toast(`🎉 Nâng cấp ${cfg.name} lên Cấp ${curLv + 1} thành công! (${cfg.effect(curLv + 1)})`, 4000);
+      }
+
+      this.openUpgradeModal();
+      updateLobbyStats();
+    },
+
+    setRoomTableStyle(roomId, style) {
+      window.S = window.S || {};
+      window.S.lobbyUpgrades = window.S.lobbyUpgrades || { traffic: 0, turnover: 0, tip: 0, style: {} };
+      window.S.lobbyUpgrades.style = window.S.lobbyUpgrades.style || {};
+      window.S.lobbyUpgrades.style[roomId] = style;
+
+      if (typeof save === 'function') save();
+      renderRoomSvg(roomId);
+      if (typeof toast === 'function') {
+        const room = LOBBY_ROOMS[roomId];
+        toast(`🎨 Đã đổi phong cách bàn ghế cho ${room.name}! ✨`);
+      }
+    },
+
+    render() {
+      renderAllRooms();
+      renderRoomTabs();
+      renderLobbyCounter();
+      updateLobbyStats();
+      updateLobbyBtnBadge();
+    },
+
+    renderBaristaHud() {
+      renderLobbyBaristaLiveHud();
+    },
+
+    open() {
+      const modal = document.getElementById('lobby-modal') || document.getElementById('lobbyModal');
+      if (!modal) return;
+      modal.hidden = false;
+      this.render();
+      const isSelling = !!(window.R && window.R.mode === 'sell' && window.R.running);
+      if (!isSelling) {
+        if (typeof window.notifyLobbyClosedIfNeeded === 'function') {
+          window.notifyLobbyClosedIfNeeded();
+        } else if (typeof window.toast === 'function') {
+          window.toast('🏮 Sảnh trà chỉ mở cửa khi vào ngày mới, hiện sảnh trà đang đóng cửa');
+        }
+      }
+      try { if (typeof sfx === 'function') sfx('pop'); } catch (_) {}
+    },
+
+    close() {
+      const modal = document.getElementById('lobby-modal') || document.getElementById('lobbyModal');
+      if (!modal) return;
+      modal.hidden = true;
+      try { if (typeof sfx === 'function') sfx('pop'); } catch (_) {}
+    }
+  };
+
+  // Khai báo hàm mở/đóng sảnh toàn cục để tương thích mọi nút gọi
+  window.openLobbyView = function() {
+    window.Lobby.open();
+  };
+
+  window.closeLobbyView = function() {
+    window.Lobby.close();
+  };
+
+  // Tự động khởi tạo khi tài liệu nạp xong
+  function init() {
+    renderAllRooms();
+    renderRoomTabs();
+    renderLobbyCounter();
+    updateLobbyStats();
+    updateLobbyBtnBadge();
+
+    const openBtn = document.getElementById('q3LobbyBtn');
+    if (openBtn) {
+      openBtn.onclick = () => window.Lobby.open();
+    }
+
+    const signBtn = document.getElementById('signLobbyBadge');
+    if (signBtn) {
+      signBtn.onclick = () => window.Lobby.open();
+    }
+
+    const backBtns = document.querySelectorAll('.lobby-back-btn, #lobbyBackBtn');
+    backBtns.forEach(btn => {
+      btn.onclick = () => window.Lobby.close();
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    setTimeout(init, 100);
+  }
+})();

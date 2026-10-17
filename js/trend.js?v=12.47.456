@@ -1,0 +1,1953 @@
+/* ==========================================================================
+   🔥 HỆ THỐNG BẮT TREND MÓN HOT F&B & RADAR THỊ TRƯỜNG (R&D MENU LAB)
+   Tiệm Trà Mơ Ước - Version 12.47.421
+   ========================================================================== */
+
+(function () {
+  'use strict';
+
+  // 1. KHO DỮ LIỆU 6 MÓN HOT TREND KINH ĐIỂN
+  const TREND_DATABASE = [
+    {
+      id: 'tra_chanh_gia_tay',
+      name: 'Trà Chanh Giã Tay',
+      icon: '🍋',
+      badge: 'Cơn sốt giã tay Quảng Đông',
+      targetCustomer: 'Gen Z & Học sinh - Sinh viên',
+      targetDesc: 'Mê check-in sống ảo, bị mê hoặc bởi mùi tinh dầu chanh thơm nồng.',
+      story: 'Dùng chày gỗ thủ công giã mạnh lát chanh tươi Quảng Đông cùng đá viên mát lạnh, tinh dầu vỏ chanh thơm nức mũi! Giới trẻ xếp hàng dài cả cây số chỉ để có một ly check-in TikTok.',
+      keyIngs: ['luc', 'f_chanh', 'ice'],
+      orderRecipe: { base: 'luc', flav: 'f_chanh', tops: [], sugar: 70, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 2.0, 2: 2.5, 3: 1.2, 4: 1.0 },
+      quotes: [
+        'Quán có Trà Chanh Giã Tay hot TikTok không? Cho em 1 ly chụp ảnh sống ảo liền nha!',
+        'Thấy clip giã chày rần rần trên mạng, cho mình 1 ly Trà Chanh Giã Tay thẩm thử nha quán!',
+        'Gen Z tụi em là phải uống Trà Chanh Giã Tay mới chịu! Cho em 1 ly thơm nức mũi nha!'
+      ],
+      hashtags: ['#TraChanhGiaTay', '#GiaTayQuangDong', '#TikTokFood', '#TrendFNB', '#TiemTraMoUoc']
+    },
+    {
+      id: 'cf_muoi_hue',
+      name: 'Cà Phê Muối Xứ Huế',
+      icon: '☕',
+      badge: 'Đặc sản Cố Đô béo mặn',
+      targetCustomer: 'Dân văn phòng & Người đi làm',
+      targetDesc: 'Đơn gom công ty giờ trưa/sáng, tỷ suất sinh lời cực cao vì giá vốn thấp.',
+      story: 'Vị đắng đậm đà của cà phê Robusta quyện cùng lớp Kem muối mằn mặn béo ngậy đặc sản cố đô Huế. Dân công sở mê mệt mỗi sớm mai, đơn gom công ty nổ liên tục!',
+      keyIngs: ['tra', 'thachcf', 'fsalt'],
+      orderRecipe: { base: 'tra', flav: null, tops: ['thachcf', 'fsalt'], sugar: 50, ice: 'Ít đá', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 1.8, 2: 2.2, 3: 1.15, 4: 1.0 },
+      quotes: [
+        'Sáng ra phải làm 1 ly Cà Phê Muối Xứ Huế mới tỉnh táo chạy deadline được, cho mình 1 ly nha!',
+        'Cả phòng công ty mình đang mê Cà Phê Muối ở đây, cho 1 ly kem muối béo mặn chuẩn vị nhé!',
+        'Nghe đồn kem muối ở đây mặn béo đúng điệu Huế, cho mình 1 ly test liền nha sếp!'
+      ],
+      hashtags: ['#CaPheMuoi', '#CaPheMuoiXuHue', '#KemMuoiBeoNgay', '#CoffeeTime', '#DanVanPhong']
+    },
+    {
+      id: 'dat_nung_van_nam',
+      name: 'Trà Sữa Đất Nung Vân Nam',
+      icon: '🍲',
+      badge: 'Ấm áp thảo mộc dưỡng nhan',
+      targetCustomer: 'Hội chị em & Khách chuộng dưỡng nhan',
+      targetDesc: 'Sốt cực mạnh vào mùa Đông hoặc ngày mưa se lạnh/mưa phùn.',
+      story: 'Hồng trà ủ chậm trong ấm đất nung cùng táo đỏ, kỷ tử, hoa hồng khô, tỏa khói nghi ngút thơm lừng vị thảo mộc ấm áp.',
+      keyIngs: ['hong', 'f_tao', 'thachtc'],
+      orderRecipe: { base: 'hong', flav: 'f_tao', tops: ['thachtc'], sugar: 50, ice: 'Không đá', size: 'L' },
+      quickCost: 150000,
+      proCost: 500000,
+      weatherBonus: ['winter', 'cold', 'sp_rain', 'au_drizzle', 'su_rain'],
+      priceMultipliers: { 1: 2.2, 2: 2.6, 3: 1.2, 4: 1.0 },
+      quotes: [
+        'Trời se lạnh thế này ngồi nhâm nhi Trà Sữa Đất Nung Vân Nam ấm ấm là hết sảy, cho em 1 niêu nha quán!',
+        'Trà Đất Nung Vân Nam thảo mộc dưỡng nhan đây rồi, cho mình 1 ly nóng hổi thơm nức mũi nha!',
+        'Mưa rét thế này chỉ thèm Trà Sữa Đất Nung thôi, quán làm nóng hổi cho em nhé!'
+      ],
+      hashtags: ['#TraSuaDatNung', '#VanNamClaypot', '#ThaoMocDuongNhan', '#MuaDongAmAp', '#TraSuaHot']
+    },
+    {
+      id: 'tra_mang_cau',
+      name: 'Trà Mãng Cầu Xiêm',
+      icon: '🍈',
+      badge: 'Cơn bão nhiệt đới mùa hè',
+      targetCustomer: 'Giới trẻ & Dân giải nhiệt ngày hè',
+      targetDesc: 'Cơn lốc giải khát bùng nổ ngày hè nắng gắt oi bức.',
+      story: 'Mãng cầu tươi dầm ngọt thanh chua dịu kết hợp lục trà lài và đá mát lạnh, đánh tan cái nóng oi bức mùa hạ!',
+      keyIngs: ['luc', 'f_mang', 'thach'],
+      orderRecipe: { base: 'luc', flav: 'f_mang', tops: ['thach'], sugar: 70, ice: 'Đá thường', size: 'L' },
+      quickCost: 150000,
+      proCost: 500000,
+      weatherBonus: ['summer', 'hot', 'su_hot', 'sp_sunny'],
+      priceMultipliers: { 1: 2.0, 2: 2.4, 3: 1.15, 4: 1.0 },
+      quotes: [
+        'Nắng nóng cháy đầu, cho em 1 ly Trà Mãng Cầu Xiêm nhiều đá chua ngọt mát lạnh cứu đói nha!',
+        'Trà Mãng Cầu đang làm mưa làm gió TikTok, quán cho em 1 ly đầy ắp thịt mãng cầu nha!',
+        'Mê cái vị chua ngọt của Trà Mãng Cầu quá, cho mình 1 ly giải nhiệt buổi trưa nha!'
+      ],
+      hashtags: ['#TraMangCau', '#MangCauXiem', '#GiaiNhietMuaHe', '#TraTraiCay', '#HotTrendViral']
+    },
+    {
+      id: 'tra_sua_nuong_pm',
+      name: 'Trà Sữa Nướng Phô Mai',
+      icon: '🍮',
+      badge: 'Khò lửa caramen xèo xèo',
+      targetCustomer: 'Tiktoker & Giới trẻ sống ảo',
+      targetDesc: 'Khò lửa xèo xèo triệu view, tăng mạnh tương tác mạng xã hội (+30% điểm MXH).',
+      story: 'Khò lửa xèo xèo thơm nức mũi mùi đường caramen cháy xém trên nền kem phô mai béo ngậy. Clip TikTok triệu view lan tỏa với tốc độ chóng mặt!',
+      keyIngs: ['tra', 'cheese', 'pmvien'],
+      orderRecipe: { base: 'tra', flav: null, tops: ['cheese', 'pmvien'], sugar: 70, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 1.9, 2: 2.3, 3: 1.2, 4: 1.0 },
+      quotes: [
+        'Quán nhớ khò lửa lớp phô mai xèo xèo để em quay clip TikTok triệu view nha, cho 1 ly Trà Sữa Nướng Phô Mai!',
+        'Mùi đường caramen nướng thơm nức cả mũi, cho mình 1 ly Trà Sữa Nướng Phô Mai béo ngậy nha!',
+        'Team mê phô mai béo ngậy điểm danh! Cho em 1 ly Trà Sữa Nướng Phô Mai nướng cháy cạnh nhen!'
+      ],
+      hashtags: ['#TraSuaNuong', '#PhoMaiKhoLua', '#CremeBruleeTea', '#TrieuViewTikTok', '#BeoNgay']
+    },
+    {
+      id: 'tra_sua_chuoi_chien',
+      name: 'Trà Sữa Chuối Chiên',
+      icon: '🍌',
+      badge: 'Béo ngậy giòn rụm',
+      targetCustomer: 'Gen Z & Tín đồ ăn vặt đường phố',
+      targetDesc: 'Hương vị chuối chín thơm lừng mật ong quyện cùng cốt trà sữa béo ngậy.',
+      story: 'Sự kết hợp bùng nổ giữa trà sữa truyền thống và lớp topping bánh chuối nướng phô mai giòn rụm thơm nức mũi! Giới trẻ săn lùng ráo riết để thử món ăn vặt độc lạ này.',
+      keyIngs: ['tra', 'pmvien', 'tcvang'],
+      orderRecipe: { base: 'tra', flav: null, tops: ['pmvien', 'tcvang'], sugar: 70, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 2.0, 2: 2.4, 3: 1.15, 4: 1.0 },
+      quotes: [
+        'Nghe đồn món Trà Sữa Chuối Chiên ở đây béo giòn thơm nức mũi, cho em 1 ly thử liền nha quán!',
+        'Thấy clip TikTok review Trà Sữa Chuối Chiên độc lạ quá, cho mình 1 ly trải nghiệm nha!',
+        'Team mê chuối chiên với trà sữa đây rồi, cho em 1 ly nhiều trân châu hoàng kim nha!'
+      ],
+      hashtags: ['#TraSuaChuoiChien', '#AnVatSaiGon', '#DocLaBinhDuong', '#TikTokFood', '#TrendFNB']
+    },
+    {
+      id: 'matcha_latte',
+      name: 'Matcha Latte',
+      icon: '🍵',
+      badge: 'Matcha Uji chuẩn Nhật',
+      targetCustomer: 'Dân văn phòng, Gen Z & Tín đồ Healthy',
+      targetDesc: 'Thanh tao, quý phái, bùi béo tự nhiên, vị đắng dịu đầu lưỡi.',
+      story: 'Bột matcha Uji xanh ngọc bích cao cấp hòa quyện cùng sữa tươi thanh trùng ngọt dịu và lớp Kem matcha mịn màng. Thức uống thanh lịch, sang chảnh số một!',
+      keyIngs: ['matcha', 'fmatcha', 'thach'],
+      orderRecipe: { base: 'matcha', flav: null, tops: ['fmatcha', 'thach'], sugar: 50, ice: 'Ít đá', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 2.0, 2: 2.5, 3: 1.2, 4: 1.0 },
+      quotes: [
+        'Sáng nay cho mình 1 ly Matcha Latte ít đá đậm vị trà xanh Uji tỉnh táo làm việc nha!',
+        'Mê màu xanh ngọc bích của Matcha Latte ở đây quá, cho em 1 ly béo ngậy chụp ảnh sống ảo nha!',
+        'Gu mình là Matcha Latte chuẩn vị Nhật, quán pha cho mình 1 ly kem matcha béo mịn nhé!'
+      ],
+      hashtags: ['#MatchaLatte', '#UjiMatcha', '#TraXanhNhatBan', '#HealthyDrink', '#CafeVibes']
+    },
+    {
+      id: 'tra_sua_com_deo',
+      name: 'Trà Sữa Cốm Dẻo',
+      icon: '🌾',
+      badge: 'Hương vị mùa Thu Hà Nội',
+      targetCustomer: 'Tín đồ hoài niệm, học sinh sinh viên & dân văn phòng',
+      targetDesc: 'Hương cốm non thơm dìu dịu kết hợp thạch củ năng dẻo bùi và kem phô mai.',
+      story: 'Từng hạt cốm non xanh mướt dẻo bùi mang đậm phong vị mùa Thu Hà Nội, hòa vào dòng lục trà thanh khiết và lớp kem cheese béo ngậy ngất ngây lòng người.',
+      keyIngs: ['luc', 'cunang', 'cheese'],
+      orderRecipe: { base: 'luc', flav: null, tops: ['cunang', 'cheese'], sugar: 50, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      weatherBonus: ['autumn', 'chill', 'au_chill', 'au_sunny'],
+      priceMultipliers: { 1: 2.1, 2: 2.5, 3: 1.2, 4: 1.0 },
+      quotes: [
+        'Mùa này mà không uống Trà Sữa Cốm Dẻo là có lỗi với thời tiết Hà Nội lắm! Cho em 1 ly nha quán!',
+        'Thạch cốm dẻo thơm nức mũi mùi lúa non, cho mình 1 ly Trà Sữa Cốm Dẻo thêm kem cheese nhé!',
+        'Nghe đồn Trà Sữa Cốm Dẻo ở đây chuẩn vị thu Hà Nội, cho mình 1 ly test thử nha!'
+      ],
+      hashtags: ['#TraSuaComDeo', '#ComLangVong', '#MuaThuHaNoi', '#HuongComNon', '#TrendThu2026']
+    },
+    {
+      id: 'tra_mang_cut',
+      name: 'Trà Măng Cụt',
+      icon: '🟣',
+      badge: 'Cơn sốt Nữ Hoàng Trái Cây',
+      targetCustomer: 'Gen Z & Hội săn lùng trái cây đầu mùa',
+      targetDesc: 'Chua ngọt thanh tao, giải nhiệt cực đã, săn lùng ráo riết mạng xã hội.',
+      story: 'Múi măng cụt trắng nõn mọng nước chua thanh dịu ngọt kết hợp cùng lục trà lài hoa thơm ngát. Cơn sốt trái cây đầu mùa khiến cả nước săn lùng ráo riết!',
+      keyIngs: ['luc', 'f_vai', 'thach'],
+      orderRecipe: { base: 'luc', flav: 'f_vai', tops: ['thach'], sugar: 70, ice: 'Đá thường', size: 'L' },
+      quickCost: 150000,
+      proCost: 500000,
+      weatherBonus: ['summer', 'hot', 'su_hot', 'sp_sunny'],
+      priceMultipliers: { 1: 2.2, 2: 2.6, 3: 1.2, 4: 1.0 },
+      quotes: [
+        'Đang mùa măng cụt sốt xình xịch, cho em 1 ly Trà Măng Cụt nhiều đá chụp ảnh sống ảo nha!',
+        'Múi măng cụt giòn ngọt chua thanh giải nhiệt đỉnh chóp, cho mình 1 ly Trà Măng Cụt nha quán!',
+        'Cả cõi mạng đang rần rần Trà Măng Cụt, quán làm cho em 1 ly chuẩn vị mát lạnh nhé!'
+      ],
+      hashtags: ['#TraMangCut', '#NuHoangTraiCay', '#GiaiNhietMuaHe', '#TraTraiCayHot', '#TikTokViral']
+    },
+    {
+      id: 'tra_dau_tam',
+      name: 'Trà Dâu Tằm',
+      icon: '🫐',
+      badge: 'Sắc tím ruby quyến rũ',
+      targetCustomer: 'Chị em văn phòng & Giới trẻ mê nước chua ngọt',
+      targetDesc: 'Màu tím ruby rực rỡ, vị chua chua ngọt ngọt kích thích mọi giác quan.',
+      story: 'Quả dâu tằm chín mọng dầm cùng hồng trà thanh mát tạo nên sắc tím ruby lộng lẫy. Vị chua ngọt đậm đà đánh thức mọi giác quan, hút khách check-in ầm ầm!',
+      keyIngs: ['hong', 'f_nho', 'thachtc'],
+      orderRecipe: { base: 'hong', flav: 'f_nho', tops: ['thachtc'], sugar: 70, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      weatherBonus: ['summer', 'hot', 'su_breeze'],
+      priceMultipliers: { 1: 2.0, 2: 2.3, 3: 1.15, 4: 1.0 },
+      quotes: [
+        'Màu tím ly Trà Dâu Tằm này đẹp mê ly luôn á, cho em 1 ly chua ngọt nhiều đá nha quán!',
+        'Trưa nắng làm ly Trà Dâu Tằm chua chua ngọt ngọt tỉnh cả người, cho mình 1 ly nha!',
+        'Quán cho em 1 ly Trà Dâu Tằm full thạch trái cây nhen, mê màu tím này quá!'
+      ],
+      hashtags: ['#TraDauTam', '#DauTamChuaNgot', '#MauTimRuby', '#TraTraiCay', '#ThanhMatMuaHe']
+    },
+    {
+      id: 'tra_dao_cam_sa',
+      name: 'Trà Đào Cam Sả',
+      icon: '🍑',
+      badge: 'Huyền thoại quốc dân bất hủ',
+      targetCustomer: 'Mọi lứa tuổi từ học sinh, sinh viên đến người lớn',
+      targetDesc: 'Miếng đào giòn ngọt, tinh dầu cam thơm mát và vị sả ấm nồng đặc trưng.',
+      story: 'Thức uống quốc dân bất hủ của làng F&B Việt Nam! Vị ngọt thanh của đào miếng, vị chua nhẹ sảng khoái của cam tươi và hương sả nồng ấm tạo nên sự cân bằng hoàn hảo.',
+      keyIngs: ['hong', 'f_dao', 'cunang'],
+      orderRecipe: { base: 'hong', flav: 'f_dao', tops: ['cunang'], sugar: 70, ice: 'Đá thường', size: 'L' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 1.8, 2: 2.2, 3: 1.15, 4: 1.0 },
+      quotes: [
+        'Cho mình 1 ly Trà Đào Cam Sả nhiều đá thơm lừng mùi sả như mọi khi nha quán!',
+        'Hôm nay mệt mỏi chỉ muốn nhâm nhi ly Trà Đào Cam Sả thanh mát, cho em 1 ly đào miếng giòn nhé!',
+        'Trà Đào Cam Sả ở đây luôn là chân ái, làm cho mình 1 ly chuẩn vị nha sếp!'
+      ],
+      hashtags: ['#TraDaoCamSa', '#MonQuocDan', '#TraDaoGionNgot', '#CamSaThanhMat', '#KinhDienFNB']
+    },
+    {
+      id: 'thai_xanh_thach_pm',
+      name: 'Trà Thái Xanh Thạch Phô Mai',
+      icon: '🧋',
+      badge: 'Trà Thái xanh béo ngậy ngọc bích',
+      targetCustomer: 'Học sinh, sinh viên & Tín đồ trà Thái',
+      targetDesc: 'Sắc xanh ngọc bích mát mắt quyện cùng viên thạch phô mai béo ngậy.',
+      story: 'Trà Thái xanh thơm nồng hương hoa hồi và thảo mộc, hòa quyện sữa tươi thanh béo và từng viên thạch phô mai dẻo mềm béo ngậy.',
+      keyIngs: ['thai', 'thachpm', 'tcden'],
+      orderRecipe: { base: 'thai', flav: null, tops: ['thachpm', 'tcden'], sugar: 70, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 1.9, 2: 2.3, 3: 1.2, 4: 1.0 },
+      weatherBonus: ['summer', 'hot', 'su_hot', 'sp_sunny'],
+      quotes: [
+        'Quán ơi cho em 1 ly Trà Thái Xanh thạch phô mai béo ngậy giải nhiệt trưa hè nha!',
+        'Mê màu xanh ngọc bích của Trà Thái Xanh ở đây quá, cho mình 1 ly full trân châu đen nhé!',
+        'Trà Thái Xanh thơm nức mũi, làm cho em 1 ly ngọt vừa nhiều đá nha!'
+      ],
+      hashtags: ['#TraThaiXanh', '#ThachPhoMai', '#TraSuaThai', '#GiaiNhietMuaHe', '#TraXanhThai']
+    },
+    {
+      id: 'tra_oi_hong_cheese',
+      name: 'Trà Ổi Hồng Kem Cheese',
+      icon: '🌸',
+      badge: 'Sắc hồng pastel gây sốt mạng',
+      targetCustomer: 'Hội chị em sống ảo & Tín đồ trà trái cây',
+      targetDesc: 'Màu hồng pastel xinh xắn, vị ổi xá lị thơm ngát kết hợp kem cheese mặn béo.',
+      story: 'Hương ổi xá lị hồng thơm ngát ngọt thanh tự nhiên, bên trên là lớp kem cheese bồng bềnh béo mặn. Cơn sốt màu hồng khiến chị em phát cuồng trên Instagram!',
+      keyIngs: ['luc', 'f_oi', 'cheese'],
+      orderRecipe: { base: 'luc', flav: 'f_oi', tops: ['cheese'], sugar: 70, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 2.1, 2: 2.5, 3: 1.2, 4: 1.0 },
+      weatherBonus: ['spring', 'sp_sunny', 'su_breeze'],
+      quotes: [
+        'Ly Trà Ổi Hồng Kem Cheese màu cưng xỉu luôn! Cho em 1 ly chụp ảnh sống ảo nha quán!',
+        'Mùi ổi hồng thơm ngát quyện cùng kem cheese béo mặn đỉnh chóp, cho mình 1 ly nhé!',
+        'Chị em văn phòng đang săn Trà Ổi Hồng, quán làm cho mình 1 ly ngọt 70 nha!'
+      ],
+      hashtags: ['#TraOiHong', '#KemCheese', '#MauHongPastel', '#SongAoTikTok', '#TraTraiCay']
+    },
+    {
+      id: 'tra_xoai_popping',
+      name: 'Trà Xoài Nhiệt Đới Trân Châu Nổ',
+      icon: '🥭',
+      badge: 'Bùng nổ hạt nổ rôm rả vui tai',
+      targetCustomer: 'Gen Z & Trẻ nhỏ mê hạt nổ 3Q',
+      targetDesc: 'Hương xoài cát chín thơm lừng, hạt trân châu nổ lốp bốp trong miệng cực đã.',
+      story: 'Xoài cát chín vàng ngọt lịm kết hợp cùng lục trà lài và những hạt trân châu nổ 3Q giòn tan bùng nổ nước trái cây trong khoang miệng!',
+      keyIngs: ['luc', 'f_xoai', 'popping'],
+      orderRecipe: { base: 'luc', flav: 'f_xoai', tops: ['popping', 'thachtc'], sugar: 70, ice: 'Đá thường', size: 'L' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 2.0, 2: 2.4, 3: 1.2, 4: 1.0 },
+      weatherBonus: ['summer', 'hot', 'su_hot'],
+      quotes: [
+        'Cho em 1 ly Trà Xoài trân châu nổ lốp bốp vui tai, uống bao phê luôn quán ơi!',
+        'Hương xoài thơm ngát ngọt lịm, cho mình 1 ly nhiều đá thạch trái cây giải nhiệt nha!',
+        'Cắn hạt popping nổ nước xoài ngập chân răng đã gì đâu, cho em 1 ly size L nhen!'
+      ],
+      hashtags: ['#TraXoaiNhietDoi', '#PoppingBoba', '#TranChauNo', '#GiaiKhatDinhChop', '#MuaHeXoai']
+    },
+    {
+      id: 'olong_nuong_kem_mon',
+      name: 'Ô Long Nướng Kem Khoai Môn',
+      icon: '🍠',
+      badge: 'Hương khói trầm ấm bùi béo',
+      targetCustomer: 'Tín đồ trà đậm vị & Dân ghiền khoai môn',
+      targetDesc: 'Cốt trà Ô long sao than thơm đượm vị khói quyện lớp kem khoai môn tím pastel.',
+      story: 'Lá trà Ô long sao nướng kỹ đượm mùi khói gỗ ấm áp, kết hợp cùng lớp kem khoai môn bùi béo dẻo mịn và trân châu sợi dai ngon ngập tràn.',
+      keyIngs: ['olong', 'fube', 'tcsoi'],
+      orderRecipe: { base: 'olong', flav: null, tops: ['fube', 'tcsoi'], sugar: 50, ice: 'Ít đá', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 2.2, 2: 2.6, 3: 1.25, 4: 1.0 },
+      weatherBonus: ['autumn', 'winter', 'cold', 'au_chill'],
+      quotes: [
+        'Cốt Ô long nướng ở đây đậm vị thơm nức, cho em 1 ly kem khoai môn bùi béo nha quán!',
+        'Hôm nay trời se lạnh làm ly Ô Long Nướng Kem Môn ít đá là ấm lòng, cho mình 1 ly nhé!',
+        'Mê lớp kem môn tím dẻo quánh ở đây ghê, thêm trân châu sợi dai giòn cho em nha!'
+      ],
+      hashtags: ['#OLongNuong', '#KemKhoaiMon', '#KemMonBuiBeo', '#TraDamVi', '#AmApMuaDong']
+    },
+    {
+      id: 'tra_dau_pmtuoi',
+      name: 'Trà Dâu Tây Kem Phô Mai Tươi',
+      icon: '🍓',
+      badge: 'Màu đỏ rực rỡ ngọt ngào',
+      targetCustomer: 'Gen Z, Cặp đôi hẹn hò & Học sinh',
+      targetDesc: 'Sắc đỏ dâu tây tươi mọng dầm quyện cùng phô mai tươi mềm mướt tan chảy.',
+      story: 'Dâu tây Đà Lạt đỏ mọng chua ngọt hòa quyện cùng hồng trà thượng hạng và từng viên phô mai tươi béo ngậy mềm mịn tan chảy ngay đầu lưỡi.',
+      keyIngs: ['hong', 'f_dau', 'pmtuoi'],
+      orderRecipe: { base: 'hong', flav: 'f_dau', tops: ['pmtuoi', 'thach'], sugar: 70, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 2.1, 2: 2.5, 3: 1.2, 4: 1.0 },
+      weatherBonus: ['spring', 'sp_rain', 'sp_sunny'],
+      quotes: [
+        'Cho em 1 ly Trà Dâu ngọt ngào nhiều phô mai tươi để chụp hình gửi người yêu nha!',
+        'Dâu tây chua chua ngọt ngọt kết hợp phô mai tươi béo mướt đỉnh chóp, làm cho mình 1 ly!',
+        'Mê nhất dâu tây dầm ở quán, cho em 1 ly Trà Dâu Phô Mai Tươi giải khát nha!'
+      ],
+      hashtags: ['#TraDauTay', '#PhoMaiTuoi', '#DauDaLat', '#NgotNgaoHenHo', '#TraTraiCayHot']
+    },
+    {
+      id: 'trasua_duongden_cf',
+      name: 'Trà Sữa Trân Châu Thạch Cà Phê',
+      icon: '☕',
+      badge: 'Đậm đà tỉnh táo gấp đôi',
+      targetCustomer: 'Dân văn phòng, Cú đêm cày deadline',
+      targetDesc: 'Cú hích caffein từ thạch cà phê giòn đắng kết hợp trân châu đen dẻo ngọt.',
+      story: 'Sự kết hợp hoàn hảo giữa vị ngọt ngào của trà sữa truyền thống và chút đắng thanh tỉnh táo của thạch cà phê Robusta, nạp năng lượng tức thì!',
+      keyIngs: ['tra', 'tcden', 'thachcf'],
+      orderRecipe: { base: 'tra', flav: null, tops: ['tcden', 'thachcf'], sugar: 50, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 1.9, 2: 2.3, 3: 1.15, 4: 1.0 },
+      quotes: [
+        'Đang gục ngã vì deadline, cho mình 1 ly Trà Sữa Thạch Cà Phê tỉnh ngủ cày tiếp nha quán!',
+        'Vừa mê trà sữa vừa mê cà phê thì món này là chuẩn bài, cho em 1 ly ngọt 50 nhé!',
+        'Trân châu dẻo thơm quyện thạch cà phê đắng nhẹ nhai đã miệng, cho 1 ly sếp ơi!'
+      ],
+      hashtags: ['#TraSuaCaPhe', '#DuongDenDamDa', '#TinhTaoChayDeadline', '#EnergyBoost', '#DanVanPhong']
+    },
+    {
+      id: 'luc_tra_vai_cunang',
+      name: 'Lục Trà Vải Hoa Lài Củ Năng',
+      icon: '🌺',
+      badge: 'Thanh lọc cơ thể mát lành',
+      targetCustomer: 'Người ăn thanh đạm, tín đồ sống xanh',
+      targetDesc: 'Hương hoa lài thanh tao, vị vải ngọt dịu và thạch củ năng giòn sần sật.',
+      story: 'Hương hoa lài thoang thoảng trong từng giọt lục trà thanh khiết, kết hợp thịt vải ngọt thơm và thạch củ năng giòn rụm giúp thanh lọc cơ thể nhẹ nhàng.',
+      keyIngs: ['luc', 'f_vai', 'cunang'],
+      orderRecipe: { base: 'luc', flav: 'f_vai', tops: ['cunang'], sugar: 50, ice: 'Đá thường', size: 'L' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 1.8, 2: 2.2, 3: 1.15, 4: 1.0 },
+      weatherBonus: ['summer', 'hot', 'sp_sunny'],
+      quotes: [
+        'Trưa nắng gắt làm ly Lục Trà Vải củ năng thanh mát là nhẹ cả người, cho em 1 ly nha!',
+        'Vị vải thơm thanh không bị gắt, thêm thạch củ năng giòn giòn nhai vui miệng lắm!',
+        'Quán làm cho mình 1 ly Trà Vải ít đường nhiều đá mát lạnh thanh lọc cơ thể nhé!'
+      ],
+      hashtags: ['#LucTraVai', '#ThachCuNang', '#ThanhLocCoThe', '#HoaLaiThanhTao', '#HealthyLife']
+    },
+    {
+      id: 'tra_me_suongsao',
+      name: 'Trà Me Đá Tuyết Sương Sáo',
+      icon: '🧊',
+      badge: 'Hương vị ký ức tuổi thơ',
+      targetCustomer: 'Tín đồ mê ăn vặt đường phố & Hoài niệm',
+      targetDesc: 'Chua thanh ngọt ngào của me ngào đường, thạch sương sáo thanh mát hạ nhiệt.',
+      story: 'Vị me ngào chua ngọt đậm đà gắn liền với ký ức tuổi thơ cổng trường, kết hợp đá tuyết mát lạnh và thạch sương sáo dẻo dai giúp hạ nhiệt tức thì.',
+      keyIngs: ['hong', 'f_me', 'suongsao'],
+      orderRecipe: { base: 'hong', flav: 'f_me', tops: ['suongsao', 'tcvang'], sugar: 70, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 1.9, 2: 2.3, 3: 1.15, 4: 1.0 },
+      weatherBonus: ['summer', 'hot', 'su_hot'],
+      quotes: [
+        'Ôi Trà Me tuổi thơ đây rồi, cho em 1 ly chua chua ngọt ngọt nhiều thạch sương sáo nha!',
+        'Trưa hè oi bức uống ly Trà Me đá tuyết này là tỉnh táo liền, quán làm nhanh cho mình!',
+        'Me dầm thơm lừng quyện trân châu hoàng kim giòn dai, cho em 1 ly chuẩn vị nha!'
+      ],
+      hashtags: ['#TraMeDaTuyet', '#SuongSaoThanhMat', '#HuongViTuoiTho', '#AnVatSaiGon', '#GiaiKhat']
+    },
+    {
+      id: 'trasua_choco_pmvien',
+      name: 'Trà Sữa Chocolate Phô Mai Viên',
+      icon: '🍫',
+      badge: 'Ngọt ngào đậm vị Socola',
+      targetCustomer: 'Tín đồ hảo ngọt & Trẻ em, Học sinh',
+      targetDesc: 'Hương socola Bỉ đậm đà quyện cốt trà sữa thơm béo và phô mai viên bùi ngậy.',
+      story: 'Hương vị cacao đậm đặc nồng nàn quyện cùng trà sữa béo ngậy và từng viên phô mai béo múp míp, mang lại cảm giác hạnh phúc ngọt ngào cho tín đồ hảo ngọt.',
+      keyIngs: ['tra', 'f_choco', 'pmvien'],
+      orderRecipe: { base: 'tra', flav: 'f_choco', tops: ['pmvien', 'tcden'], sugar: 70, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 2.0, 2: 2.4, 3: 1.2, 4: 1.0 },
+      weatherBonus: ['winter', 'cold', 'rain'],
+      quotes: [
+        'Cho em 1 ly Trà Sữa Chocolate đậm đặc ngập phô mai viên để xả stress nha quán!',
+        'Socola thơm lừng ngọt ngào uống là thấy vui vẻ liền, cho mình 1 ly ngọt 70 nhé!',
+        'Team mê socola với phô mai viên không thể bỏ qua món này, làm cho em 1 ly nha!'
+      ],
+      hashtags: ['#TraSuaSocola', '#ChocolateLover', '#PhoMaiVien', '#NgotNgaoXastress', '#WinterDrink']
+    },
+    {
+      id: 'tra_dua_gang_kem_muoi',
+      name: 'Trà Dưa Gang Kem Muối Biển',
+      icon: '🍈',
+      badge: 'Hương dưa gang mát lạnh độc lạ',
+      targetCustomer: 'Gen Z thích trải nghiệm hương vị mới lạ',
+      targetDesc: 'Mùi dưa gang ngọt mát thơm thoang thoảng kết hợp kem muối béo mặn độc đáo.',
+      story: 'Dưa gang thơm mát đặc trưng miền nhiệt đới kết hợp cốt lục trà lài và phủ lớp kem muối biển béo ngậy mằn mặn, tạo nên hương vị bùng nổ vị giác đầy sảng khoái.',
+      keyIngs: ['luc', 'f_dua', 'fsalt'],
+      orderRecipe: { base: 'luc', flav: 'f_dua', tops: ['fsalt', 'thach'], sugar: 70, ice: 'Đá thường', size: 'M' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 2.0, 2: 2.4, 3: 1.2, 4: 1.0 },
+      weatherBonus: ['summer', 'hot', 'su_breeze'],
+      quotes: [
+        'Thấy món Trà Dưa Gang Kem Muối độc lạ quá, cho em 1 ly thử độ hot nha quán!',
+        'Mùi dưa gang thơm nức mũi kết hợp kem muối béo mặn ngon bất ngờ, cho mình 1 ly!',
+        'Quán ơi cho em 1 ly Trà Dưa Gang mát lạnh xua tan cái nóng trưa nay nha!'
+      ],
+      hashtags: ['#TraDuaGang', '#KemMuoiBien', '#DocLaSangKhoai', '#TrendMoiGiaiNhiet', '#TraTraiCay']
+    },
+    {
+      id: 'hong_tra_nho_tcvang',
+      name: 'Hồng Trà Nho Đen Trân Châu Hoàng Kim',
+      icon: '🍇',
+      badge: 'Màu tím thẫm quý phái sang chảnh',
+      targetCustomer: 'Khách hàng văn phòng & Tín đồ trà trái cây đậm vị',
+      targetDesc: 'Vị nho đen ngọt đậm, hồng trà đượm vị chát nhẹ và trân châu hoàng kim óng ánh.',
+      story: 'Nho đen mọng nước dầm cùng hồng trà hảo hạng đượm vị tannin quý phái, điểm xuyết những viên trân châu hoàng kim vàng óng dai giòn sần sật.',
+      keyIngs: ['hong', 'f_nho', 'tcvang'],
+      orderRecipe: { base: 'hong', flav: 'f_nho', tops: ['tcvang', 'cunang'], sugar: 70, ice: 'Đá thường', size: 'L' },
+      quickCost: 150000,
+      proCost: 500000,
+      priceMultipliers: { 1: 1.9, 2: 2.3, 3: 1.15, 4: 1.0 },
+      weatherBonus: ['autumn', 'chill', 'au_sunny'],
+      quotes: [
+        'Cho mình 1 ly Hồng Trà Nho Đen nhiều trân châu hoàng kim óng ánh nha sếp!',
+        'Vị nho đen ngọt đậm đà thơm lừng quyện hồng trà xuất sắc, cho em 1 ly size L!',
+        'Màu tím nho đen nhìn sang chảnh ghê, làm cho mình 1 ly ít đá ngọt vừa nhé!'
+      ],
+      hashtags: ['#HongTraNhoDen', '#TranChauHoangKim', '#SangChanhQuyPhai', '#TraNhoDamVi', '#TikTokFood']
+    }
+  ];
+
+  // 2. ĐỊNH NGHĨA 4 GIAI ĐOẠN CỦA TREND
+  const STAGE_META = {
+    1: {
+      id: 1,
+      name: 'Chớm Nở',
+      code: 'early',
+      cssClass: 'stage-early',
+      icon: '🌱',
+      sub: 'Tiên phong săn lùng',
+      heatRange: [40, 60],
+      orderRate: 0.30,
+      desc: 'Chỉ vài quán tiên phong có món. Khách săn lùng ráo riết, chấp nhận mua giá cao gấp đôi để check-in sớm!'
+    },
+    2: {
+      id: 2,
+      name: 'Bùng Nổ Viral',
+      code: 'peak',
+      cssClass: 'stage-peak',
+      icon: '🔥',
+      sub: 'Đỉnh điểm cơn bão',
+      heatRange: [90, 100],
+      orderRate: 0.65,
+      desc: 'Khách xếp hàng dài nghẹt quán! 60% - 70% khách bước vào chỉ gọi món này. Shipper đứng chật cửa nhận đơn mang về!'
+    },
+    3: {
+      id: 3,
+      name: 'Bão Hòa',
+      code: 'sat',
+      cssClass: 'stage-sat',
+      icon: '📉',
+      sub: 'Hạ nhiệt & Dư thừa',
+      heatRange: [40, 50],
+      orderRate: 0.20,
+      desc: 'Cả phố trà sữa ai cũng bán, khách bắt đầu ngán. Lượng khách mua giảm dần. Cảnh báo nguy cơ ôm bom hàng tồn!'
+    },
+    4: {
+      id: 4,
+      name: 'Sập Trend',
+      code: 'crash',
+      cssClass: 'stage-crash',
+      icon: '💣',
+      sub: 'Thoái trào / Biến mất',
+      heatRange: [5, 15],
+      orderRate: 0.03,
+      desc: 'Trend hoàn toàn thoái trào khỏi radar. Hãy thanh lý xả kho toàn bộ nguyên liệu độc quyền kẻo bị quá hạn tiêu huỷ!'
+    }
+  };
+
+  // BÀN PHA CHẾ THÍ NGHIỆM: CÁC NGUYÊN LIỆU ĐƯỢC CHỌN (MIX & MATCH)
+  const MIX_BASES = [
+    { id: 'tra', name: 'Trà sữa', color: '#c8986a' },
+    { id: 'matcha', name: 'Matcha', color: '#8fb866' },
+    { id: 'hong', name: 'Hồng trà', color: '#b5563c' },
+    { id: 'luc', name: 'Lục trà', color: '#b9c46a' },
+    { id: 'olong', name: 'Trà olong', color: '#a9744a' },
+    { id: 'thai', name: 'Trà sữa Thái', color: '#e8894a' }
+  ];
+
+  const MIX_FLAVORS = [
+    { id: null, name: 'Nguyên bản', icon: '🚫' },
+    { id: 'f_vai', name: 'Vải', icon: '🟣' },
+    { id: 'f_dao', name: 'Đào', icon: '🍑' },
+    { id: 'f_dau', name: 'Dâu', icon: '🍓' },
+    { id: 'f_nho', name: 'Nho', icon: '🍇' },
+    { id: 'f_oi', name: 'Ổi', icon: '🍈' },
+    { id: 'f_xoai', name: 'Xoài', icon: '🥭' },
+    { id: 'f_mang', name: 'Mãng cầu', icon: '🍈' },
+    { id: 'f_tao', name: 'Táo', icon: '🍏' },
+    { id: 'f_chanh', name: 'Chanh', icon: '🍋' },
+    { id: 'f_me', name: 'Me', icon: '🥜' },
+    { id: 'f_dua', name: 'Dưa gang', icon: '🍈' },
+    { id: 'f_choco', name: 'Chocolate', icon: '🍫' }
+  ];
+
+  const MIX_TOPPINGS = [
+    { id: 'tcden', name: 'TC đen', icon: '⚫⚫', color: '#1f2937' },
+    { id: 'tcvang', name: 'TC h.kim', icon: '🟡🟡', color: '#f59e0b' },
+    { id: 'tcsoi', name: 'TC sợi', icon: '🥢🥢', color: '#78350f' },
+    { id: 'popping', name: 'TC nổ', icon: '🔴🔴', color: '#ef4444' },
+    { id: 'thach', name: 'TC trắng', icon: '⚪⚪', color: '#f1f5f9' },
+    { id: 'cunang', name: 'Củ năng', icon: '🟩🟩', color: '#22c55e' },
+    { id: 'thachtc', name: 'Trái cây', icon: '🟧🟥', color: '#f97316' },
+    { id: 'suongsao', name: 'Sương sáo', icon: '⬛⬛', color: '#0f172a' },
+    { id: 'thachcf', name: 'Cà phê', icon: '🟫🟫', color: '#451a03' },
+    { id: 'cheese', name: 'Kem cheese', icon: '🟡🟡', foamColor: '#fef08a' },
+    { id: 'fmatcha', name: 'Kem matcha', icon: '🟢🟢', foamColor: '#bef264' },
+    { id: 'fsalt', name: 'Kem muối', icon: '⚪⚪', foamColor: '#f8fafc' },
+    { id: 'fube', name: 'Kem môn', icon: '🟣🟣', foamColor: '#d8b4fe' },
+    { id: 'pmvien', name: 'PM viên', icon: '🟧🟧', color: '#fbbf24' },
+    { id: 'pmtuoi', name: 'PM tươi', icon: '🟧🟧', color: '#fef3c7' },
+    { id: 'thachpm', name: 'Thạch PM', icon: '🟨🟫', color: '#fde047' }
+  ];
+
+  // 3. CORE SYSTEM OBJECT
+  const TrendSystem = {
+    TRENDS: TREND_DATABASE,
+    STAGES: STAGE_META,
+    MIX_BASES,
+    MIX_FLAVORS,
+    MIX_TOPPINGS,
+
+    // Khởi tạo trạng thái Trend trong S
+    init() {
+      if (!window.S) return;
+      if (!S.marketTrend) {
+        const chosen = TREND_DATABASE[Math.floor(Math.random() * TREND_DATABASE.length)] || TREND_DATABASE[0];
+        S.marketTrend = {
+          activeTrendId: chosen.id,
+          stage: 1,
+          heat: 50,
+          stageDaysLeft: 3,
+          totalDaysInTrend: 1,
+          rdStatus: 'none', // 'none' | 'completed'
+          rdType: null,     // 'mix_quick' | 'mix_pro'
+          rdStar: 0,        // 3 | 5
+          mixState: {
+            base: 'hong',
+            flav: 'f_dao',
+            tops: []
+          },
+          standeeActive: false,
+          bookedReviewer: false,
+          comboActive: false,
+          livestreamActive: false,
+          totalTrendDrinksSold: 0,
+          totalTrendRevenue: 0
+        };
+      } else if (!S.marketTrend.activeTrendId) {
+        const chosen = TREND_DATABASE[Math.floor(Math.random() * TREND_DATABASE.length)] || TREND_DATABASE[0];
+        S.marketTrend.activeTrendId = chosen.id;
+      }
+
+      if (!S.marketTrend.mixState) {
+        S.marketTrend.mixState = {
+          base: 'hong',
+          flav: 'f_dao',
+          tops: []
+        };
+      }
+    },
+
+    // Lấy thông tin Trend hiện tại
+    getActiveTrend() {
+      this.init();
+      if (!S || !S.marketTrend || !S.marketTrend.activeTrendId) return null;
+      return TREND_DATABASE.find(t => t.id === S.marketTrend.activeTrendId) || TREND_DATABASE[0];
+    },
+
+    // Bắt đầu một Trend mới
+    startNewTrend(silent = false) {
+      if (!window.S) return;
+      const currentId = S.marketTrend ? S.marketTrend.activeTrendId : null;
+      const candidates = TREND_DATABASE.filter(t => t.id !== currentId);
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)] || TREND_DATABASE[0];
+
+      S.marketTrend = {
+        activeTrendId: chosen.id,
+        stage: 1,
+        heat: 45 + Math.floor(Math.random() * 15),
+        stageDaysLeft: 2 + Math.floor(Math.random() * 2), // 2-3 ngày chớm nở
+        totalDaysInTrend: 1,
+        rdStatus: 'none',
+        rdType: null,
+        rdStar: 0,
+        mixState: {
+          base: 'hong',
+          flav: 'f_dao',
+          tops: []
+        },
+        standeeActive: false,
+        bookedReviewer: false,
+        comboActive: false,
+        livestreamActive: false,
+        totalTrendDrinksSold: 0,
+        totalTrendRevenue: 0
+      };
+
+      if (typeof window.save === 'function') window.save();
+
+      if (!silent && typeof window.toast === 'function') {
+        window.toast(`📡 RADAR THỊ TRƯỜNG PHÁT HIỆN: Cơn sốt ${chosen.icon} ${chosen.name} đang chớm nở! Mau vào Bàn Pha Chế Thí Nghiệm để phối công thức ngay! 🚀`, 6500, 0);
+      }
+    },
+
+    // Xử lý khi qua ngày mới (rollDay)
+    onDayRolled(day) {
+      this.init();
+      if (!S.marketTrend || !S.marketTrend.activeTrendId) {
+        this.startNewTrend(true);
+        return;
+      }
+
+      const trend = this.getActiveTrend();
+      if (!trend) return;
+
+      S.marketTrend.totalDaysInTrend = (S.marketTrend.totalDaysInTrend || 0) + 1;
+      S.marketTrend.stageDaysLeft = (S.marketTrend.stageDaysLeft || 1) - 1;
+
+      // Nếu có booking reviewer: tăng thêm 15% heat
+      if (S.marketTrend.bookedReviewer) {
+        S.marketTrend.heat = Math.min(100, (S.marketTrend.heat || 50) + 15);
+      }
+
+      // Kiểm tra chuyển giai đoạn
+      if (S.marketTrend.stageDaysLeft <= 0) {
+        const curStage = S.marketTrend.stage;
+        if (curStage === 1) {
+          // Từ Chớm Nở -> Bùng Nổ Viral
+          S.marketTrend.stage = 2;
+          S.marketTrend.heat = 95;
+          S.marketTrend.stageDaysLeft = 3 + Math.floor(Math.random() * 2); // 3-4 ngày viral
+          setTimeout(() => {
+            if (typeof window.toast === 'function') {
+              window.toast(`🔥 CƠN BÃO VIRAL: Món ${trend.name} đã bùng nổ dữ dội! 65% khách kéo đến quán đòi order! Hãy chuẩn bị sẵn sàng quầy pha chế! 💥`, 7000, 1);
+            }
+          }, 800);
+        } else if (curStage === 2) {
+          // Từ Bùng Nổ -> Bão Hòa
+          S.marketTrend.stage = 3;
+          S.marketTrend.heat = 45;
+          S.marketTrend.stageDaysLeft = 2 + Math.floor(Math.random() * 2); // 2-3 ngày bão hoà
+          setTimeout(() => {
+            if (typeof window.toast === 'function') {
+              window.toast(`⚠️ THỊ TRƯỜNG BÃO HOÀ: Món ${trend.name} bắt đầu hạ nhiệt! Cảnh báo nguy cơ ôm bom hàng tồn! Hãy xả kho kịp lúc! 📉`, 6500, 1);
+            }
+          }, 800);
+        } else if (curStage === 3) {
+          // Từ Bão Hòa -> Sập Trend
+          S.marketTrend.stage = 4;
+          S.marketTrend.heat = 10;
+          S.marketTrend.stageDaysLeft = 1 + Math.floor(Math.random() * 2); // 1-2 ngày sập
+          setTimeout(() => {
+            if (typeof window.toast === 'function') {
+              window.toast(`💣 SẬP TREND: Cơn sốt ${trend.name} đã thoái trào hoàn toàn khỏi radar! Hãy thanh lý nốt nguyên liệu tồn! 💨`, 6500, 1);
+            }
+          }, 800);
+        } else {
+          // Hết Stage 4 -> Khởi tạo trend mới
+          this.startNewTrend(false);
+        }
+      }
+
+      if (typeof window.save === 'function') window.save();
+    },
+
+    // Mix & Match: Đổi Cốt Trà Nền
+    setMixBase(baseId) {
+      this.init();
+      if (!S.marketTrend.mixState) S.marketTrend.mixState = {};
+      S.marketTrend.mixState.base = baseId;
+      if (typeof window.sfx === 'function') window.sfx('tap');
+      this.renderPane();
+    },
+
+    // Mix & Match: Đổi Hương Vị Trái Cây / Đặc Biệt
+    setMixFlav(flavId) {
+      this.init();
+      if (!S.marketTrend.mixState) S.marketTrend.mixState = {};
+      if (S.marketTrend.mixState.flav === flavId) {
+        S.marketTrend.mixState.flav = null;
+      } else {
+        S.marketTrend.mixState.flav = flavId;
+      }
+      if (typeof window.sfx === 'function') window.sfx('tap');
+      this.renderPane();
+    },
+
+    // Mix & Match: Bật / Tắt Topping & Kem (Tối đa 3 loại)
+    toggleMixTop(topId) {
+      this.init();
+      if (!S.marketTrend.mixState) S.marketTrend.mixState = { tops: [] };
+      if (!Array.isArray(S.marketTrend.mixState.tops)) S.marketTrend.mixState.tops = [];
+      const idx = S.marketTrend.mixState.tops.indexOf(topId);
+      if (idx >= 0) {
+        S.marketTrend.mixState.tops.splice(idx, 1);
+        if (typeof window.sfx === 'function') window.sfx('tap');
+      } else {
+        if (S.marketTrend.mixState.tops.length >= 3) {
+          if (typeof window.toast === 'function') {
+            window.toast('⚠️ Bạn chỉ được chọn tối đa 3 loại Topping & Kem cho 1 ly nước!');
+          }
+          return;
+        }
+        S.marketTrend.mixState.tops.push(topId);
+        if (typeof window.sfx === 'function') window.sfx('tap');
+      }
+      this.renderPane();
+    },
+
+    // Đánh giá công thức pha chế hiện tại so với Trend đang sốt
+    getMixEvaluation() {
+      this.init();
+      const trend = this.getActiveTrend();
+      const mix = S.marketTrend.mixState || { base: 'hong', flav: 'f_dao', tops: [] };
+      const target = (trend && trend.orderRecipe) ? trend.orderRecipe : { base: 'hong', flav: 'f_dao', tops: [] };
+
+      const baseMatch = (mix.base === target.base);
+      const flavMatch = (!mix.flav && !target.flav) || (mix.flav === target.flav);
+      const reqTops = target.tops || [];
+      let topsMatchCount = 0;
+      reqTops.forEach(t => {
+        if (mix.tops && mix.tops.includes(t)) topsMatchCount++;
+      });
+      const reqTopsLen = Math.max(1, reqTops.length);
+      const topsMatchRatio = (reqTops.length === 0) ? (mix.tops && mix.tops.length === 0 ? 1 : 0.8) : (topsMatchCount / reqTopsLen);
+
+      let score = 30;
+      let isExactTrend = false;
+      if (baseMatch && flavMatch && (reqTops.length === 0 ? (!mix.tops || mix.tops.length === 0 || mix.tops.length <= 1) : (topsMatchCount === reqTops.length))) {
+        score = 100;
+        isExactTrend = true;
+      } else {
+        score = Math.round((baseMatch ? 40 : 10) + (flavMatch ? 30 : 5) + (topsMatchRatio * 30));
+        score = Math.max(20, Math.min(95, score));
+      }
+
+      let hypeStatus = 'COLD';
+      let starRating = 1;
+      let hypeColor = '#cbd5e1';
+      let hypeStatusColor = '#64748b';
+      if (score >= 95) {
+        hypeStatus = 'VIRAL PEAK';
+        starRating = 5;
+        hypeColor = 'linear-gradient(90deg, #f59e0b, #ef4444)';
+        hypeStatusColor = '#ef4444';
+      } else if (score >= 70) {
+        hypeStatus = 'WARM';
+        starRating = 3;
+        hypeColor = 'linear-gradient(90deg, #38bdf8, #f59e0b)';
+        hypeStatusColor = '#d97706';
+      } else if (score >= 45) {
+        hypeStatus = 'CHILL';
+        starRating = 2;
+        hypeColor = '#38bdf8';
+        hypeStatusColor = '#0284c7';
+      } else {
+        hypeStatus = 'COLD';
+        starRating = 1;
+        hypeColor = '#cbd5e1';
+        hypeStatusColor = '#64748b';
+      }
+
+      let drinkName = '';
+      if (isExactTrend && trend) {
+        drinkName = trend.name;
+      } else {
+        const baseNames = {
+          tra: 'Trà sữa',
+          matcha: 'Matcha',
+          hong: 'Hồng trà',
+          luc: 'Lục trà',
+          olong: 'Trà olong',
+          thai: 'Trà sữa Thái'
+        };
+        const flavNames = {
+          f_vai: 'Vải',
+          f_dao: 'Đào Sán',
+          f_dau: 'Dâu',
+          f_nho: 'Nho',
+          f_oi: 'Ổi',
+          f_xoai: 'Xoài',
+          f_mang: 'Mãng cầu',
+          f_tao: 'Táo',
+          f_chanh: 'Chanh',
+          f_me: 'Me',
+          f_dua: 'Dưa gang',
+          f_choco: 'Chocolate'
+        };
+        const topNames = {
+          tcden: 'TC đen',
+          tcvang: 'TC h.kim',
+          tcsoi: 'TC sợi',
+          popping: 'TC nổ',
+          thach: 'TC trắng',
+          cunang: 'Củ năng',
+          thachtc: 'Trái cây',
+          suongsao: 'Sương sáo',
+          thachcf: 'Cà phê',
+          cheese: 'Kem Cheese',
+          fmatcha: 'Kem Matcha',
+          fsalt: 'Kem Muối',
+          fube: 'Kem Khoai Môn',
+          pmvien: 'Phô Mai Viên',
+          pmtuoi: 'Phô Mai Tươi',
+          thachpm: 'Thạch Phô Mai'
+        };
+
+        const bName = baseNames[mix.base] || 'Trà';
+        const fName = mix.flav ? flavNames[mix.flav] : '';
+        const tName = (mix.tops && mix.tops.length > 0) ? (topNames[mix.tops[0]] || '') : '';
+
+        if (fName && tName) {
+          drinkName = `${bName} ${fName} ${tName}`;
+        } else if (fName) {
+          drinkName = `${bName} ${fName}`;
+        } else if (tName) {
+          drinkName = `${bName} ${tName}`;
+        } else {
+          drinkName = `${bName} Nguyên Bản`;
+        }
+      }
+
+      const ITEMS = window.ITEMS || {};
+      const baseCost = (ITEMS[mix.base] && ITEMS[mix.base].cost) || 3000;
+      const flavCost = (mix.flav && ITEMS[mix.flav] && ITEMS[mix.flav].cost) || 0;
+      const topsCost = (mix.tops || []).reduce((acc, t) => acc + ((ITEMS[t] && ITEMS[t].cost) || 2000), 0);
+      const totalCost = baseCost + flavCost + topsCost;
+
+      // Giá đề xuất bằng tổng giá của các nguyên liệu trên bảng giá (S.sell / DEF_SELL)
+      const getSellPrice = (k) => {
+        if (!k) return 0;
+        if (window.S && window.S.sell && window.S.sell[k] != null && window.S.sell[k] > 0) {
+          return +window.S.sell[k];
+        }
+        if (window.DEF_SELL && window.DEF_SELL[k] != null) {
+          return +window.DEF_SELL[k];
+        }
+        if (ITEMS[k] && ITEMS[k].sell != null) {
+          return +ITEMS[k].sell;
+        }
+        return 0;
+      };
+
+      const basePrice = getSellPrice(mix.base);
+      const flavPrice = mix.flav ? getSellPrice(mix.flav) : 0;
+      const topsPrice = (mix.tops || []).reduce((acc, t) => acc + getSellPrice(t), 0);
+      const suggestedPrice = Math.max(10000, basePrice + flavPrice + topsPrice);
+
+      const baseColors = {
+        tra: '#c8986a',
+        matcha: '#8fb866',
+        hong: (mix.flav === 'f_dao' ? '#c2410c' : '#b5563c'),
+        luc: '#b9c46a',
+        olong: '#a9744a',
+        thai: '#e8894a'
+      };
+      const liquidColor = baseColors[mix.base] || '#c8986a';
+
+      return {
+        score,
+        isExactTrend,
+        hypeStatus,
+        starRating,
+        hypeColor,
+        hypeStatusColor,
+        drinkName,
+        totalCost,
+        suggestedPrice,
+        liquidColor
+      };
+    },
+
+    // Ra Mắt Món (Phí R&D bằng giá bán của ly đó)
+    launchMixDrink() {
+      this.init();
+      const trend = this.getActiveTrend();
+      if (!trend) return;
+
+      const evalRes = this.getMixEvaluation();
+      const rdFee = evalRes.suggestedPrice;
+
+      // Kiểm tra tiền trong két trước khi ra mắt
+      if (S.money < rdFee) {
+        if (typeof window.sfx === 'function') window.sfx('warn');
+        if (typeof window.toast === 'function') {
+          window.toast(`⚠️ Két không đủ ${window.fmt ? window.fmt(rdFee) : (Math.round(rdFee / 1000) + 'k')} để trả phí R&D (bằng giá bán của ly đó)!`);
+        }
+        return;
+      }
+
+      // 1. Kiểm tra nếu chưa chế tạo đúng món trend (!evalRes.isExactTrend hoặc evalRes.score < 95)
+      if (!evalRes.isExactTrend) {
+        if (typeof window.sfx === 'function') window.sfx('warn');
+        if (typeof window.ask === 'function') {
+          const isWarm = (evalRes.score >= 70);
+          const hintFee = Math.max(0, Math.round((S.money || 0) * 0.05));
+          const feeStr = hintFee > 0 ? (window.fmt ? window.fmt(hintFee) : (Math.round(hintFee / 1000) + 'k')) : '0đ';
+          const actions = [
+            [`💡 Xem gợi ý nguyên liệu (Phí 5%: ${feeStr})`, () => { TrendSystem.proceedRecipeHint(hintFee); }, 1],
+            ['Tự pha chế lại 🧋', () => {}]
+          ];
+          if (isWarm) {
+            actions.splice(1, 0, [
+              `Vẫn ra mắt công thức này (Đạt 3★ - Phí: ${window.kv ? window.kv(rdFee) : (Math.round(rdFee/1000) + 'k')})`,
+              () => { TrendSystem.proceedLaunch(3); }
+            ]);
+          }
+
+          window.ask(`
+            <div class="pbig">🧪</div>
+            <h2 style="color:#d97706;margin:4px 0 8px;">CHƯA CHẾ TẠO ĐÚNG MÓN</h2>
+            <div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:12px 14px;border-radius:10px;margin:12px 0;text-align:left;font-size:0.88rem;line-height:1.6;color:#1e293b;">
+              Ly nước bạn vừa pha là <b>${evalRes.drinkName}</b> (Độ Hype: <b style="color:${evalRes.hypeStatusColor};">${evalRes.score}% · ${evalRes.hypeStatus}</b>).<br>
+              Cơn sốt thị trường hiện tại đang săn lùng món <b>${trend.icon} ${trend.name}</b>.<br><br>
+              💰 <b>Phí R&D món này:</b> <b style="color:#b45309;">${window.fmt ? window.fmt(rdFee) : (Math.round(rdFee/1000) + 'k')}</b> (bằng đúng giá bán của ly nước).<br><br>
+              💡 <b>Phí xem gợi ý công thức:</b> <b style="color:#0284c7;">${feeStr}</b> (bằng 5% tiền trong két).<br><br>
+              ⚠️ <b>Bạn chưa chế tạo đúng món, có muốn xem gợi ý hay không?</b>
+            </div>
+          `, actions);
+          return;
+        }
+      }
+
+      // 2. Đã đúng món hoàn hảo (100% hype / 5 sao)
+      this.proceedLaunch(5);
+    },
+
+    // Thực hiện kích hoạt ra mắt món Trend (Phí R&D bằng giá bán của ly đó)
+    proceedLaunch(star) {
+      this.init();
+      const trend = this.getActiveTrend();
+      if (!trend) return;
+
+      const evalRes = this.getMixEvaluation();
+      const mix = S.marketTrend.mixState;
+      const rdFee = evalRes.suggestedPrice;
+
+      if (S.money < rdFee) {
+        if (typeof window.toast === 'function') {
+          window.toast(`⚠️ Két không đủ ${window.fmt ? window.fmt(rdFee) : (Math.round(rdFee / 1000) + 'k')} để trả phí R&D!`);
+        }
+        return;
+      }
+
+      S.money -= rdFee;
+      if (window.R && window.R.today) {
+        window.R.today.fee = (window.R.today.fee || 0) + rdFee;
+      }
+
+      S.marketTrend.rdStatus = 'completed';
+      S.marketTrend.rdType = (star === 5) ? 'mix_pro' : 'mix_quick';
+      S.marketTrend.rdStar = star;
+      S.marketTrend.trendDrinkPrice = rdFee;
+      S.marketTrend.rdFeePaid = rdFee;
+      S.marketTrend.customRecipe = { base: mix.base, flav: mix.flav, tops: [...(mix.tops || [])] };
+
+      if (typeof window.save === 'function') window.save();
+      if (typeof window.head === 'function') window.head();
+      if (typeof window.sfx === 'function') window.sfx(star === 5 ? 'lvup' : 'star');
+
+      this.showRDCompletionModal(trend, star, evalRes.drinkName, rdFee);
+      this.renderPane();
+      if (typeof window.renderObar === 'function') window.renderObar();
+
+      // Đồng bộ làm mới Quầy Menu Board nếu đang mở
+      const b = document.querySelector('.board');
+      if (b && typeof window.menuBoard === 'function') {
+        const t = document.createElement('div');
+        t.innerHTML = window.menuBoard();
+        const newBoard = t.querySelector('.board');
+        if (newBoard) {
+          b.replaceWith(newBoard);
+          if (typeof window.bindBoard === 'function') window.bindBoard();
+        }
+      }
+    },
+
+    // Yêu cầu gợi ý nguyên liệu (Phí 5% tiền két)
+    requestRecipeHint() {
+      this.init();
+      const trend = this.getActiveTrend();
+      if (!trend) return;
+
+      const hintFee = Math.max(0, Math.round((S.money || 0) * 0.05));
+      const feeStr = hintFee > 0 ? (window.fmt ? window.fmt(hintFee) : (Math.round(hintFee / 1000) + 'k')) : '0đ';
+
+      if (typeof window.ask === 'function') {
+        window.ask(`
+          <div class="pbig">💡</div>
+          <h2 style="color:#0284c7;margin:4px 0 8px;">GỢI Ý NGUYÊN LIỆU MÓN TREND</h2>
+          <div style="background:#f0f9ff;border-left:4px solid #0284c7;padding:12px 14px;border-radius:10px;margin:12px 0;text-align:left;font-size:0.88rem;line-height:1.6;color:#1e293b;">
+            Món đang cần bắt trend: <b style="color:#0369a1;">${trend.icon} ${trend.name}</b>.<br><br>
+            💰 <b>Phí tư vấn chuyên gia:</b> <b style="color:#b45309;">${feeStr}</b> (bằng đúng <b>5% tiền trong két</b> hiện tại).<br><br>
+            Bạn có muốn trả phí để mở xem gợi ý nguyên liệu chuẩn của món này không?
+          </div>
+        `, [
+          [`💡 Mua gợi ý (${feeStr})`, () => {
+            TrendSystem.proceedRecipeHint(hintFee);
+          }, 1],
+          ['Tự mày mò công thức 🧋', () => {}]
+        ]);
+      } else {
+        this.proceedRecipeHint(hintFee);
+      }
+    },
+
+    // Thực hiện trừ phí 5% tiền két và mở gợi ý
+    proceedRecipeHint(hintFee) {
+      this.init();
+      if (hintFee == null) {
+        hintFee = Math.max(0, Math.round((S.money || 0) * 0.05));
+      }
+
+      if (S.money < hintFee) {
+        if (typeof window.toast === 'function') window.toast('⚠️ Két không đủ tiền trả phí gợi ý!');
+        return;
+      }
+
+      S.money -= hintFee;
+      if (window.R && window.R.today) {
+        window.R.today.fee = (window.R.today.fee || 0) + hintFee;
+      }
+      if (typeof window.head === 'function') window.head();
+      if (typeof window.save === 'function') window.save();
+      if (typeof window.sfx === 'function') window.sfx('coin');
+
+      const feeStr = hintFee > 0 ? (window.fmt ? window.fmt(hintFee) : (Math.round(hintFee / 1000) + 'k')) : '0đ';
+      if (typeof window.toast === 'function' && hintFee > 0) {
+        window.toast(`💡 Đã thanh toán ${feeStr} (5% tiền két) để xem gợi ý!`);
+      }
+
+      this.showRecipeHintModal(hintFee);
+    },
+
+    // Hiển thị modal gợi ý nguyên liệu chuẩn của món Trend
+    showRecipeHintModal(feePaid) {
+      this.init();
+      const trend = this.getActiveTrend();
+      if (!trend) return;
+      const target = trend.orderRecipe || {};
+
+      const baseNames = {
+        tra: 'Trà sữa truyền thống',
+        matcha: 'Matcha Uji',
+        hong: 'Hồng trà',
+        luc: 'Lục trà lài',
+        olong: 'Trà olong',
+        thai: 'Trà sữa Thái'
+      };
+      const flavNames = {
+        f_vai: 'Vải',
+        f_dao: 'Đào Sán',
+        f_dau: 'Dâu',
+        f_nho: 'Nho',
+        f_oi: 'Ổi',
+        f_xoai: 'Xoài',
+        f_mang: 'Mãng cầu',
+        f_tao: 'Táo',
+        f_chanh: 'Chanh',
+        f_me: 'Me',
+        f_dua: 'Dưa gang',
+        f_choco: 'Chocolate'
+      };
+      const topNames = {
+        tcden: 'Trân châu đen',
+        tcvang: 'Trân châu hoàng kim',
+        tcsoi: 'Trân châu mini / sợi',
+        popping: 'Trân châu 3Q / TC nổ',
+        thach: 'Trân châu trắng',
+        cunang: 'Thạch củ năng',
+        thachtc: 'Thạch trái cây',
+        suongsao: 'Sương sáo',
+        thachcf: 'Thạch cà phê',
+        cheese: 'Kem Cheese',
+        fmatcha: 'Kem Matcha',
+        fsalt: 'Kem Muối biển',
+        fube: 'Kem Khoai Môn',
+        pmvien: 'Phô Mai Viên',
+        pmtuoi: 'Phô Mai Tươi',
+        thachpm: 'Thạch Phô Mai'
+      };
+
+      const bName = baseNames[target.base] || target.base;
+      const fName = target.flav ? flavNames[target.flav] : 'Không dùng siro (Nguyên bản)';
+      const tNames = (target.tops && target.tops.length > 0)
+        ? target.tops.map(t => topNames[t] || t).join(' + ')
+        : 'Không cần Topping';
+
+      const feeNoticeHtml = (feePaid != null && feePaid > 0)
+        ? `<div style="font-size:0.82rem;background:#e0f2fe;color:#0369a1;padding:5px 10px;border-radius:8px;margin-bottom:8px;font-weight:700;">💰 Phí tư vấn đã trừ: ${window.fmt ? window.fmt(feePaid) : (Math.round(feePaid/1000) + 'k')} (5% tiền trong két)</div>`
+        : '';
+
+      const hintHtml = `
+        <div class="pbig">💡</div>
+        <h2 style="color:#0284c7;margin:4px 0 8px;">GỢI Ý NGUYÊN LIỆU MÓN TREND</h2>
+        <div style="background:#f0f9ff;border-left:4px solid #0284c7;padding:12px 14px;border-radius:10px;margin:12px 0;text-align:left;font-size:0.88rem;line-height:1.6;color:#1e293b;">
+          ${feeNoticeHtml}
+          Đang bắt trend: <b style="font-size:1.05rem;color:#0369a1;">${trend.icon} ${trend.name}</b><br>
+          <i>"${trend.story}"</i><br>
+          <div style="margin-top:10px;padding:10px 12px;background:#ffffff;border-radius:10px;border:1.5px dashed #93c5fd;line-height:1.7;">
+            <div>🥣 <b>1. Cốt trà nền:</b> <b style="color:#b45309;">${bName}</b></div>
+            <div>🍯 <b>2. Hương vị siro / mứt:</b> <b style="color:#b45309;">${fName}</b></div>
+            <div>🧋 <b>3. Topping & Kem:</b> <b style="color:#b45309;">${tNames}</b></div>
+          </div>
+        </div>
+      `;
+
+      const actions = [
+        ['✨ Tự động chọn đúng nguyên liệu', () => {
+          TrendSystem.applyExactTrendRecipe();
+        }, 1],
+        ['Đã nhớ & Tự chọn nguyên liệu 🧋', () => {}]
+      ];
+
+      if (typeof window.ask === 'function') {
+        window.ask(hintHtml, actions);
+      }
+    },
+
+    // Tự động phối đúng công thức món Trend
+    applyExactTrendRecipe() {
+      this.init();
+      const trend = this.getActiveTrend();
+      if (!trend || !trend.orderRecipe) return;
+      const rec = trend.orderRecipe;
+
+      S.marketTrend.mixState = {
+        base: rec.base,
+        flav: rec.flav || null,
+        tops: [...(rec.tops || [])]
+      };
+
+      if (typeof window.save === 'function') window.save();
+      if (typeof window.sfx === 'function') window.sfx('star');
+      if (typeof window.toast === 'function') {
+        window.toast(`✨ Đã tự động chọn nguyên liệu chuẩn cho món ${trend.icon} ${trend.name}! Hype đạt 100% cực đỉnh! 🚀`, 4000, 1);
+      }
+      this.renderPane();
+    },
+
+    // Legacy fallback nếu cần
+    startQuickRD() { this.launchMixDrink(); },
+    startProRD() { this.launchMixDrink(); },
+
+    // Hiển thị modal hoàn tất R&D
+    showRDCompletionModal(trend, star, customName, rdFee) {
+      if (typeof window.ask !== 'function') return;
+
+      const isFiveStar = star === 5;
+      const dName = customName || trend.name;
+      const fee = rdFee || (S.marketTrend && S.marketTrend.trendDrinkPrice) || 0;
+      const feeStr = window.fmt ? window.fmt(fee) : (Math.round(fee / 1000) + 'k');
+
+      const html = `
+        <div class="pbig">${isFiveStar ? '👑' : '⚡'}</div>
+        <h2 style="color:${isFiveStar ? '#d97706' : '#0284c7'};margin:4px 0 8px;font-size:1.3rem;">
+          ${isFiveStar ? 'R&D THÀNH CÔNG: CHUẨN VỊ 5 SAO HOÀN HẢO!' : 'R&D HOÀN TẤT: CÔNG THỨC 3 SAO CẤP TỐC!'}
+        </h2>
+        <div style="background:${isFiveStar ? '#fef3c7' : '#f0f9ff'};border-left:4px solid ${isFiveStar ? '#f59e0b' : '#0284c7'};padding:12px 14px;border-radius:10px;margin:12px 0;text-align:left;font-size:0.88rem;line-height:1.6;color:#1e293b;">
+          <b>${trend.icon} ${dName}</b> đã chính thức được áp vào <b>Bảng Menu bán hàng hôm nay</b>!<br>
+          ⭐ <b>Đánh giá chất lượng:</b> ${'★'.repeat(star)}${'☆'.repeat(5 - star)}<br>
+          💰 <b>Phí R&D đã trả:</b> <b style="color:#b45309;">${feeStr}</b> (bằng đúng giá bán của ly nước).<br>
+          📋 <b>Giá bán niêm yết:</b> <b style="color:#b45309;">${feeStr} / ly</b>.<br><br>
+          ${isFiveStar ?
+            '✨ <b>Hiệu ứng cực đỉnh:</b> Khách uống là phát cuồng, đăng review nức nở 5★ trên Trà Sữa Feed, kéo điểm danh tiếng quán tăng vọt và hút thêm +20% khách ghé tiệm!' :
+            '⚠️ <b>Hiệu ứng 3★:</b> Khách khen quán nhạy trend, nhưng đánh giá vị chưa tới tầm (khen chê 3-4★ lẫn lộn). Bạn có thể quay lại Bàn Pha Chế để tinh chỉnh lên chuẩn vị 5★ bất kỳ lúc nào!'}
+        </div>
+      `;
+
+      window.ask(html, [['Đưa món lên Menu & Bán ngay! 🧋', () => {}, 1]]);
+    },
+
+    // Cuộn mượt tới thẻ Ly Nước chi tiết lớn ở dưới
+    scrollToPreview() {
+      const card = document.getElementById('mixPreviewCard');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('pulse-highlight');
+        setTimeout(() => card.classList.remove('pulse-highlight'), 1800);
+      }
+    },
+
+    // Hiển thị Modal Xem Ly Nước & Độ Hype phóng to ngay tại chỗ (không cần cuộn)
+    showCupModal() {
+      this.init();
+      const trend = this.getActiveTrend();
+      if (!trend) return;
+      const evalRes = this.getMixEvaluation();
+      const mixState = S.marketTrend.mixState || { base: 'hong', flav: 'f_dao', tops: [] };
+
+      let hasFoam = false;
+      let foamColor = '#fef08a';
+      const foamMap = {
+        cheese: '#fef08a',
+        fmatcha: '#bef264',
+        fsalt: '#f8fafc',
+        fube: '#d8b4fe'
+      };
+      (mixState.tops || []).forEach(t => {
+        if (foamMap[t]) {
+          hasFoam = true;
+          foamColor = foamMap[t];
+        }
+      });
+
+      const pearlColors = {
+        tcden: '#1f2937',
+        tcvang: '#f59e0b',
+        tcsoi: '#78350f',
+        popping: '#ef4444',
+        thach: '#f1f5f9',
+        cunang: '#22c55e',
+        thachtc: '#f97316',
+        suongsao: '#0f172a',
+        thachcf: '#451a03',
+        pmvien: '#fbbf24',
+        pmtuoi: '#fef3c7',
+        thachpm: '#fde047'
+      };
+      let topsElements = '';
+      (mixState.tops || []).forEach(t => {
+        if (pearlColors[t]) {
+          for (let i = 0; i < 4; i++) {
+            topsElements += `<span class="mix-pearl" style="background:${pearlColors[t]};"></span>`;
+          }
+        }
+      });
+
+      const modalHtml = `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:4px 0;">
+          <div class="mix-cup-wrapper" style="margin:0 auto 4px;">
+            <div class="mix-straw"></div>
+            <div class="mix-cup-lid"></div>
+            <div class="mix-cup-body" style="background:${evalRes.liquidColor};">
+              ${hasFoam ? `<div class="mix-cup-foam" style="background:${foamColor};"></div>` : ''}
+              <div class="mix-ice ice-1"></div>
+              <div class="mix-ice ice-2"></div>
+              <div class="mix-sticker">
+                <span class="mix-sticker-icon">🐥</span>
+                <span class="mix-sticker-text">Solomomo</span>
+              </div>
+              <div class="mix-cup-tops">
+                ${topsElements}
+              </div>
+            </div>
+          </div>
+          <div style="font-size:1.15rem;font-weight:800;color:#92400e;text-align:center;">
+            ${evalRes.drinkName}
+          </div>
+          <div style="width:100%;background:#f8fafc;border-radius:12px;padding:10px 14px;border:1px solid #e2e8f0;box-sizing:border-box;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.88rem;margin-bottom:6px;">
+              <span style="font-weight:700;color:#64748b;">ĐỘ HYPE DỰ ĐOÁN:</span>
+              <span style="font-weight:800;color:${evalRes.hypeStatusColor};">${evalRes.score}% · ${evalRes.hypeStatus}</span>
+            </div>
+            <div style="height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden;">
+              <div style="width:${evalRes.score}%;height:100%;background:${evalRes.hypeColor};transition:width 0.3s ease;"></div>
+            </div>
+            <div style="margin-top:8px;font-size:0.83rem;color:#475569;display:flex;justify-content:space-between;">
+              <span>💰 Vốn: <b>${Math.round(evalRes.totalCost / 1000)}k</b></span>
+              <span>Giá đề xuất: <b style="color:#059669;">${window.fmt ? window.fmt(evalRes.suggestedPrice) : Math.round(evalRes.suggestedPrice / 1000) + 'k'}</b></span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const actions = [
+        ['🚀 Ra Mắt Món', () => { TrendSystem.launchMixDrink(); }, 1],
+        ['Đóng lại & Tiếp tục pha', () => {}]
+      ];
+      window.ask(modalHtml, actions);
+    },
+
+    // Mua gói Marketing cho Trend
+    buyMarketing(type) {
+      this.init();
+      const trend = this.getActiveTrend();
+      if (!trend) return;
+
+      if (type === 'standee') {
+        const cost = 80000;
+        if (S.money < cost) { window.toast('Két không đủ 80.000đ để làm Standee!'); return; }
+        S.money -= cost;
+        S.marketTrend.standeeActive = true;
+        if (typeof window.sfx === 'function') window.sfx('coin');
+        window.toast('🪧 Đã dựng Standee Món Hot trước cửa tiệm! Tăng ngay +25% khách vãng lai ghé quán!', 4500, 1);
+      } else if (type === 'reviewer') {
+        const cost = 250000;
+        if (S.money < cost) { window.toast('Két không đủ 250.000đ để Booking Reviewer!'); return; }
+        S.money -= cost;
+        S.marketTrend.bookedReviewer = true;
+        S.marketTrend.heat = Math.min(100, (S.marketTrend.heat || 50) + 15);
+        if (S.marketTrend.stage === 1) {
+          S.marketTrend.stageDaysLeft = 1; // Đẩy nhanh sang bùng nổ
+        }
+        if (typeof window.sfx === 'function') window.sfx('star');
+        window.toast('🎬 Đã thuê Food Reviewer quay clip triệu view! Đẩy nhiệt độ Trend +15% và kích nổ làn sóng Viral nhanh chóng!', 5500, 1);
+      } else if (type === 'combo') {
+        const cost = 50000;
+        if (S.money < cost) { window.toast('Két không đủ 50.000đ để chạy Combo Đu Trend!'); return; }
+        S.money -= cost;
+        S.marketTrend.comboActive = true;
+        if (typeof window.sfx === 'function') window.sfx('coin');
+        window.toast('🥤 Đã kích hoạt Chiến dịch "Combo Đu Trend"! Khách mua kèm trà truyền thống để giải phóng kho hàng cũ!', 4500, 1);
+      } else if (type === 'livestream') {
+        const cost = 120000;
+        if (S.money < cost) { window.toast('Két không đủ 120.000đ để Livestream TikTok Giờ Vàng!'); return; }
+        S.money -= cost;
+        S.marketTrend.livestreamActive = true;
+        if (typeof window.sfx === 'function') window.sfx('coin');
+        window.toast('📱 Đã bật Livestream TikTok Giờ Vàng! Bùng nổ đơn Online giao tận nơi (+35% đơn Online)!', 4500, 1);
+      }
+
+      if (typeof window.save === 'function') window.save();
+      if (typeof window.head === 'function') window.head();
+      this.renderPane();
+    },
+
+    // Thanh lý xả kho nguyên liệu Trend (Thu hồi 50% vốn)
+    liquidateTrendStock() {
+      this.init();
+      const trend = this.getActiveTrend();
+      if (!trend || !window.S || !S.stock) return;
+
+      const keys = trend.keyIngs.filter(k => k !== 'ice' && k !== 'cup' && k !== 'sugar');
+      let totalItems = 0;
+      let totalRefund = 0;
+
+      keys.forEach(k => {
+        const arr = S.stock[k];
+        if (Array.isArray(arr)) {
+          arr.forEach(batch => {
+            const q = batch.q || 0;
+            if (q > 0) {
+              totalItems += q;
+              const cost = (window.ITEMS && window.ITEMS[k] && window.ITEMS[k].cost) || 3000;
+              totalRefund += Math.round(q * cost * 0.5); // Thu hồi 50%
+            }
+          });
+        }
+      });
+
+      if (totalItems <= 0) {
+        if (typeof window.toast === 'function') {
+          window.toast('Kho hiện không còn nguyên liệu tồn nào của món Trend này để thanh lý!');
+        }
+        return;
+      }
+
+      if (typeof window.ask === 'function') {
+        window.ask(`
+          <div class="pbig">📦</div>
+          <h2 style="color:#ef4444;margin:4px 0 8px;">XẢ KHO THANH LÝ NGUYÊN LIỆU TREND</h2>
+          <div style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px 14px;border-radius:10px;margin:12px 0;text-align:left;font-size:0.86rem;line-height:1.55;color:#1e293b;">
+            ⚠️ Phát hiện <b>${totalItems}</b> phần nguyên liệu trend (${keys.map(k => ((window.ITEMS && window.ITEMS[k]) ? window.ITEMS[k].n : k)).join(', ')}) trong kho!<br>
+            Bạn có muốn thanh lý toàn bộ để thu hồi <b>+${window.fmt(totalRefund)}</b> tiền két ngay bây giờ không? Tránh ôm bom khi trend sập!
+          </div>
+        `, [
+          [`⚡ Xác nhận thanh lý (+${window.fmt(totalRefund)})`, () => {
+            keys.forEach(k => { S.stock[k] = []; });
+            S.money = (S.money || 0) + totalRefund;
+            if (typeof window.save === 'function') window.save();
+            if (typeof window.head === 'function') window.head();
+            if (typeof window.sfx === 'function') window.sfx('coin');
+            if (typeof window.toast === 'function') {
+              window.toast(`🎉 Đã xả kho thành công! Thu hồi +${window.fmt(totalRefund)} vào két an toàn!`, 5000, 1);
+            }
+            TrendSystem.renderPane();
+          }, 1],
+          ['Giữ lại bán tiếp', () => {}]
+        ]);
+      }
+    },
+
+    // Kiểm tra tạo ly nước Trend khi khách vào quán (được gọi từ spawn() trong game.js)
+    checkGenerateTrendCup() {
+      this.init();
+      if (!S.marketTrend || !S.marketTrend.activeTrendId) return null;
+
+      const trend = this.getActiveTrend();
+      if (!trend) return null;
+
+      const stage = S.marketTrend.stage || 1;
+      const stageMeta = STAGE_META[stage] || STAGE_META[1];
+      const rate = stageMeta.orderRate;
+
+      // Xác suất khách muốn gọi món trend theo giai đoạn
+      if (Math.random() >= rate) return null;
+
+      // Nếu chưa R&D xong món trend
+      if (S.marketTrend.rdStatus !== 'completed') {
+        // Có tỉ lệ 15% khách hỏi tiếc nuối
+        if (Math.random() < 0.15 && typeof window.toast === 'function') {
+          window.toast(`👀 Khách ghé hỏi món ${trend.icon} ${trend.name} đang hot trend nhưng tiệm chưa nghiên cứu xong! Mau vào tab Radar Trend để thử nghiệm công thức nhé!`, 3500);
+        }
+        return null;
+      }
+
+      // Kiểm tra xem tiệm có đủ nguyên liệu để làm món trend không
+      const reqOrder = JSON.parse(JSON.stringify(trend.orderRecipe));
+      if (typeof window.level === 'function' && window.level() < 2) {
+        reqOrder.size = 'M';
+      }
+      const fakeRec = { id: trend.id, gameOrder: reqOrder };
+      if (typeof window.canMakeRecipe === 'function' && !window.canMakeRecipe(fakeRec, false)) {
+        return null; // Thiếu nguyên liệu trong quầy thì khách không gọi
+      }
+
+      // Đủ điều kiện! Tạo ly order trend
+      const mul = trend.priceMultipliers[stage] || 1.5;
+      const cup = (typeof window.fixOrder === 'function') ? window.fixOrder(reqOrder) : reqOrder;
+      cup.isTrendDrink = true;
+      cup.trendId = trend.id;
+      cup.trendMultiplier = mul;
+      cup.trendStar = S.marketTrend.rdStar || 3;
+      cup.trendQuote = trend.quotes[Math.floor(Math.random() * trend.quotes.length)];
+      cup.trendInfo = trend;
+
+      return cup;
+    },
+
+    // Phục vụ xong ly Trend
+    onDrinkServed(o) {
+      if (!o || !o.isTrendDrink || !S.marketTrend) return;
+      S.marketTrend.totalTrendDrinksSold = (S.marketTrend.totalTrendDrinksSold || 0) + 1;
+
+      // Đánh giá review
+      if (o.trendStar === 5) {
+        if (Math.random() < 0.35 && typeof window.addReview === 'function') {
+          window.addReview(5, 'good', false, null);
+        }
+      } else {
+        if (Math.random() < 0.25 && typeof window.addReview === 'function') {
+          window.addReview(3, 'slow', false, null);
+        }
+      }
+
+      if (typeof window.save === 'function') window.save();
+    },
+
+    // Render Widget trên Quầy Menu Board (Đã tích hợp trực tiếp vào Bảng Menu Chalkboard trendMenuItemHtml)
+    renderBoardWidget() {
+      return '';
+    },
+
+    // Render Tab Radar Trend & R&D Lab
+    renderPane(targetEl) {
+      this.init();
+      const p = targetEl || document.getElementById('pane');
+      if (!p) return;
+
+      const prevScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+
+      const trend = this.getActiveTrend();
+      if (!trend) {
+        p.innerHTML = '<div style="padding:20px;text-align:center;">Đang quét tín hiệu Radar...</div>';
+        return;
+      }
+
+      const stage = S.marketTrend.stage || 1;
+      const stageMeta = STAGE_META[stage] || STAGE_META[1];
+      const heat = S.marketTrend.heat || 50;
+      const isRD = S.marketTrend.rdStatus === 'completed';
+      const rdStar = S.marketTrend.rdStar || 0;
+      const mul = trend.priceMultipliers[stage] || 1.5;
+
+      const evalRes = this.getMixEvaluation();
+      const mixState = S.marketTrend.mixState || { base: 'hong', flav: 'f_dao', tops: [] };
+
+      // Foam detection
+      let hasFoam = false;
+      let foamColor = '#fef08a';
+      const foamMap = {
+        cheese: '#fef08a',
+        fmatcha: '#bef264',
+        fsalt: '#f8fafc',
+        fube: '#d8b4fe'
+      };
+      (mixState.tops || []).forEach(t => {
+        if (foamMap[t]) {
+          hasFoam = true;
+          foamColor = foamMap[t];
+        }
+      });
+
+      // Pearls / toppings for bottom of cup
+      const pearlColors = {
+        tcden: '#1f2937',
+        tcvang: '#f59e0b',
+        tcsoi: '#78350f',
+        popping: '#ef4444',
+        thach: '#f1f5f9',
+        cunang: '#22c55e',
+        thachtc: '#f97316',
+        suongsao: '#0f172a',
+        thachcf: '#451a03',
+        pmvien: '#fbbf24',
+        pmtuoi: '#fef3c7',
+        thachpm: '#fde047'
+      };
+      let topsElements = '';
+      (mixState.tops || []).forEach(t => {
+        if (pearlColors[t]) {
+          for (let i = 0; i < 4; i++) {
+            topsElements += `<span class="mix-pearl" style="background:${pearlColors[t]};"></span>`;
+          }
+        }
+      });
+
+      const html = `
+        <div class="trend-container">
+          <!-- 1. Radar Header Card -->
+          <div class="trend-radar-card">
+            <div class="trend-header-top">
+              <div class="trend-brand-title">
+                <span>📡 RADAR THỊ TRƯỜNG F&B</span>
+              </div>
+              <div class="trend-stage-pill ${stageMeta.cssClass}">
+                <span>${stageMeta.icon}</span>
+                <span>${stageMeta.name}</span>
+              </div>
+            </div>
+
+            <!-- Heat Bar -->
+            <div class="trend-heat-wrap">
+              <div class="trend-heat-labels">
+                <span>Nhiệt độ Trend (Trend Heat Index)</span>
+                <span style="color:#fbbf24;font-size:0.95rem;">${heat}% 🔥</span>
+              </div>
+              <div class="trend-heat-bar-bg">
+                <div class="trend-heat-bar-fill" style="width: ${heat}%;"></div>
+              </div>
+            </div>
+
+            <!-- Sub Stats -->
+            <div class="trend-sub-stats">
+              <div class="trend-sub-item">
+                <span class="trend-sub-title">Dự báo vòng đời</span>
+                <span class="trend-sub-val">⏳ Còn ${S.marketTrend.stageDaysLeft || 1} ngày đỉnh điểm</span>
+              </div>
+              <div class="trend-sub-item">
+                <span class="trend-sub-title">Mức sẵn sàng chi trả</span>
+                <span class="trend-sub-val" style="color:#4ade80;">💵 x${mul.toFixed(1)} lần giá gốc</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Active Trend Detail Card -->
+          <div class="active-trend-card">
+            <div class="active-trend-top">
+              <div class="trend-drink-icon">${trend.icon}</div>
+              <div class="trend-drink-meta">
+                <div class="trend-drink-title-row">
+                  <span class="trend-drink-name">${trend.name}</span>
+                  <span class="trend-custom-badge">${trend.badge}</span>
+                </div>
+                <div class="trend-drink-story">${trend.story}</div>
+              </div>
+            </div>
+
+            <div class="trend-meta-box">
+              <div class="trend-meta-row">
+                <span class="trend-meta-label">👥 Tệp khách chuộng:</span>
+                <span class="trend-meta-val">${trend.targetCustomer}</span>
+              </div>
+              <div class="trend-meta-desc">💡 "${trend.targetDesc}"</div>
+            </div>
+
+            <!-- BÀN PHA CHẾ THÍ NGHIỆM (MIX & MATCH) -->
+            <div class="mix-match-box">
+              <div class="mix-match-header">
+                <div class="mix-match-title">
+                  <span class="mix-match-title-icon">🧋</span>
+                  <span class="mix-match-title-text">Bàn Pha Chế R&D Bắt Trend</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <button type="button" class="mix-hint-pill" onclick="window.TrendSystem.requestRecipeHint()" title="Xem gợi ý nguyên liệu chuẩn của món Trend (Phí: 5% tiền két)">💡 Gợi ý (5% két)</button>
+                  ${isRD ? `<span class="rd-stars" title="Đã ra mắt ${rdStar} sao">${'★'.repeat(rdStar)}${'☆'.repeat(5 - rdStar)}</span>` : ''}
+                </div>
+              </div>
+
+              ${isRD ? `
+                <div class="mix-success-banner">
+                  <div class="mix-success-top">
+                    <span class="mix-success-badge">✅ Đã ra mắt (${rdStar}★)</span>
+                    <span class="mix-success-name">${trend.icon} ${trend.name}</span>
+                  </div>
+                  <div class="mix-success-desc">Món đã mở bán trên Menu, khách sẽ liên tục gọi món trong ca! ${rdStar < 5 ? '<i>(Có thể pha chế lại bên dưới để đạt 5★)</i>' : ''}</div>
+                </div>
+              ` : ''}
+
+              <!-- 📱 STICKY LIVE HYPE & CUP HUD (Xem trực tiếp ly nước & độ Hype trên mobile khi cuộn chọn nguyên liệu) -->
+              <div class="mix-sticky-hud" id="mixStickyHud" onclick="window.TrendSystem.scrollToPreview()" title="Chạm để cuộn xem ly lớn hoặc bấm 'Xem ly' để phóng to">
+                <div class="mix-hud-cup-col" onclick="event.stopPropagation();window.TrendSystem.showCupModal();" title="Bấm để xem ly nước lớn & ra mắt món">
+                  <div class="mix-hud-cup">
+                    <div class="mix-hud-straw"></div>
+                    <div class="mix-hud-lid"></div>
+                    <div class="mix-hud-body" style="background:${evalRes.liquidColor};">
+                      ${hasFoam ? `<div class="mix-hud-foam" style="background:${foamColor};"></div>` : ''}
+                      <div class="mix-hud-ice"></div>
+                      <div class="mix-hud-sticker">🐥</div>
+                      <div class="mix-hud-tops">${topsElements}</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="mix-hud-info">
+                  <div class="mix-hud-name" title="${evalRes.drinkName}">${evalRes.drinkName}</div>
+                  <div class="mix-hud-hype-row">
+                    <span class="mix-hud-hype-val" style="color:${evalRes.hypeStatusColor};">
+                      ${evalRes.score >= 95 ? '🔥' : (evalRes.score >= 70 ? '⚡' : '❄️')} ${evalRes.score}% · ${evalRes.hypeStatus}
+                    </span>
+                    <div class="mix-hud-bar-track">
+                      <div class="mix-hud-bar-fill" style="width:${evalRes.score}%;background:${evalRes.hypeColor};"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="mix-hud-actions">
+                  <button type="button" class="mix-hud-btn" onclick="event.stopPropagation();window.TrendSystem.showCupModal();" title="Xem ly nước phóng to">
+                    <span>Xem ly</span> <span>🔍</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="mix-main-grid">
+                <!-- CỘT TRÁI: CHỌN NGUYÊN LIỆU -->
+                <div class="mix-left-col">
+                  <!-- 1. CỐT TRÀ NỀN -->
+                  <div class="mix-section">
+                    <div class="mix-sec-title">
+                      <span>1. Cốt trà nền</span>
+                      <span class="mix-sec-badge">Chọn 1</span>
+                    </div>
+                    <div class="mix-grid mix-grid-base">
+                      ${MIX_BASES.map(b => `
+                        <button type="button" class="mix-btn ${mixState.base === b.id ? 'selected' : ''}" onclick="window.TrendSystem.setMixBase('${b.id}')">
+                          <span class="mix-btn-cup" style="background:${b.color};"></span>
+                          <span class="mix-btn-name">${b.name}</span>
+                        </button>
+                      `).join('')}
+                    </div>
+                  </div>
+
+                  <!-- 2. HƯƠNG VỊ TRÁI CÂY / ĐẶC BIỆT -->
+                  <div class="mix-section">
+                    <div class="mix-sec-title">
+                      <span>2. Hương vị siro / mứt</span>
+                      <span class="mix-sec-badge opt">Tuỳ chọn</span>
+                    </div>
+                    <div class="mix-grid mix-grid-flav">
+                      ${MIX_FLAVORS.map(f => `
+                        <button type="button" class="mix-btn ${(mixState.flav === f.id || (!mixState.flav && f.id === null)) ? 'selected' : ''}" onclick="window.TrendSystem.setMixFlav(${f.id ? `'${f.id}'` : 'null'})">
+                          <span class="mix-btn-icon">${f.icon}</span>
+                          <span class="mix-btn-name">${f.name}</span>
+                        </button>
+                      `).join('')}
+                    </div>
+                  </div>
+
+                  <!-- 3. TOPPING & KEM -->
+                  <div class="mix-section">
+                    <div class="mix-sec-title">
+                      <span>3. Topping & Kem</span>
+                      <span class="mix-sec-badge">Tối đa 3</span>
+                    </div>
+                    <div class="mix-grid mix-grid-tops">
+                      ${MIX_TOPPINGS.map(t => {
+                        const isSel = (mixState.tops && mixState.tops.includes(t.id));
+                        return `
+                          <button type="button" class="mix-btn ${isSel ? 'selected' : ''}" onclick="window.TrendSystem.toggleMixTop('${t.id}')">
+                            <span class="mix-btn-icon">${t.icon}</span>
+                            <span class="mix-btn-name">${t.name}</span>
+                          </button>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CỘT PHẢI: KHUNG XEM TRƯỚC (DASHED CONTAINER) -->
+                <div class="mix-right-col">
+                  <div class="mix-preview-card" id="mixPreviewCard">
+                    <!-- Ly nước trực quan -->
+                    <div class="mix-cup-wrapper">
+                      <div class="mix-straw"></div>
+                      <div class="mix-cup-lid"></div>
+                      <div class="mix-cup-body" style="background:${evalRes.liquidColor};">
+                        ${hasFoam ? `<div class="mix-cup-foam" style="background:${foamColor};"></div>` : ''}
+                        <div class="mix-ice ice-1"></div>
+                        <div class="mix-ice ice-2"></div>
+                        <div class="mix-sticker">
+                          <span class="mix-sticker-icon">🐥</span>
+                          <span class="mix-sticker-text">Solomomo</span>
+                        </div>
+                        <div class="mix-cup-tops">
+                          ${topsElements}
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Tên Món -->
+                    <div class="mix-name-box">
+                      ${evalRes.drinkName}
+                    </div>
+
+                    <!-- Dự Đoán Hype -->
+                    <div class="mix-hype-section">
+                      <div class="mix-hype-label-row">
+                        <span class="mix-hype-lbl">ĐỘ HYPE DỰ ĐOÁN:</span>
+                        <span class="mix-hype-status" style="color:${evalRes.hypeStatusColor};">${evalRes.score}% · ${evalRes.hypeStatus}</span>
+                      </div>
+                      <div class="mix-hype-bar-bg">
+                        <div class="mix-hype-bar-fill" style="width:${evalRes.score}%;background:${evalRes.hypeColor};"></div>
+                      </div>
+                    </div>
+
+                    <!-- Chi Phí & Giá Bán Đề Xuất (Phí R&D) -->
+                    <div class="mix-cost-row">
+                      💰 <b>Vốn:</b> ${Math.round(evalRes.totalCost / 1000)}k · <b>Giá bán & Phí R&D:</b> <span class="mix-price-val">${window.fmt ? window.fmt(evalRes.suggestedPrice) : Math.round(evalRes.suggestedPrice / 1000) + 'k'}</span>
+                    </div>
+
+                    <!-- Nút Ra Mắt Món & Xem Gợi Ý Cân Đối 50-50 Chuẩn Từng Pixel -->
+                    <div class="mix-actions-row">
+                      <button type="button" class="mix-hint-btn" onclick="window.TrendSystem.requestRecipeHint()" title="Xem gợi ý nguyên liệu chuẩn của món Trend (Phí: 5% tiền két)">
+                        <span class="mix-btn-title">💡 Xem Gợi Ý</span>
+                        <span class="mix-btn-sub">(Phí: 5% két)</span>
+                      </button>
+                      <button type="button" class="mix-launch-btn" onclick="window.TrendSystem.launchMixDrink()" title="Ra mắt món mới vào menu bán hàng">
+                        <span class="mix-btn-title">🚀 Ra Mắt Món</span>
+                        <span class="mix-btn-sub">(Phí R&D: ${window.kv ? window.kv(evalRes.suggestedPrice) : Math.round(evalRes.suggestedPrice / 1000) + 'k'})</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Marketing Bắt Trend -->
+          <div class="trend-mkt-box">
+            <div class="trend-mkt-title">
+              <span>📣</span> <span>TRUYỀN THÔNG & MARKETING KÍCH CẦU TREND</span>
+            </div>
+            <div class="trend-mkt-grid">
+              <!-- Item 1: Standee -->
+              <div class="trend-mkt-item ${S.marketTrend.standeeActive ? 'active' : ''}">
+                <div>
+                  <div class="trend-mkt-top">
+                    <span class="trend-mkt-icon">🪧</span>
+                    <span class="trend-mkt-name">Treo Standee Món Hot</span>
+                  </div>
+                  <div class="trend-mkt-desc">Biển hiệu bắt trend đặt trước cửa tiệm. Tăng ngay <b>+25% khách vãng lai</b> tò mò ghé quán!</div>
+                </div>
+                <button type="button" class="trend-mkt-btn ${S.marketTrend.standeeActive ? 'btn-mkt-done' : 'btn-mkt-buy'}" onclick="${S.marketTrend.standeeActive ? '' : 'window.TrendSystem.buyMarketing(\'standee\')'}">
+                  ${S.marketTrend.standeeActive ? '✓ Đang treo biển' : 'Làm Standee (80.000đ)'}
+                </button>
+              </div>
+
+              <!-- Item 2: Booking Reviewer -->
+              <div class="trend-mkt-item ${S.marketTrend.bookedReviewer ? 'active' : ''}">
+                <div>
+                  <div class="trend-mkt-top">
+                    <span class="trend-mkt-icon">🎬</span>
+                    <span class="trend-mkt-name">Booking Food Reviewer</span>
+                  </div>
+                  <div class="trend-mkt-desc">Thuê TikToker/KOL quay clip thử món trend. Đẩy nhiệt độ <b>+15%</b> và kích nổ giai đoạn Bùng nổ nhanh hơn!</div>
+                </div>
+                <button type="button" class="trend-mkt-btn ${S.marketTrend.bookedReviewer ? 'btn-mkt-done' : 'btn-mkt-buy'}" onclick="${S.marketTrend.bookedReviewer ? '' : 'window.TrendSystem.buyMarketing(\'reviewer\')'}">
+                  ${S.marketTrend.bookedReviewer ? '✓ Đã lên clip Viral' : 'Booking KOL (250.000đ)'}
+                </button>
+              </div>
+
+              <!-- Item 3: Combo Đu Trend -->
+              <div class="trend-mkt-item ${S.marketTrend.comboActive ? 'active' : ''}">
+                <div>
+                  <div class="trend-mkt-top">
+                    <span class="trend-mkt-icon">🥤</span>
+                    <span class="trend-mkt-name">Chiến Dịch Combo Đu Trend</span>
+                  </div>
+                  <div class="trend-mkt-desc">Bán kèm 1 món trend + 1 món trà truyền thống để kích cầu dọn nhanh kho nguyên liệu cũ!</div>
+                </div>
+                <button type="button" class="trend-mkt-btn ${S.marketTrend.comboActive ? 'btn-mkt-done' : 'btn-mkt-buy'}" onclick="${S.marketTrend.comboActive ? '' : 'window.TrendSystem.buyMarketing(\'combo\')'}">
+                  ${S.marketTrend.comboActive ? '✓ Đang chạy Combo' : 'Chạy Combo (50.000đ)'}
+                </button>
+              </div>
+
+              <!-- Item 4: Livestream TikTok Giờ Vàng -->
+              <div class="trend-mkt-item ${S.marketTrend.livestreamActive ? 'active' : ''}">
+                <div>
+                  <div class="trend-mkt-top">
+                    <span class="trend-mkt-icon">📱</span>
+                    <span class="trend-mkt-name">Livestream TikTok Giờ Vàng</span>
+                  </div>
+                  <div class="trend-mkt-desc">Phát trực tiếp chốt deal món trend trên TikTok. Bùng nổ đơn Online giao tận nơi (<b>+35% đơn Online</b>)!</div>
+                </div>
+                <button type="button" class="trend-mkt-btn ${S.marketTrend.livestreamActive ? 'btn-mkt-done' : 'btn-mkt-buy'}" onclick="${S.marketTrend.livestreamActive ? '' : 'window.TrendSystem.buyMarketing(\'livestream\')'}">
+                  ${S.marketTrend.livestreamActive ? '✓ Đang Livestream' : 'Bật Live (120.000đ)'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Quản Trị Rủi Ro & Xả Hàng Tồn -->
+          ${(stage >= 3) ? `
+            <div class="trend-risk-card">
+              <div class="trend-risk-header">
+                <span>⚠️</span> <span>CẢNH BÁO QUẢN TRỊ RỦI RO & ÔM BOM HÀNG TỒN</span>
+              </div>
+              <div class="trend-risk-body">
+                Trend đang ở giai đoạn <b>${stageMeta.name}</b> và sẽ sớm biến mất khỏi radar! Nếu lỡ nhập nhiều nguyên liệu độc quyền của trend, bạn hãy thanh lý sớm để thu hồi 50% tiền vốn kẻo bị quá hạn tiêu huỷ lỗ nặng!
+              </div>
+              <button type="button" class="trend-liquidate-btn" onclick="window.TrendSystem.liquidateTrendStock()">
+                ⚡ Xả kho thanh lý nguyên liệu Trend (-50% giá vốn)
+              </button>
+            </div>
+          ` : `
+            <div style="background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:14px;padding:10px 14px;font-size:0.8rem;color:#64748b;display:flex;align-items:center;justify-content:space-between;">
+              <span>💡 <b>Kinh nghiệm F&B:</b> Khi trend chuyển sang giai đoạn Bão hòa / Sập trend, nút xả kho thanh lý sẽ tự động mở để bảo toàn vốn két!</span>
+              <button type="button" style="background:#e2e8f0;border:none;border-radius:8px;padding:5px 9px;font-size:0.75rem;font-weight:700;cursor:pointer;" onclick="window.TrendSystem.liquidateTrendStock()">Kiểm tra xả kho</button>
+            </div>
+          `}
+
+          <!-- 5. Trà Sữa Feed / TikTok Radar Live Wall -->
+          <div class="trend-feed-card">
+            <div class="trend-feed-header">
+              <div class="trend-feed-title">
+                <span>📱</span> <span>MẠNG XÃ HỘI TRÀ SỮA FEED / TIKTOK RADAR</span>
+              </div>
+              <span style="font-size:0.75rem;color:#10b981;font-weight:700;">● Trực tiếp</span>
+            </div>
+
+            <div class="trend-hashtags">
+              ${(trend.hashtags || []).map(tag => `<span class="trend-tag">${tag}</span>`).join('')}
+            </div>
+
+            <div class="trend-feed-list">
+              <div class="trend-feed-item">
+                <div class="trend-feed-avatar">👧</div>
+                <div class="trend-feed-content">
+                  <div class="trend-feed-user-row">
+                    <span>Bé Trà Sữa Gen Z</span>
+                    <span class="trend-feed-handle">@trasuagirl2k6 · 10 phút trước</span>
+                  </div>
+                  <div class="trend-feed-text">
+                    Trời ơi tiệm trà bắt trend món <b>${trend.name}</b> nhanh xỉu! Vừa ghé mua xong, check-in lên clip TikTok ai cũng hỏi mua ở đâu! ${trend.icon}✨
+                  </div>
+                  <div class="trend-feed-stats">
+                    <span>❤️ 12.4K</span> <span>💬 856</span> <span>🔄 1.2K</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="trend-feed-item">
+                <div class="trend-feed-avatar">🎬</div>
+                <div class="trend-feed-content">
+                  <div class="trend-feed-user-row">
+                    <span>Food Reviewer Mỏ Khoét</span>
+                    <span class="trend-feed-handle">@mokhoet_foodreview · 45 phút trước</span>
+                  </div>
+                  <div class="trend-feed-text">
+                    ${isRD && rdStar === 5 ?
+                      `Ghé thẩm món ${trend.name} chuẩn 5 sao ở quán này, vị xuất sắc 10/10 không có nhưng nha cả nhà! Khuyên thật lòng nên thử!` :
+                      `Đã test món ${trend.name}! Bắt trend nhanh, chụp ảnh đẹp, vị ổn áp đu trend rất vui!`
+                    }
+                  </div>
+                  <div class="trend-feed-stats">
+                    <span>❤️ 45.8K</span> <span>💬 2.1K</span> <span>🔄 5.4K</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="trend-feed-item">
+                <div class="trend-feed-avatar">💼</div>
+                <div class="trend-feed-content">
+                  <div class="trend-feed-user-row">
+                    <span>Dân Công Sở Mê Tà Tưa</span>
+                    <span class="trend-feed-handle">@office_milktea · 2 giờ trước</span>
+                  </div>
+                  <div class="trend-feed-text">
+                    Cả phòng gom order 12 ly <b>${trend.name}</b> uống xế chiều, shipper vừa giao tới thơm nức cả văn phòng công ty! ${trend.icon}
+                  </div>
+                  <div class="trend-feed-stats">
+                    <span>❤️ 8.9K</span> <span>💬 312</span> <span>🔄 420</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      p.innerHTML = html;
+      if (prevScrollY > 0) {
+        window.scrollTo({ top: prevScrollY, behavior: 'instant' });
+      }
+    }
+  };
+
+  // Expose to window
+  window.TrendSystem = TrendSystem;
+
+  // Auto init
+  if (typeof window.addEventListener === 'function') {
+    window.addEventListener('DOMContentLoaded', () => {
+      TrendSystem.init();
+    });
+  }
+})();

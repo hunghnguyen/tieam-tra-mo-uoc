@@ -1,0 +1,1453 @@
+/**
+ * 🏆 BỘ SƯU TẬP 100 NGUYÊN LIỆU & GACHA CÔNG THỨC TRÀ SỮA
+ * Hệ thống 5 nhóm nguyên liệu, mốc nhận túi 3 nguyên liệu ngẫu nhiên (10, 100, 1000, 2000, 3000...)
+ * và chế tạo các công thức món mới độc quyền chuẩn gu Việt Nam!
+ */
+
+(function () {
+  'use strict';
+
+  // 100 NGUYÊN LIỆU PHÂN THEO 5 NHÓM
+  const INGREDIENTS = [
+    // --- NHÓM 1: Cốt trà & Nền nước (Trà base) – 25 nguyên liệu ---
+    { id: 'tra_phuclong', name: 'Trà đen Phúc Long', rarity: 'R', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🍵', desc: 'Đậm vị, chát sâu, hương vị trà sữa truyền thống chuẩn Việt.' },
+    { id: 'hongtra_ceylon', name: 'Hồng trà Ceylon', rarity: 'N', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🫖', desc: 'Vị thanh, hậu ngọt, nền tảng của hồng trà sữa kinh điển.' },
+    { id: 'luctra_lai', name: 'Lục trà lài (Hoa nhài)', rarity: 'N', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🌸', desc: 'Thơm hương hoa nhẹ nhàng, làm trà sữa lài, lục trà sữa.' },
+    { id: 'tra_olongrang', name: 'Trà Ô long rang', rarity: 'R', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🍂', desc: 'Hương thơm khói mộc mạc, đậm đà, vị bùi.' },
+    { id: 'tra_olongtuquy', name: 'Trà Ô long Tứ Quý', rarity: 'R', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🍃', desc: 'Hương hoa tươi, vị thanh mát, hợp cả trà sữa lẫn trà trái cây.' },
+    { id: 'tra_thietquanam', name: 'Trà Thiết Quan Âm', rarity: 'SR', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🌿', desc: 'Vị đắng nhẹ đầu lưỡi, thơm quyến rũ đặc trưng dòng ô long cao cấp.' },
+    { id: 'tra_earlgrey', name: 'Trà Earl Grey (Bá tước)', rarity: 'R', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '☕', desc: 'Thơm nồng tinh dầu cam Bergamot quý phái phong cách Âu.' },
+    { id: 'bot_matcha', name: 'Bột Matcha Uji', rarity: 'SR', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🍵', desc: 'Đắng thanh, bùi đậm, màu xanh lục bảo cao cấp.' },
+    { id: 'bot_hojicha', name: 'Bột Hojicha (Trà rang Nhật)', rarity: 'SR', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🏺', desc: 'Vị trà rang thơm ngậy, ít caffeine, màu nâu hổ phách.' },
+    { id: 'tra_thaixanh', name: 'Trà Thái xanh', rarity: 'N', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🥤', desc: 'Màu xanh ngọc bắt mắt, thơm thảo mộc đặc trưng Thái Lan.' },
+    { id: 'tra_thaido', name: 'Trà Thái đỏ', rarity: 'N', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🧋', desc: 'Màu cam rực rỡ, vị chát ngọt ấm áp.' },
+    { id: 'tra_hoadaubiec', name: 'Trà hoa đậu biếc', rarity: 'N', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🫐', desc: 'Tạo màu xanh lam/tím mộng mơ cho các ly phân tầng.' },
+    { id: 'tra_gaolut', name: 'Trà gạo lứt rang', rarity: 'R', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🌾', desc: 'Mùi thơm bánh nướng, mộc mạc, healthy.' },
+    { id: 'tra_kieumach', name: 'Trà kiều mạch (Sobacha)', rarity: 'SR', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🥣', desc: 'Thơm bùi ngũ cốc, hậu vị ngọt thanh dịu.' },
+    { id: 'hongtra_namphi', name: 'Hồng trà Nam Phi (Rooibos)', rarity: 'SR', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🫖', desc: 'Không caffeine, vị ngọt thảo mộc tự nhiên.' },
+    { id: 'cf_robusta', name: 'Cà phê Robusta Đắk Lắk', rarity: 'R', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '☕', desc: 'Đậm đắng, tạo món trà sữa cà phê / Bạc xỉu trà sữa.' },
+    { id: 'cf_arabica', name: 'Cà phê Arabica Cầu Đất', rarity: 'SR', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🍒', desc: 'Chua thanh, hương thơm quả mọng tinh tế.' },
+    { id: 'bot_cacao', name: 'Bột Cacao Bến Tre', rarity: 'R', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🍫', desc: 'Vị đắng nguyên chất, thơm béo dùng pha chocolate milk tea.' },
+    { id: 'tra_hoacuc', name: 'Trà hoa cúc khô', rarity: 'N', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🌼', desc: 'Thơm nhẹ, làm nền cho các món trà sữa thảo mộc dưỡng nhan.' },
+    { id: 'tra_hoahong', name: 'Trà hoa hồng khô', rarity: 'R', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🌹', desc: 'Hương hoa nồng nàn quyến rũ.' },
+    { id: 'tra_senhue', name: 'Trà sen Huế', rarity: 'SSR', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🪷', desc: 'Đậm nét văn hóa Việt, hương sen ướp tự nhiên tao nhã.' },
+    { id: 'tra_phonhi', name: 'Trà Phổ Nhĩ chín', rarity: 'SSR', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🫖', desc: 'Lên men lâu năm, màu nước đỏ sánh, đậm đà độc bản.' },
+    { id: 'tra_samdua', name: 'Trà sâm dứa', rarity: 'N', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🍍', desc: 'Hương vị đường phố bình dân miền Nam quen thuộc.' },
+    { id: 'tra_shantuyet', name: 'Trà Shan Tuyết cổ thụ Hà Giang', rarity: 'SSR', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '🏔️', desc: 'Búp trà phủ tuyết trắng từ đỉnh núi cao, ngọt hậu sâu lắng.' },
+    { id: 'nuoc_khoang', name: 'Nước khoáng ngầm tinh khiết', rarity: 'N', group: 1, groupName: 'Cốt Trà & Nền Nước', icon: '💧', desc: 'Dung môi tiêu chuẩn để chiết xuất trọn vẹn hương trà.' },
+
+    // --- NHÓM 2: Sữa, Béo & Tạo ngậy (Dairy & Cream) – 18 nguyên liệu ---
+    { id: 'bot_suabeo', name: 'Bột sữa béo Indo/Kieit', rarity: 'N', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🥛', desc: 'Độ béo ngậy tiêu chuẩn cho các quán trà sữa truyền thống.' },
+    { id: 'sua_ongtho', name: 'Sữa đặc Ông Thọ', rarity: 'N', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🥫', desc: 'Ngọt đậm, béo ngậy linh hồn của đồ uống Việt.' },
+    { id: 'suatuoi_dalat', name: 'Sữa tươi thanh trùng Đà Lạt Milk', rarity: 'R', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🥛', desc: 'Ngọt thơm tự nhiên, làm nền cho món Trà sữa tươi / Sữa tươi trân châu.' },
+    { id: 'suatuoi_nguyenkem', name: 'Sữa tươi tiệt trùng nguyên kem', rarity: 'N', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🥛', desc: 'Độ ngậy đồng đều, phổ biến.' },
+    { id: 'sua_yenmach', name: 'Sữa yến mạch (Oat milk)', rarity: 'SR', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🌾', desc: 'Lựa chọn thuần chay thơm bùi thời thượng.' },
+    { id: 'sua_daunanh', name: 'Sữa đậu nành nguyên chất', rarity: 'N', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🫘', desc: 'Thanh đạm, dùng làm món trà sữa đậu nành.' },
+    { id: 'sua_macca', name: 'Sữa hạt macca', rarity: 'SR', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🌰', desc: 'Béo ngậy đỉnh cao từ hạt thượng hạng.' },
+    { id: 'sua_hanhnhan', name: 'Sữa hạnh nhân', rarity: 'R', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🥜', desc: 'Thơm thoang thoảng mùi hạt nướng.' },
+    { id: 'cotdua_bentre', name: 'Nước cốt dừa Bến Tre', rarity: 'R', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🥥', desc: 'Thơm lừng miền nhiệt đới, tạo món trà sữa dừa nướng.' },
+    { id: 'whipping_cream', name: 'Whipping Cream tươi', rarity: 'R', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🧁', desc: 'Thành phần cốt lõi tạo độ mượt mịn và béo ngậy.' },
+    { id: 'heavy_cream', name: 'Heavy Cream hảo hạng', rarity: 'SR', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🍶', desc: 'Cực ngậy, nền tảng cho lớp kem đặc sánh.' },
+    { id: 'bot_cheddar', name: 'Bột phô mai Cheddar', rarity: 'R', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🧀', desc: 'Tạo vị mằn mặn béo ngậy cho lớp kem.' },
+    { id: 'bot_mascarpone', name: 'Bột phô mai Mascarpone', rarity: 'SR', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🧀', desc: 'Mềm mượt, dùng cho kem cheese phong cách Tiramisu.' },
+    { id: 'bo_lac', name: 'Bơ lạc (Bơ đậu phộng)', rarity: 'R', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🥜', desc: 'Tăng độ sánh đặc và vị bùi béo độc đáo.' },
+    { id: 'bot_cotdua', name: 'Bột cốt dừa sấy phun', rarity: 'N', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🥥', desc: 'Tiện lợi, thơm đậm mùi kẹo dừa.' },
+    { id: 'suadua_dac', name: 'Sữa dừa đặc', rarity: 'SR', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🥥', desc: 'Ngọt béo cô đặc hoàn toàn từ dừa.' },
+    { id: 'suade_ninhthuan', name: 'Sữa dê tươi Ninh Thuận', rarity: 'SSR', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🐐', desc: 'Hương vị béo ngậy hoang dã, kén người uống nhưng cực phẩm.' },
+    { id: 'sua_hazelnut', name: 'Sữa hạt phỉ (Hazelnut)', rarity: 'SR', group: 2, groupName: 'Sữa & Tạo Ngậy', icon: '🌰', desc: 'Vị béo thơm sang trọng phong cách Ý.' },
+
+    // --- NHÓM 3: Topping nhai (Chewy & Jelly Toppings) – 25 nguyên liệu ---
+    { id: 'tc_den', name: 'Trân châu đen truyền thống', rarity: 'N', group: 3, groupName: 'Topping Nhai', icon: '🧋', desc: 'Dẻo dai ngâm đường, kinh điển mọi thời đại.' },
+    { id: 'tc_trang', name: 'Trân châu trắng giòn (Konjac)', rarity: 'R', group: 3, groupName: 'Topping Nhai', icon: '⚪', desc: 'Giòn sần sật từ bột củ nưa, vị thanh nhẹ.' },
+    { id: 'tc_hoangkim', name: 'Trân châu hoàng kim', rarity: 'R', group: 3, groupName: 'Topping Nhai', icon: '🟡', desc: 'Ngâm mật ong vàng óng, dai mềm dẻo.' },
+    { id: 'tc_soi', name: 'Trân châu mini', rarity: 'R', group: 3, groupName: 'Topping Nhai', icon: '🥢', desc: 'Hình dáng hạt mini độc đáo lạ miệng, hút cực đã.' },
+    { id: 'tc_cunang', name: 'Trân châu củ năng', rarity: 'R', group: 3, groupName: 'Topping Nhai', icon: '🌰', desc: 'Vỏ ngoài dẻo trong sần sật ngọt mát.' },
+    { id: 'tc_khoailangtim', name: 'Trân châu khoai lang tím', rarity: 'R', group: 3, groupName: 'Topping Nhai', icon: '🍠', desc: 'Màu tím tự nhiên, dẻo bùi vị khoai.' },
+    { id: 'tc_popping', name: 'Trân châu 3Q giòn dai', rarity: 'R', group: 3, groupName: 'Topping Nhai', icon: '💥', desc: 'Nổ bung nước trái cây khi cắn trong miệng.' },
+    { id: 'thach_suongsao', name: 'Thạch sương sáo (Grass Jelly)', rarity: 'N', group: 3, groupName: 'Topping Nhai', icon: '🧊', desc: 'Đen bóng, tính mát, đắng nhẹ giải nhiệt.' },
+    { id: 'thach_duatho', name: 'Thạch dừa thô Bến Tre', rarity: 'N', group: 3, groupName: 'Topping Nhai', icon: '🥥', desc: 'Giòn ngọt thanh mát tự nhiên.' },
+    { id: 'thach_nhadam', name: 'Thạch nha đam ngâm đường', rarity: 'N', group: 3, groupName: 'Topping Nhai', icon: '🌵', desc: 'Mọng nước, thanh mát da dẻ.' },
+    { id: 'thach_khucbach', name: 'Thạch khúc bạch phô mai', rarity: 'SR', group: 3, groupName: 'Topping Nhai', icon: '🧈', desc: 'Cắn ngập chân răng, thơm béo núng nính.' },
+    { id: 'thach_3q', name: 'Thạch ngọc trai 3Q', rarity: 'N', group: 3, groupName: 'Topping Nhai', icon: '🔮', desc: 'Tiện lợi, giữ độ giòn sần sật trong tủ mát.' },
+    { id: 'thach_phomai', name: 'Thạch phô mai tươi viên', rarity: 'SR', group: 3, groupName: 'Topping Nhai', icon: '🧀', desc: 'Viên phô mai con bò cười bọc ngoài lớp thạch dẻo.' },
+    { id: 'thach_aiyu', name: 'Thạch aiyu (Ái ngọc)', rarity: 'R', group: 3, groupName: 'Topping Nhai', icon: '🍋', desc: 'Thạch tự nhiên từ hạt ái ngọc Đài Loan, mềm tan trơn tuột.' },
+    { id: 'thach_cusen', name: 'Thạch củ sen', rarity: 'SR', group: 3, groupName: 'Topping Nhai', icon: '🪷', desc: 'Bùi giòn thảo mộc mát lành.' },
+    { id: 'pudding_trung', name: 'Pudding trứng', rarity: 'N', group: 3, groupName: 'Topping Nhai', icon: '🍮', desc: 'Vàng ươm, mềm mượt tan trên đầu lưỡi.' },
+    { id: 'pudding_dauhu', name: 'Pudding đậu hũ non', rarity: 'R', group: 3, groupName: 'Topping Nhai', icon: '🥣', desc: 'Thanh mát, thơm dịu mùi đậu tương.' },
+    { id: 'banh_flan', name: 'Bánh flan caramen', rarity: 'R', group: 3, groupName: 'Topping Nhai', icon: '🍮', desc: 'Béo ngậy trứng sữa kèm caramel cháy thơm lừng.' },
+    { id: 'hatsen_hue', name: 'Hạt sen Huế hầm mềm', rarity: 'SR', group: 3, groupName: 'Topping Nhai', icon: '🪷', desc: 'Bùi ngọt thanh tao, đậm chất truyền thống.' },
+    { id: 'khoaimon_dam', name: 'Khoai môn dầm (Taro paste)', rarity: 'R', group: 3, groupName: 'Topping Nhai', icon: '🍠', desc: 'Bở tơi, béo bùi, tím pastel đẹp mắt.' },
+    { id: 'daudo_azuki', name: 'Đậu đỏ ngào đường Azuki', rarity: 'N', group: 3, groupName: 'Topping Nhai', icon: '🫘', desc: 'Vị ngọt bùi mềm nhừ kiểu Hồng Kông.' },
+    { id: 'dua_naonon', name: 'Dừa nạo non sấy dẻo', rarity: 'N', group: 3, groupName: 'Topping Nhai', icon: '🥥', desc: 'Nhai dai dai sần sật thơm lừng mùi dừa.' },
+    { id: 'vien_duanuong', name: 'Viên dừa giòn nướng', rarity: 'R', group: 3, groupName: 'Topping Nhai', icon: '🍪', desc: 'Vàng giòn rụm rực rỡ bên trên mặt ly.' },
+    { id: 'nepcam_taybac', name: 'Nếp cẩm Tây Bắc', rarity: 'SR', group: 3, groupName: 'Topping Nhai', icon: '🌾', desc: 'Hạt nếp dẻo thơm nồng, hơi chua ngọt lên men nhẹ.' },
+    { id: 'tc_datvang', name: 'Trân châu ngọc trai vàng dát vàng 24k', rarity: 'SSR', group: 3, groupName: 'Topping Nhai', icon: '✨', desc: 'Topping gacha tối thượng cho ly nước xa xỉ.' },
+
+    // --- NHÓM 4: Chất tạo ngọt, Sốt & Vị trái cây (Flavors & Sweeteners) – 20 nguyên liệu ---
+    { id: 'duongmia_bienhoa', name: 'Đường mía cô đặc Biên Hòa', rarity: 'N', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🎋', desc: 'Độ ngọt sắc ngọt chuẩn.' },
+    { id: 'duongnau_okinawa', name: 'Đường nâu Okinawa', rarity: 'R', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🍯', desc: 'Vệt đường chảy quanh thành ly huyền thoại, thơm mùi mật mía cháy.' },
+    { id: 'matong_taynguyen', name: 'Mật ong hoa cà phê Tây Nguyên', rarity: 'R', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🍯', desc: 'Màu hổ phách, thơm nồng hoa cà phê.' },
+    { id: 'duong_thotnot', name: 'Đường thốt nốt An Giang', rarity: 'SR', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🌴', desc: 'Vị ngọt thanh tao đậm đà hương vị miền Tây.' },
+    { id: 'siro_ladua', name: 'Siro lá dứa (Pandan)', rarity: 'N', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🌿', desc: 'Mùi thơm thanh nhẹ màu xanh cốm dịu mát.' },
+    { id: 'mathoa_dua', name: 'Mật hoa dừa Trà Vinh', rarity: 'SR', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🥥', desc: 'Chỉ số đường huyết thấp, vị ngọt đậm hơi mặn tự nhiên.' },
+    { id: 'sot_xoai', name: 'Sốt xoài cát Hòa Lộc', rarity: 'R', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🥭', desc: 'Chua ngọt thơm ngát từ giống xoài ngon nhất miền Tây.' },
+    { id: 'mut_dao', name: 'Mứt đào miếng ngâm', rarity: 'N', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🍑', desc: 'Giòn ngọt thanh mát, nguyên liệu cho trà sữa đào.' },
+    { id: 'sot_dautay', name: 'Sốt dâu tây Đà Lạt', rarity: 'N', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🍓', desc: 'Chua ngọt rực rỡ, phối hợp tuyệt đẹp với sữa béo.' },
+    { id: 'siro_duongden_gung', name: 'Siro đường đen nấu gừng', rarity: 'R', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🫚', desc: 'Vị ấm nồng cho những ly trà sữa mùa đông.' },
+    { id: 'sot_caramel_muoi', name: 'Sốt Caramel muối', rarity: 'R', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🍮', desc: 'Ngọt đắng đan xen vị mặn mà cuốn hút.' },
+    { id: 'bot_khoaimon', name: 'Bột khoai môn mịn', rarity: 'N', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🍠', desc: 'Tạo màu tím lãng mạn và hương thơm vani-khoai môn.' },
+    { id: 'sot_chanhleo', name: 'Sốt chanh leo (Chanh dây)', rarity: 'N', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🍋', desc: 'Vị chua thanh kích thích tuyến nước bọt.' },
+    { id: 'sot_vietquat', name: 'Sốt việt quất rừng', rarity: 'SR', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🫐', desc: 'Màu tím thẫm sang trọng, thơm sâu lắng.' },
+    { id: 'mut_buoidao', name: 'Mứt bưởi đào', rarity: 'R', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🍊', desc: 'Chua đắng nhẹ, thơm tinh dầu vỏ bưởi.' },
+    { id: 'siro_bacha', name: 'Siro bạc hà Peppermint', rarity: 'N', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🍃', desc: 'The mát bừng tỉnh giác quan.' },
+    { id: 'sot_socola', name: 'Sốt socola đen nguyên chất', rarity: 'N', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🍫', desc: 'Vị đắng sâu, chảy viền ly đậm nghệ thuật.' },
+    { id: 'cot_atisodo', name: 'Nước cốt hoa atiso đỏ (Hibiscus)', rarity: 'N', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🌺', desc: 'Màu đỏ ruby rực rỡ, vị chua thanh sảng khoái.' },
+    { id: 'siro_comchay', name: 'Siro hoa cơm cháy (Elderflower)', rarity: 'SR', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🌼', desc: 'Hương hoa cỏ Bắc Âu thanh nhã, quý phái.' },
+    { id: 'nhuyhoa_saffron', name: 'Nhụy hoa nghệ tây (Saffron)', rarity: 'SSR', group: 4, groupName: 'Sốt & Tạo Ngọt', icon: '🏵️', desc: 'Vị ngọt đắng nhẹ, tạo màu vàng kim vương giả.' },
+
+    // --- NHÓM 5: Kem phủ, Kem & Gia vị Decor (Kem, Salt & Garnishes) – 12 nguyên liệu ---
+    { id: 'foam_truyenthong', name: 'Kem truyền thống', rarity: 'N', group: 5, groupName: 'Kem Phủ & Decor', icon: '🥛', desc: 'Lớp màng sữa mặn ngọt mịn màng phía trên mặt ly.' },
+    { id: 'cheese_foam', name: 'Kem phô mai mặn', rarity: 'R', group: 5, groupName: 'Kem Phủ & Decor', icon: '🧀', desc: 'Sánh đặc, béo ngậy mặn mòi đưa đẩy vị trà.' },
+    { id: 'kemtrung_nuong', name: 'Kem trứng nướng (Creme Brulee)', rarity: 'SR', group: 5, groupName: 'Kem Phủ & Decor', icon: '🔥', desc: 'Phủ đường nâu khò lửa cháy thơm lừng, béo ngậy đậm đà.' },
+    { id: 'muoi_himalaya', name: 'Muối hồng Himalaya', rarity: 'R', group: 5, groupName: 'Kem Phủ & Decor', icon: '🧂', desc: 'Cân bằng độ ngọt gắt, kích hương trà bùng nổ.' },
+    { id: 'bot_que', name: 'Bột quế Ceylon', rarity: 'R', group: 5, groupName: 'Kem Phủ & Decor', icon: '🍂', desc: 'Rắc nhẹ trên kem, thơm nồng ấm áp.' },
+    { id: 'vun_oreo', name: 'Vụn bánh quy Oreo', rarity: 'N', group: 5, groupName: 'Kem Phủ & Decor', icon: '🍪', desc: 'Giòn rụm màu đen tuyền trên nền kem trắng.' },
+    { id: 'duanuong_gion', name: 'Dừa nướng giòn rụm', rarity: 'N', group: 5, groupName: 'Kem Phủ & Decor', icon: '🥥', desc: 'Vàng ươm, thơm nức mũi, tăng trải nghiệm nhai.' },
+    { id: 'hatde_cuoi', name: 'Hạt dẻ cười nghiền vụn (Pistachio)', rarity: 'SR', group: 5, groupName: 'Kem Phủ & Decor', icon: '🥜', desc: 'Xanh non sang chảnh, vị béo bùi thượng hạng.' },
+    { id: 'bot_hanhnhan', name: 'Bột hạnh nhân nướng lát', rarity: 'R', group: 5, groupName: 'Kem Phủ & Decor', icon: '🌰', desc: 'Bùi bùi giòn rụm phủ bề mặt.' },
+    { id: 'la_hunglui', name: 'Lá húng lủi (Mint) tươi', rarity: 'N', group: 5, groupName: 'Kem Phủ & Decor', icon: '🌿', desc: 'Điểm xuyết ngọn xanh tươi mát trên đỉnh ly.' },
+    { id: 'bot_vang', name: 'Bột vàng thực phẩm lấp lánh', rarity: 'SSR', group: 5, groupName: 'Kem Phủ & Decor', icon: '✨', desc: 'Khiến ly nước lấp lánh như độc dược phép thuật.' },
+    { id: 'davien_nhuyen', name: 'Đá viên tinh khiết dập nhuyễn', rarity: 'N', group: 5, groupName: 'Kem Phủ & Decor', icon: '🧊', desc: 'Yếu tố quyết định nhiệt độ mát lạnh sảng khoái tức thì.' }
+  ];
+
+  // DANH SÁCH 25 CÔNG THỨC KẾT HỢP MÓN MỚI
+  const RECIPES = [
+    {
+      id: 'rec_hongtra_tt',
+      name: 'Hồng trà sữa truyền thống (Cấp 1)',
+      tier: 'Cấp 1',
+      icon: '🧋',
+      ings: ['tra_phuclong', 'bot_suabeo', 'tc_den', 'duongmia_bienhoa'],
+      rewardDesc: '+1.500.000đ tiền thưởng & Mở khóa khách sành vị truyền thống!',
+      cashBonus: 1500000,
+      gameOrder: { base: 'hong', flav: null, tops: ['tcden'], size: 'M', sugar: 70, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_suatuoi_duongden',
+      name: 'Sữa tươi trân châu đường đen (Cấp 2)',
+      tier: 'Cấp 2',
+      icon: '🥛',
+      ings: ['nuoc_khoang', 'suatuoi_dalat', 'tc_hoangkim', 'duongnau_okinawa'],
+      rewardDesc: '+2.500.000đ tiền thưởng & Món quốc dân tăng 8% giá trị đơn hàng!',
+      cashBonus: 2500000,
+      gameOrder: { base: 'tra', flav: null, tops: ['tcvang'], size: 'M', sugar: 100, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_luctra_lai_bacha',
+      name: 'Lục trà lài nha đam bạc hà (Cấp 1)',
+      tier: 'Cấp 1',
+      icon: '🌸',
+      ings: ['luctra_lai', 'suatuoi_nguyenkem', 'thach_nhadam', 'siro_bacha'],
+      rewardDesc: '+1.800.000đ tiền thưởng & Hương hoa the mát giải nhiệt cực đã!',
+      cashBonus: 1800000,
+      gameOrder: { base: 'luc', flav: null, tops: ['cunang'], size: 'M', sugar: 50, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_olong_kemtrung',
+      name: 'Ô long kem trứng nướng dừa giòn (Cấp 3)',
+      tier: 'Cấp 3',
+      icon: '🔥',
+      ings: ['tra_olongrang', 'whipping_cream', 'vien_duanuong', 'kemtrung_nuong'],
+      rewardDesc: '+5.000.000đ tiền thưởng & Buff vĩnh viễn: +12% Doanh thu chi nhánh!',
+      cashBonus: 5000000,
+      gameOrder: { base: 'olong', flav: null, tops: ['cheese', 'pmvien'], size: 'L', sugar: 70, ice: 'Ít đá' }
+    },
+    {
+      id: 'rec_olong_tuquy_xoai',
+      name: 'Ô long Tứ Quý thạch dừa xoài nhiệt đới (Cấp 2)',
+      tier: 'Cấp 2',
+      icon: '🥭',
+      ings: ['tra_olongtuquy', 'bot_cotdua', 'thach_duatho', 'sot_xoai'],
+      rewardDesc: '+3.000.000đ tiền thưởng & Cơn sốt xoài nhiệt đới bùng nổ!',
+      cashBonus: 3000000,
+      gameOrder: { base: 'olong', flav: 'f_xoai', tops: ['thach'], size: 'M', sugar: 70, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_thietquanam_khucbach',
+      name: 'Thiết Quan Âm sữa hạnh nhân khúc bạch đào (Cấp 3)',
+      tier: 'Cấp 3',
+      icon: '🍑',
+      ings: ['tra_thietquanam', 'sua_hanhnhan', 'thach_khucbach', 'mut_dao'],
+      rewardDesc: '+6.000.000đ tiền thưởng & Đỉnh cao vị trà thanh tao quý phái!',
+      cashBonus: 6000000,
+      gameOrder: { base: 'olong', flav: 'f_dao', tops: ['thachpm'], size: 'L', sugar: 50, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_batuoc_cheese_oreo',
+      name: 'Bá tước kem cheese muối hồng vụn bánh (Cấp 2)',
+      tier: 'Cấp 2',
+      icon: '🍪',
+      ings: ['tra_earlgrey', 'bot_cheddar', 'muoi_himalaya', 'vun_oreo'],
+      rewardDesc: '+3.500.000đ tiền thưởng & Vụn Oreo béo ngậy hút khách trẻ!',
+      cashBonus: 3500000,
+      gameOrder: { base: 'hong', flav: null, tops: ['tcden'], cheese: true, size: 'M', sugar: 70, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_matcha_daudo',
+      name: 'Matcha đậu nành đậu đỏ hoa thơm (Cấp 3)',
+      tier: 'Cấp 3',
+      icon: '🍵',
+      ings: ['bot_matcha', 'sua_daunanh', 'daudo_azuki', 'la_hunglui'],
+      rewardDesc: '+5.500.000đ tiền thưởng & Buff vĩnh viễn: +10% Khách ghé quán!',
+      cashBonus: 5500000,
+      gameOrder: { base: 'matcha', flav: null, tops: ['tcden'], size: 'M', sugar: 50, ice: 'Ít đá' }
+    },
+    {
+      id: 'rec_hojicha_pudding',
+      name: 'Hojicha yến mạch pudding đậu hũ hạnh nhân (Cấp 3)',
+      tier: 'Cấp 3',
+      icon: '🏺',
+      ings: ['bot_hojicha', 'sua_yenmach', 'pudding_dauhu', 'bot_hanhnhan'],
+      rewardDesc: '+6.000.000đ tiền thưởng & Thanh tịnh thuần chay cao cấp!',
+      cashBonus: 6000000,
+      gameOrder: { base: 'olong', flav: null, tops: ['pmvien'], size: 'M', sugar: 50, ice: 'Không đá' }
+    },
+    {
+      id: 'rec_trathai_phomai',
+      name: 'Trà Thái xanh thạch phô mai mát lạnh (Cấp 1)',
+      tier: 'Cấp 1',
+      icon: '🥤',
+      ings: ['tra_thaixanh', 'sua_ongtho', 'thach_phomai', 'davien_nhuyen'],
+      rewardDesc: '+2.000.000đ tiền thưởng & Siêu phẩm mát lạnh cực hút khách!',
+      cashBonus: 2000000,
+      gameOrder: { base: 'thai', flav: null, tops: ['thachpm'], size: 'M', sugar: 70, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_trathaido_cunang',
+      name: 'Trà Thái đỏ nước cốt dừa trân châu củ năng lá dứa (Cấp 2)',
+      tier: 'Cấp 2',
+      icon: '🧋',
+      ings: ['tra_thaido', 'cotdua_bentre', 'tc_cunang', 'siro_ladua'],
+      rewardDesc: '+3.200.000đ tiền thưởng & Củ năng giòn sần sật thơm nức lá dứa!',
+      cashBonus: 3200000,
+      gameOrder: { base: 'thai', flav: null, tops: ['cunang'], size: 'M', sugar: 70, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_daubiec_suadua',
+      name: 'Đậu biếc sữa dừa chanh leo sương sáo (Cấp 2)',
+      tier: 'Cấp 2',
+      icon: '🫐',
+      ings: ['tra_hoadaubiec', 'suadua_dac', 'thach_suongsao', 'sot_chanhleo'],
+      rewardDesc: '+3.500.000đ tiền thưởng & Màu tím mộng mơ bùng nổ mạng xã hội!',
+      cashBonus: 3500000,
+      gameOrder: { base: 'luc', flav: 'f_chanh', tops: ['suongsao'], size: 'M', sugar: 50, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_gaolut_bolac',
+      name: 'Trà gạo lứt bơ lạc trân châu tím mật dừa (Cấp 3)',
+      tier: 'Cấp 3',
+      icon: '🌾',
+      ings: ['tra_gaolut', 'bo_lac', 'tc_khoailangtim', 'mathoa_dua'],
+      rewardDesc: '+5.000.000đ tiền thưởng & Bùi béo ngậy vị mật dừa tự nhiên!',
+      cashBonus: 5000000,
+      gameOrder: { base: 'tra', flav: null, tops: ['tcden'], size: 'M', sugar: 50, ice: 'Ít đá' }
+    },
+    {
+      id: 'rec_kieumach_khoaimon',
+      name: 'Trà kiều mạch khoai môn sữa macca bùi béo (Cấp 3)',
+      tier: 'Cấp 3',
+      icon: '🥣',
+      ings: ['tra_kieumach', 'sua_macca', 'khoaimon_dam', 'bot_khoaimon'],
+      rewardDesc: '+6.000.000đ tiền thưởng & Macca thượng hạng sánh mịn béo ngậy!',
+      cashBonus: 6000000,
+      gameOrder: { base: 'tra', flav: null, tops: ['tcden'], size: 'L', sugar: 70, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_hongtra_namphi_caramel',
+      name: 'Hồng trà Nam Phi caramel muối dừa dẻo (Cấp 3)',
+      tier: 'Cấp 3',
+      icon: '🥥',
+      ings: ['hongtra_namphi', 'heavy_cream', 'dua_naonon', 'sot_caramel_muoi'],
+      rewardDesc: '+6.500.000đ tiền thưởng & Hương thảo mộc ngọt thanh không caffeine!',
+      cashBonus: 6500000,
+      gameOrder: { base: 'hong', flav: null, tops: ['pmvien'], size: 'L', sugar: 70, ice: 'Ít đá' }
+    },
+    {
+      id: 'rec_bacxiu_suade',
+      name: 'Bạc xỉu sữa dê trân châu mini gừng ấm (Cấp 3)',
+      tier: 'Cấp 3',
+      icon: '☕',
+      ings: ['cf_robusta', 'suade_ninhthuan', 'tc_soi', 'siro_duongden_gung'],
+      rewardDesc: '+7.000.000đ tiền thưởng & Vị béo hoang dã ấm nồng gừng tươi!',
+      cashBonus: 7000000,
+      gameOrder: { base: 'tra', flav: null, tops: ['tcsoi'], size: 'M', sugar: 70, ice: 'Ít đá' }
+    },
+    {
+      id: 'rec_mocha_caudat',
+      name: 'Mocha Cầu Đất hạt phỉ pudding trứng socola (Cấp 3)',
+      tier: 'Cấp 3',
+      icon: '🍫',
+      ings: ['cf_arabica', 'sua_hazelnut', 'pudding_trung', 'sot_socola'],
+      rewardDesc: '+7.500.000đ tiền thưởng & Socola đen chảy sánh đậm nghệ thuật!',
+      cashBonus: 7500000,
+      gameOrder: { base: 'tra', flav: 'f_choco', tops: ['pmvien'], size: 'L', sugar: 70, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_cacao_bentre',
+      name: 'Cacao Bến Tre Mascarpone bánh flan hương quế (Cấp 3)',
+      tier: 'Cấp 3',
+      icon: '🍮',
+      ings: ['bot_cacao', 'bot_mascarpone', 'banh_flan', 'bot_que'],
+      rewardDesc: '+8.000.000đ tiền thưởng & Phong cách Tiramisu béo mượt quý phái!',
+      cashBonus: 8000000,
+      gameOrder: { base: 'hong', flav: 'f_choco', tops: ['thachpm'], size: 'L', sugar: 70, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_tra_hoacuc_dautay',
+      name: 'Trà hoa cúc mật ong thạch 3Q dâu tây (Cấp 2)',
+      tier: 'Cấp 2',
+      icon: '🍓',
+      ings: ['tra_hoacuc', 'thach_3q', 'matong_taynguyen', 'sot_dautay'],
+      rewardDesc: '+4.000.000đ tiền thưởng & Trà hoa dưỡng nhan thanh mát da dẻ!',
+      cashBonus: 4000000,
+      gameOrder: { base: 'luc', flav: 'f_dau', tops: ['thach'], size: 'M', sugar: 50, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_hongtra_ceylon_duanuong',
+      name: 'Hồng trà Ceylon trân châu trắng bọt sữa dừa nướng (Cấp 2)',
+      tier: 'Cấp 2',
+      icon: '🥥',
+      ings: ['hongtra_ceylon', 'foam_truyenthong', 'tc_trang', 'duanuong_gion'],
+      rewardDesc: '+4.200.000đ tiền thưởng & Bọt sữa mềm mượt cùng dừa giòn tan!',
+      cashBonus: 4200000,
+      gameOrder: { base: 'hong', flav: null, tops: ['thach', 'pmvien'], cheese: true, size: 'M', sugar: 70, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_honghoa_comchay',
+      name: 'Hồng hoa cơm cháy hạt dẻ cười nổ bung (Cấp 3)',
+      tier: 'Cấp 3',
+      icon: '🌹',
+      ings: ['tra_hoahong', 'tc_popping', 'siro_comchay', 'hatde_cuoi'],
+      rewardDesc: '+8.500.000đ tiền thưởng & Trân châu 3Q cắn nổ bung nước trái cây!',
+      cashBonus: 8500000,
+      gameOrder: { base: 'hong', flav: 'f_vai', tops: ['popping'], size: 'L', sugar: 50, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_trasen_thotnot',
+      name: 'Trà sen thốt nốt hạt sen kem cheese (Cấp SSR)',
+      tier: 'Cấp SSR',
+      icon: '🪷',
+      ings: ['tra_senhue', 'hatsen_hue', 'duong_thotnot', 'cheese_foam'],
+      rewardDesc: '+25.000.000đ tiền thưởng & Hương sen ướp tao nhã +15% Khách VIP!',
+      cashBonus: 25000000,
+      gameOrder: { base: 'luc', flav: null, tops: ['tcvang'], cheese: true, size: 'L', sugar: 70, ice: 'Ít đá' }
+    },
+    {
+      id: 'rec_phonhi_datvang',
+      name: 'Phổ Nhĩ Tây Bắc nếp cẩm Saffron dát vàng (Cấp SSR)',
+      tier: 'Cấp SSR',
+      icon: '✨',
+      ings: ['tra_phonhi', 'nepcam_taybac', 'nhuyhoa_saffron', 'bot_vang'],
+      rewardDesc: '+35.000.000đ tiền thưởng & Vương giả Saffron và bột vàng lấp lánh!',
+      cashBonus: 35000000,
+      gameOrder: { base: 'olong', flav: null, tops: ['tcden', 'tcvang'], size: 'L', sugar: 50, ice: 'Không đá' }
+    },
+    {
+      id: 'rec_samdua_aingo',
+      name: 'Trà sâm dứa ái ngọc bưởi đào atiso đỏ (Cấp 2)',
+      tier: 'Cấp 2',
+      icon: '🌺',
+      ings: ['tra_samdua', 'thach_aiyu', 'mut_buoidao', 'cot_atisodo'],
+      rewardDesc: '+4.500.000đ tiền thưởng & Đỏ ruby quyến rũ vị phố Nam Bộ!',
+      cashBonus: 4500000,
+      gameOrder: { base: 'luc', flav: 'f_dao', tops: ['cunang'], size: 'M', sugar: 70, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_shantuyet_ngoctraivang',
+      name: 'Shan Tuyết củ sen việt quất ngọc trai vàng (Cấp SSR)',
+      tier: 'Cấp SSR',
+      icon: '👑',
+      ings: ['tra_shantuyet', 'thach_cusen', 'tc_datvang', 'sot_vietquat'],
+      rewardDesc: '+50.000.000đ tiền thưởng & Đỉnh cao danh trà tuyết trắng Hà Giang (+20% Doanh thu)!',
+      cashBonus: 50000000,
+      gameOrder: { base: 'olong', flav: 'f_nho', tops: ['tcvang', 'thach'], size: 'L', sugar: 50, ice: 'Ít đá' }
+    },
+
+    // --- CÔNG THỨC VŨ TRỤ HUYỀN THOẠI (TIER MASTER 6 - COSMIC TRANSCENDENT) ---
+    {
+      id: 'rec_vutru_thienha',
+      name: 'Thiên Hà Tinh Tú Kim Cương (Cấp Vũ Trụ)',
+      tier: 'Cấp Vũ Trụ 🌌',
+      icon: '🌌',
+      ings: ['tra_senhue', 'nhuyhoa_saffron', 'tc_datvang', 'bot_vang'],
+      rewardDesc: '+100.000.000đ tiền két & Buff vĩnh viễn: +15% Doanh thu chuỗi quán mẹ!',
+      cashBonus: 100000000,
+      gameOrder: { base: 'luc', flav: 'f_vai', tops: ['tcvang', 'thach'], cheese: true, size: 'L', sugar: 50, ice: 'Ít đá' }
+    },
+    {
+      id: 'rec_vutru_bangha',
+      name: 'Băng Hà Cực Quang Tuyết Đỉnh (Cấp Vũ Trụ)',
+      tier: 'Cấp Vũ Trụ 🌌',
+      icon: '❄️',
+      ings: ['tra_shantuyet', 'suade_ninhthuan', 'thach_cusen', 'heavy_cream'],
+      rewardDesc: '+120.000.000đ tiền két & Khách VIP thẩm định xuất hiện x2 tần suất!',
+      cashBonus: 120000000,
+      gameOrder: { base: 'olong', flav: null, tops: ['pmvien', 'tcvang'], cheese: true, size: 'L', sugar: 50, ice: 'Đá thường' }
+    },
+    {
+      id: 'rec_vutru_hoangkim',
+      name: 'Hoàng Kim Hắc Long Đế Vương (Cấp Vũ Trụ)',
+      tier: 'Cấp Vũ Trụ 🌌',
+      icon: '🐲',
+      ings: ['tra_phonhi', 'nepcam_taybac', 'kemtrung_nuong', 'mathoa_dua'],
+      rewardDesc: '+150.000.000đ tiền két & Vĩnh viễn tăng +30% Tiền Tip toàn hệ thống!',
+      cashBonus: 150000000,
+      gameOrder: { base: 'olong', flav: null, tops: ['tcden', 'tcvang'], cheese: true, size: 'L', sugar: 70, ice: 'Ít đá' }
+    },
+    {
+      id: 'rec_vutru_dieuhong',
+      name: 'Diệu Hồng Ngọc Bích Uyển Chuyển (Cấp Vũ Trụ)',
+      tier: 'Cấp Vũ Trụ 🌌',
+      icon: '💎',
+      ings: ['bot_matcha', 'sua_macca', 'thach_phomai', 'hatde_cuoi'],
+      rewardDesc: '+180.000.000đ tiền két & Khách hàng 100% khen ngon, xóa bỏ tỷ lệ khách chê đắt!',
+      cashBonus: 180000000,
+      gameOrder: { base: 'matcha', flav: null, tops: ['thachpm', 'pmvien'], size: 'L', sugar: 50, ice: 'Ít đá' }
+    },
+    {
+      id: 'rec_vutru_khonggian',
+      name: 'Thần Trà Không Gian Vô Cực (Cấp Vũ Trụ)',
+      tier: 'Cấp Vũ Trụ 🌌',
+      icon: '🪐',
+      ings: ['tra_thietquanam', 'cotdua_bentre', 'tc_popping', 'cheese_foam'],
+      rewardDesc: '+250.000.000đ tiền két & Danh hiệu ĐẠI SƯ VŨ TRỤ (+50% Doanh thu Online)!',
+      cashBonus: 250000000,
+      gameOrder: { base: 'olong', flav: 'f_dao', tops: ['popping', 'tcvang'], cheese: true, size: 'L', sugar: 70, ice: 'Ít đá' }
+    }
+  ];
+
+  let curTab = 'gacha';
+  let curGroupFilter = 0; // 0 = all, 1..5
+
+  const STAR_UPGRADE_COSTS = { 2: 3, 3: 8, 4: 15, 5: 30 };
+  const STAR_BENEFITS = {
+    1: '⭐ 1★: Đã Sáng Tạo (Kích hoạt buff cơ bản & tiền thưởng)',
+    2: '⭐⭐ 2★: Đột phá Vị Giác (+25% Giá bán khi khách gọi món)',
+    3: '⭐⭐⭐ 3★: Hương Thơm Ngào Ngạt (+50% Tiền Bo Tip)',
+    4: '⭐⭐⭐⭐ 4★: Thượng Hạng Tuyệt Đỉnh (Đảm bảo 100% đánh giá 5★)',
+    5: '⭐⭐⭐⭐⭐ 5★: BẬC THẦY TỐI THƯỢNG (+3% Doanh thu toàn chuỗi mẹ mỗi ngày)'
+  };
+
+  function initCollectionState() {
+    if (!window.S) return;
+    const S = window.S;
+    if (!S.collection) {
+      S.collection = {
+        unlockedIngs: {},
+        discoveredIngs: {},
+        claimedPacks: 0,
+        unopenedPacks: 0,
+        milestonesClaimed: [],
+        craftedRecipes: {},
+        recipeStars: {},
+        lastRevealed: []
+      };
+    }
+    if (!S.collection.unlockedIngs) S.collection.unlockedIngs = {};
+    if (!S.collection.discoveredIngs) S.collection.discoveredIngs = {};
+    if (!S.collection.milestonesClaimed) S.collection.milestonesClaimed = [];
+    if (!S.collection.craftedRecipes) S.collection.craftedRecipes = {};
+    if (!S.collection.recipeStars) S.collection.recipeStars = {};
+    if (!S.collection.lastRevealed) S.collection.lastRevealed = [];
+
+    // 1. Đồng bộ các nguyên liệu đang sở hữu vào danh mục đã khám phá
+    Object.keys(S.collection.unlockedIngs).forEach(id => {
+      if (S.collection.unlockedIngs[id] > 0) {
+        S.collection.discoveredIngs[id] = true;
+      }
+    });
+
+    // 2. Tự động phục hồi & bảo toàn vĩnh viễn (Auto-Recovery & Anti-Cheat Guard):
+    // Nguyên tắc chống hack: Phải mở đủ nguyên liệu mới ghép đủ công thức!
+    // Chỉ phục hồi khi tài khoản có tiến trình chơi thật hợp lệ (đã từng mở túi hoặc tích lũy phục vụ khách).
+    // Nếu phát hiện gian lận can thiệp save gán công thức ảo mà chưa từng mở nguyên liệu -> Thanh lọc triệt để.
+    if (S.collection.craftedRecipes && typeof S.collection.craftedRecipes === 'object') {
+      const craftedKeys = Object.keys(S.collection.craftedRecipes).filter(k => S.collection.craftedRecipes[k]);
+      if (craftedKeys.length > 0) {
+        const claimedPacks = S.collection.claimedPacks || 0;
+        const served = Math.max(0, S.served || 0);
+        const money = Math.max(0, S.money || 0);
+        const totalRev = Math.max(0, S.totalRev || 0);
+        const currentIngs = Object.keys(S.collection.unlockedIngs || {}).length;
+
+        const isLegitPlayer = (claimedPacks > 0) || (served >= 1000) || (money >= 50000000) || (totalRev >= 50000000) || (currentIngs >= 10);
+        if (isLegitPlayer) {
+          craftedKeys.forEach(rId => {
+            const rec = RECIPES.find(x => x.id === rId);
+            if (rec && Array.isArray(rec.ings)) {
+              rec.ings.forEach(ingId => {
+                S.collection.discoveredIngs[ingId] = true;
+                if (!S.collection.unlockedIngs[ingId] || S.collection.unlockedIngs[ingId] <= 0) {
+                  S.collection.unlockedIngs[ingId] = 1;
+                }
+              });
+            }
+            if (!S.collection.recipeStars[rId]) {
+              S.collection.recipeStars[rId] = 1;
+            }
+          });
+        } else {
+          // Bất thường: Có công thức khi chưa từng mở nguyên liệu -> Thanh lọc
+          S.collection.craftedRecipes = {};
+          S.collection.recipeStars = {};
+        }
+      }
+    }
+  }
+
+  function getMilestones(served) {
+    const arr = [];
+    const maxM = Math.max(100000, Math.floor(((served || (window.S && window.S.served) || 0) + 10000) / 1000) * 1000);
+    for (let m = 1000; m <= maxM; m += 1000) {
+      arr.push(m);
+    }
+    return arr;
+  }
+
+  function getNextMilestone(served) {
+    return (Math.floor((served || 0) / 1000) + 1) * 1000;
+  }
+
+  function getPrevMilestone(served) {
+    return Math.floor((served || 0) / 1000) * 1000;
+  }
+
+  function checkMilestones() {
+    initCollectionState();
+    if (!window.S) return;
+    const served = S.served || 0;
+    if (served < 1000) return;
+
+    if (!Array.isArray(S.collection.milestonesClaimed)) {
+      S.collection.milestonesClaimed = [];
+    }
+
+    const claimedSet = new Set(S.collection.milestonesClaimed);
+    const maxMilestone = Math.floor(served / 1000) * 1000;
+    let newPacks = 0;
+
+    for (let m = 1000; m <= maxMilestone; m += 1000) {
+      if (!claimedSet.has(m)) {
+        claimedSet.add(m);
+        S.collection.milestonesClaimed.push(m);
+        newPacks++;
+      }
+    }
+
+    if (newPacks > 0) {
+      S.collection.unopenedPacks = (S.collection.unopenedPacks || 0) + newPacks;
+      if (typeof save === 'function') save();
+      updateBadge();
+      if (typeof toast === 'function') {
+        const isCatchup = newPacks > 5;
+        const msg = isCatchup 
+          ? `🎁 Chúc mừng! Đạt mốc pha chế (${served.toLocaleString()} ly), nhận bù +${newPacks} Túi 3 Nguyên Liệu Bí Mật! 🧋✨`
+          : `🎁 Chúc mừng! Đạt mốc pha chế (${served.toLocaleString()} ly), nhận +${newPacks} Túi 3 Nguyên Liệu Bí Mật! 🧋✨`;
+        toast(msg, 5000);
+      }
+      if (typeof sfx === 'function') sfx('coin');
+    }
+  }
+
+  function getCraftableRecipesCount() {
+    initCollectionState();
+    if (!window.S || !S.collection) return 0;
+    const unlockedMap = S.collection.unlockedIngs || {};
+    return RECIPES.filter(rec => {
+      const isCrafted = !!(S.collection.craftedRecipes && S.collection.craftedRecipes[rec.id]);
+      if (isCrafted) return false;
+      return rec.ings.every(id => (unlockedMap[id] || 0) > 0);
+    }).length;
+  }
+
+  function getUpgradeableRecipesCount() {
+    initCollectionState();
+    if (!window.S || !S.collection) return 0;
+    const unlockedMap = S.collection.unlockedIngs || {};
+    return RECIPES.filter(rec => {
+      const isCrafted = !!(S.collection.craftedRecipes && S.collection.craftedRecipes[rec.id]);
+      if (!isCrafted) return false;
+      const curStar = (S.collection.recipeStars && S.collection.recipeStars[rec.id]) || 1;
+      if (curStar >= 5) return false;
+      const nextStar = curStar + 1;
+      const cost = STAR_UPGRADE_COSTS[nextStar] || 3;
+      return rec.ings.every(id => (unlockedMap[id] || 0) >= (cost + 1));
+    }).length;
+  }
+
+  function updateBadge() {
+    initCollectionState();
+    const badge = document.getElementById('collectionPackBadge');
+    if (!badge || !window.S || !S.collection) return;
+    const count = (S.collection.unopenedPacks || 0) + getCraftableRecipesCount() + getUpgradeableRecipesCount();
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : count;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  // Gacha logic theo tỉ lệ chuẩn: N 70%, R 24.5%, SR 5%, SSR 0.5% (Tổng 100%)
+  function rollRarity() {
+    const rand = Math.random() * 100;
+    if (rand < 0.5) return 'SSR';    // 0.5%
+    if (rand < 5.5) return 'SR';     // 5.0%
+    if (rand < 30.0) return 'R';     // 24.5%
+    return 'N';                      // 70.0%
+  }
+
+  function pickRandomIngredient(forcedRarity, excludeIds) {
+    const r = forcedRarity || rollRarity();
+    let candidates = INGREDIENTS.filter(x => x.rarity === r);
+    if (excludeIds && excludeIds.length) {
+      const nonExcluded = candidates.filter(x => !excludeIds.includes(x.id));
+      if (nonExcluded.length > 0) candidates = nonExcluded;
+    }
+    if (!candidates.length) candidates = INGREDIENTS;
+
+    // Tỉ lệ trùng được điều chỉnh chuẩn xác 50% - 70% theo yêu cầu
+    const owned = candidates.filter(x => S && S.collection && S.collection.unlockedIngs && S.collection.unlockedIngs[x.id] > 0);
+    const unowned = candidates.filter(x => !(S && S.collection && S.collection.unlockedIngs && S.collection.unlockedIngs[x.id] > 0));
+
+    if (owned.length > 0 && unowned.length > 0) {
+      // Tỉ lệ trùng nâng lên 80% theo yêu cầu (tỉ lệ thẻ mới chỉ còn 20%)
+      const duplicateRate = 0.80;
+      if (Math.random() < duplicateRate) {
+        return owned[Math.floor(Math.random() * owned.length)];
+      } else {
+        return unowned[Math.floor(Math.random() * unowned.length)];
+      }
+    }
+
+    if (unowned.length > 0) {
+      return unowned[Math.floor(Math.random() * unowned.length)];
+    }
+
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  function buyPack() {
+    initCollectionState();
+    if (!window.S) return;
+    const PACK_PRICE = 100000000; // 100tr tiền két
+
+    // 1. Kiểm tra tiền két (100tr)
+    if ((S.money || 0) < PACK_PRICE) {
+      if (typeof toast === 'function') {
+        toast(`⚠️ Không đủ tiền két! Mở pack cần tối thiểu 100.000.000đ (100tr) tiền két. Hiện có: ${typeof fmt === 'function' ? fmt(S.money || 0) : (S.money || 0) + 'đ'}.`, 4500, 1);
+      }
+      return;
+    }
+
+    // 2. Kiểm tra 10 lần 5 sao tổng
+    const curStars = S.star5Count || 0;
+    if (curStars < 10) {
+      if (typeof toast === 'function') {
+        toast(`⚠️ Chưa đủ tích lũy 5 sao! Mở pack cần tối thiểu 10 lần 5 sao tổng (x10 ⭐ trên thanh tiêu đề). Hiện có: ${curStars} lần.`, 4500, 1);
+      }
+      return;
+    }
+
+    // Khấu trừ 100tr tiền két
+    S.money -= PACK_PRICE;
+
+    // Trừ 10 lần 5 sao tổng
+    S.star5Count = Math.max(0, curStars - 10);
+    S.collection.unopenedPacks = (S.collection.unopenedPacks || 0) + 1;
+
+    // Trừ 10% tổng hạn mức gửi ngân hàng mỗi lần
+    if (typeof initBankState === 'function') initBankState();
+    let capLost = 0;
+    if (S.bank && S.bank.cap) {
+      const oldCap = S.bank.cap;
+      const newCap = Math.max(10000000, Math.round(oldCap * 0.90));
+      capLost = oldCap - newCap;
+      S.bank.cap = newCap;
+      S.bank._migrated5Star = true;
+    }
+
+    if (typeof head === 'function') head();
+    if (typeof save === 'function') save();
+    updateBadge();
+    if (typeof sfx === 'function') sfx('coin');
+
+    if (typeof toast === 'function') {
+      const capTxt = (capLost > 0 && typeof fmt === 'function') ? ` | Hạn mức Bank: -${fmt(capLost)} (còn ${fmt(S.bank.cap)})` : '';
+      toast(`✨ Mở pack thành công (-100tr tiền két, -10 Lần 5★ tổng, -10% Hạn mức Bank)! 5★ còn lại: x${S.star5Count} ⭐${capTxt}`, 5500);
+    }
+
+    // Tự động mở pack ngay lập tức
+    openPack();
+  }
+
+  let animTimeouts = [];
+  function clearAnimTimeouts() {
+    animTimeouts.forEach(t => clearTimeout(t));
+    animTimeouts = [];
+  }
+
+  function openPack() {
+    initCollectionState();
+    if (!S || !S.collection) return;
+    if ((S.collection.unopenedPacks || 0) <= 0) {
+      // Hết túi quà có sẵn -> Kích hoạt mở pack bằng 10 lần 5 sao & 10% bank cap
+      buyPack();
+      return;
+    }
+
+    S.collection.unopenedPacks--;
+    S.collection.claimedPacks = (S.collection.claimedPacks || 0) + 1;
+
+    // Roll 3 nguyên liệu độc lập theo tỉ lệ trùng chuẩn 50% - 70%
+    const rolled = [];
+    const chosenIds = [];
+
+    for (let i = 0; i < 3; i++) {
+      const ing = pickRandomIngredient(null, chosenIds);
+      rolled.push(ing);
+      chosenIds.push(ing.id);
+    }
+
+    const discoveries = [];
+    rolled.forEach(ing => {
+      const isNew = (!S.collection.unlockedIngs || !S.collection.unlockedIngs[ing.id]) && (!S.collection.discoveredIngs || !S.collection.discoveredIngs[ing.id]);
+      S.collection.unlockedIngs[ing.id] = (S.collection.unlockedIngs[ing.id] || 0) + 1;
+      if (!S.collection.discoveredIngs) S.collection.discoveredIngs = {};
+      S.collection.discoveredIngs[ing.id] = true;
+      discoveries.push({ ...ing, isNew });
+    });
+
+    S.collection.lastRevealed = discoveries;
+    if (typeof save === 'function') save();
+    updateBadge();
+
+    // Kích hoạt hiệu ứng mở pack sinh động
+    showPackOpeningAnimation(discoveries);
+  }
+
+  function showPackOpeningAnimation(discoveries) {
+    clearAnimTimeouts();
+    let overlay = document.getElementById('colPackAnimOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'colPackAnimOverlay';
+      overlay.className = 'col-anim-overlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+
+    overlay.innerHTML = `
+      <button type="button" class="col-anim-skip-btn" id="colAnimSkipBtn">⏩ Bỏ qua hiệu ứng</button>
+      <div class="col-anim-content">
+        <!-- GIAI ĐOẠN 1: TÚI QUÀ RUNG LẮC & HÀO QUANG -->
+        <div class="col-anim-pack-wrap" id="colAnimPackWrap">
+          <div class="col-anim-rays"></div>
+          <div class="col-anim-pouch col-shake" id="colAnimPouch">🧋🎁</div>
+          <div class="col-anim-title" id="colAnimTitle">✨ ĐANG GIẢI MÃ PHONG ẤN TÚI BÍ MẬT... ✨</div>
+        </div>
+
+        <!-- GIAI ĐOẠN 2: 3 THẺ NGUYÊN LIỆU 3D LẬT BÀI -->
+        <div class="col-anim-cards-wrap" id="colAnimCardsWrap" style="display:none;">
+          <div style="color:#fef08a;font-weight:900;font-size:0.92rem;margin-bottom:12px;text-shadow:0 2px 6px rgba(0,0,0,0.5);">
+            🎉 KẾT QUẢ MỞ TÚI NGUYÊN LIỆU
+          </div>
+          <div class="col-anim-cards-grid">
+            ${discoveries.map((ing, idx) => `
+              <div class="col-card-slot" data-card-idx="${idx}">
+                <div class="col-card-3d-flipper" id="colCardFlipper_${idx}">
+                  <!-- MẶT ÚP (BÍ MẬT) -->
+                  <div class="col-card-face col-card-backside">
+                    <div class="col-card-back-pattern">
+                      <span class="col-card-back-icon">🍵</span>
+                      <span class="col-card-back-mark">?</span>
+                    </div>
+                  </div>
+                  <!-- MẶT NGỬA (NGUYÊN LIỆU) -->
+                  <div class="col-card-face col-card-frontside rarity-${ing.rarity}">
+                    ${ing.isNew ? '<span class="tag-new">MỚI!</span>' : ''}
+                    <div class="col-card-icon">${ing.icon}</div>
+                    <div class="col-card-name">${esc(ing.name)}</div>
+                    <span class="rarity-badge ${ing.rarity}">${ing.rarity}</span>
+                    <div class="col-card-group">${esc(ing.groupName)}</div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="col-anim-actions" id="colAnimActions" style="opacity:0; pointer-events:none;">
+            ${(S.collection && S.collection.unopenedPacks > 0) ? `
+              <button type="button" class="col-anim-next-btn" id="colAnimNextBtn">
+                ✨ Mở Tiếp Túi Có Sẵn (Còn ${S.collection.unopenedPacks})
+              </button>
+            ` : `
+              <button type="button" class="col-anim-next-btn" id="colAnimBuyNextBtn" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+                ✨ Mở Tiếp Gói Mới (100tr · -10 Lần 5★ · -10% Bank Cap)
+              </button>
+            `}
+            <button type="button" class="col-anim-close-btn" id="colAnimCloseBtn">
+              ✅ Thu Thập Tất Cả
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (typeof sfx === 'function') sfx('coin');
+
+    const packWrap = document.getElementById('colAnimPackWrap');
+    const pouch = document.getElementById('colAnimPouch');
+    const cardsWrap = document.getElementById('colAnimCardsWrap');
+    const actions = document.getElementById('colAnimActions');
+
+    const flipCard = (idx) => {
+      const flipper = document.getElementById(`colCardFlipper_${idx}`);
+      if (flipper && !flipper.classList.contains('is-flipped')) {
+        flipper.classList.add('is-flipped');
+        const ing = discoveries[idx];
+        if (ing && (ing.rarity === 'SSR' || ing.rarity === 'SR')) {
+          if (typeof sfx === 'function') sfx('lvup');
+        } else {
+          if (typeof sfx === 'function') sfx('coin');
+        }
+      }
+    };
+
+    const revealAll = () => {
+      clearAnimTimeouts();
+      if (packWrap) packWrap.style.display = 'none';
+      if (cardsWrap) cardsWrap.style.display = 'flex';
+      for (let i = 0; i < discoveries.length; i++) {
+        const flipper = document.getElementById(`colCardFlipper_${i}`);
+        if (flipper) flipper.classList.add('is-flipped');
+      }
+      if (actions) {
+        actions.style.opacity = '1';
+        actions.style.pointerEvents = 'auto';
+      }
+      const skipBtn = document.getElementById('colAnimSkipBtn');
+      if (skipBtn) skipBtn.style.display = 'none';
+    };
+
+    // Card click: user can tap any card to flip it early
+    const cardSlots = overlay.querySelectorAll('.col-card-slot');
+    cardSlots.forEach(slot => {
+      slot.onclick = () => {
+        const idx = parseInt(slot.dataset.cardIdx, 10);
+        flipCard(idx);
+      };
+    });
+
+    // Burst pack after 650ms
+    animTimeouts.push(setTimeout(() => {
+      if (pouch) pouch.classList.add('col-burst');
+      if (typeof sfx === 'function') sfx('coin');
+    }, 650));
+
+    // Show cards after burst (950ms)
+    animTimeouts.push(setTimeout(() => {
+      if (packWrap) packWrap.style.display = 'none';
+      if (cardsWrap) cardsWrap.style.display = 'flex';
+    }, 950));
+
+    // Flip card 0
+    animTimeouts.push(setTimeout(() => {
+      flipCard(0);
+    }, 1250));
+
+    // Flip card 1
+    animTimeouts.push(setTimeout(() => {
+      flipCard(1);
+    }, 1650));
+
+    // Flip card 2
+    animTimeouts.push(setTimeout(() => {
+      flipCard(2);
+    }, 2050));
+
+    // Show actions
+    animTimeouts.push(setTimeout(() => {
+      if (actions) {
+        actions.style.opacity = '1';
+        actions.style.pointerEvents = 'auto';
+      }
+      const skipBtn = document.getElementById('colAnimSkipBtn');
+      if (skipBtn) skipBtn.style.display = 'none';
+    }, 2450));
+
+    // Skip button
+    const skipBtn = document.getElementById('colAnimSkipBtn');
+    if (skipBtn) {
+      skipBtn.onclick = revealAll;
+    }
+
+    // Actions click handlers
+    overlay.onclick = e => {
+      const nextBtn = e.target.closest('#colAnimNextBtn');
+      if (nextBtn) {
+        clearAnimTimeouts();
+        openPack();
+        return;
+      }
+      const buyNextBtn = e.target.closest('#colAnimBuyNextBtn');
+      if (buyNextBtn) {
+        clearAnimTimeouts();
+        buyPack();
+        return;
+      }
+      const closeBtn = e.target.closest('#colAnimCloseBtn');
+      if (closeBtn) {
+        clearAnimTimeouts();
+        overlay.style.display = 'none';
+        render();
+        return;
+      }
+    };
+  }
+
+  function craftRecipe(recipeId) {
+    initCollectionState();
+    const rec = RECIPES.find(r => r.id === recipeId);
+    if (!rec) return;
+
+    // Check ingredients
+    const missing = rec.ings.filter(id => !(S.collection.unlockedIngs && S.collection.unlockedIngs[id] > 0));
+    if (missing.length > 0) {
+      const missingNames = missing.map(id => {
+        const item = INGREDIENTS.find(x => x.id === id);
+        return item ? item.name : id;
+      }).join(', ');
+      if (typeof toast === 'function') toast(`Chưa đủ nguyên liệu! Còn thiếu: ${missingNames}`);
+      return;
+    }
+
+    if (S.collection.craftedRecipes && S.collection.craftedRecipes[rec.id]) {
+      if (typeof toast === 'function') toast(`Công thức này đã được bạn sáng tạo rồi!`);
+      return;
+    }
+
+    // Consume 1 of each ingredient nhưng LUÔN bảo tồn tối thiểu 1 bản lưu niệm vĩnh viễn trong Album 100 Nguyên Liệu
+    rec.ings.forEach(id => {
+      if (!S.collection.discoveredIngs) S.collection.discoveredIngs = {};
+      S.collection.discoveredIngs[id] = true;
+      if (S.collection.unlockedIngs[id] > 1) {
+        S.collection.unlockedIngs[id]--;
+      } else {
+        // Giữ lại 1 bản lưu niệm vĩnh viễn trong Album
+        S.collection.unlockedIngs[id] = 1;
+      }
+    });
+
+    // Award cash bonus
+    S.money = (S.money || 0) + rec.cashBonus;
+    S.collection.craftedRecipes[rec.id] = true;
+    if (!S.collection.recipeStars) S.collection.recipeStars = {};
+    S.collection.recipeStars[rec.id] = 1;
+
+    if (typeof save === 'function') save();
+    if (typeof head === 'function') head();
+    if (typeof sfx === 'function') sfx('lvup');
+
+    if (typeof toast === 'function') {
+      toast(`🎉 SÁNG TẠO THÀNH CÔNG: ${rec.name}! Nhận thưởng +${typeof fmt === 'function' ? fmt(rec.cashBonus) : rec.cashBonus + 'đ'}!`, 5000);
+    }
+
+    updateBadge();
+    render();
+  }
+
+  function upgradeRecipeStar(recipeId) {
+    initCollectionState();
+    const rec = RECIPES.find(r => r.id === recipeId);
+    if (!rec) return;
+
+    if (!S.collection.craftedRecipes || !S.collection.craftedRecipes[rec.id]) {
+      if (typeof toast === 'function') toast('Bạn cần sáng tạo món trà này trước khi nâng cấp sao!');
+      return;
+    }
+
+    const curStar = (S.collection.recipeStars && S.collection.recipeStars[rec.id]) || 1;
+    if (curStar >= 5) {
+      if (typeof toast === 'function') toast(`Công thức "${rec.name}" đã đạt cảnh giới tối thượng 5★! 👑`);
+      return;
+    }
+
+    const nextStar = curStar + 1;
+    const cost = STAR_UPGRADE_COSTS[nextStar] || 3;
+
+    // Kiểm tra nguyên liệu: Cần cost thẻ trùng lặp, giữ lại tối thiểu 1 thẻ lưu niệm vĩnh viễn trong Album
+    const missing = rec.ings.filter(id => (S.collection.unlockedIngs[id] || 0) < (cost + 1));
+    if (missing.length > 0) {
+      const missingDetails = missing.map(id => {
+        const item = INGREDIENTS.find(x => x.id === id);
+        const name = item ? item.name : id;
+        const curHave = Math.max(0, (S.collection.unlockedIngs[id] || 0) - 1);
+        return `${name} (${curHave}/${cost})`;
+      }).join(', ');
+      if (typeof toast === 'function') {
+        toast(`⚠️ Chưa đủ nguyên liệu trùng lặp để đột phá lên ${nextStar}★ (Cần ${cost}x mỗi loại ngoài 1 bản lưu niệm). Thiếu: ${missingDetails}`, 5000);
+      }
+      return;
+    }
+
+    // Khấu trừ nguyên liệu trùng lặp (bảo tồn vĩnh viễn tối thiểu 1 bản trong Album)
+    rec.ings.forEach(id => {
+      S.collection.unlockedIngs[id] = Math.max(1, (S.collection.unlockedIngs[id] || 0) - cost);
+    });
+
+    if (!S.collection.recipeStars) S.collection.recipeStars = {};
+    S.collection.recipeStars[rec.id] = nextStar;
+
+    if (typeof save === 'function') save();
+    if (typeof head === 'function') head();
+    if (typeof sfx === 'function') sfx('win');
+
+    if (typeof toast === 'function') {
+      const starIcons = '⭐'.repeat(nextStar);
+      toast(`🎉 ĐỘT PHÁ THÀNH CÔNG! ${rec.name} đã thăng cấp lên ${nextStar}★ ${starIcons}!\n${STAR_BENEFITS[nextStar]}`, 6000);
+    }
+
+    updateBadge();
+    render();
+  }
+
+  function open10Packs() {
+    initCollectionState();
+    if (!S || !S.collection) return;
+    const unopened = S.collection.unopenedPacks || 0;
+    if (unopened < 10) {
+      if (typeof toast === 'function') toast(`⚠️ Không đủ túi quà! Cần tối thiểu 10 túi quà có sẵn (Hiện có: ${unopened} túi).`);
+      return;
+    }
+
+    S.collection.unopenedPacks -= 10;
+    S.collection.claimedPacks = (S.collection.claimedPacks || 0) + 10;
+
+    const discoveries = [];
+    let newCount = 0;
+    const rarityCounts = { SSR: 0, SR: 0, R: 0, N: 0 };
+
+    for (let pack = 0; pack < 10; pack++) {
+      const chosenIds = [];
+      for (let i = 0; i < 3; i++) {
+        const ing = pickRandomIngredient(null, chosenIds);
+        chosenIds.push(ing.id);
+
+        const isNew = (!S.collection.unlockedIngs || !S.collection.unlockedIngs[ing.id]) && (!S.collection.discoveredIngs || !S.collection.discoveredIngs[ing.id]);
+        if (isNew) newCount++;
+        rarityCounts[ing.rarity] = (rarityCounts[ing.rarity] || 0) + 1;
+
+        S.collection.unlockedIngs[ing.id] = (S.collection.unlockedIngs[ing.id] || 0) + 1;
+        if (!S.collection.discoveredIngs) S.collection.discoveredIngs = {};
+        S.collection.discoveredIngs[ing.id] = true;
+        discoveries.push({ ...ing, isNew });
+      }
+    }
+
+    S.collection.lastRevealed = discoveries.slice(0, 6);
+    if (typeof save === 'function') save();
+    updateBadge();
+
+    show10PackSummaryModal(discoveries, rarityCounts, newCount);
+  }
+
+  function show10PackSummaryModal(discoveries, rarityCounts, newCount) {
+    clearAnimTimeouts();
+    let overlay = document.getElementById('colPackAnimOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'colPackAnimOverlay';
+      overlay.className = 'col-anim-overlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+
+    const unopened = (S && S.collection && S.collection.unopenedPacks) || 0;
+
+    overlay.innerHTML = `
+      <div class="col-anim-content" style="max-width:540px;width:95%;">
+        <div style="background:rgba(15,23,42,0.94);border:2px solid #facc15;border-radius:18px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,0.6);text-align:center;">
+          <div style="color:#fde047;font-weight:900;font-size:1.1rem;margin-bottom:4px;text-shadow:0 2px 8px rgba(0,0,0,0.6);">
+            🚀 KẾT QUẢ MỞ NHANH 10 TÚI (30 NGUYÊN LIỆU)
+          </div>
+          <div style="font-size:0.78rem;color:#cbd5e1;margin-bottom:10px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+            <span>✨ Mới: <b style="color:#4ade80;">+${newCount} thẻ</b></span>
+            <span>⭐ SSR: <b style="color:#fde047;">${rarityCounts.SSR || 0}</b></span>
+            <span>💎 SR: <b style="color:#c084fc;">${rarityCounts.SR || 0}</b></span>
+            <span>🔷 R: <b style="color:#60a5fa;">${rarityCounts.R || 0}</b></span>
+            <span>⚪ N: <b style="color:#e2e8f0;">${rarityCounts.N || 0}</b></span>
+          </div>
+
+          <div class="col-10pack-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:55vh;overflow-y:auto;padding:4px;margin-bottom:12px;">
+            ${discoveries.map(ing => `
+              <div class="col-reveal-card rarity-${ing.rarity}" style="padding:6px 2px;position:relative;background:#fff;border-radius:10px;">
+                ${ing.isNew ? '<span class="tag-new" style="font-size:0.55rem;padding:1px 3px;">MỚI</span>' : ''}
+                <div style="font-size:1.6rem;line-height:1;">${ing.icon}</div>
+                <div style="font-weight:800;font-size:0.65rem;color:#1e293b;margin:3px 0 1px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(ing.name)}</div>
+                <span class="rarity-badge ${ing.rarity}" style="font-size:0.55rem;padding:1px 3px;">${ing.rarity}</span>
+              </div>
+            `).join('')}
+          </div>
+
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+            ${unopened >= 10 ? `
+              <button type="button" class="col-anim-next-btn" id="colAnim10PackNextBtn" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);font-size:0.85rem;padding:8px 16px;">
+                🚀 Mở Nhanh 10 Túi Tiếp (Còn ${unopened})
+              </button>
+            ` : (unopened > 0 ? `
+              <button type="button" class="col-anim-next-btn" id="colAnim1PackNextBtn" style="background:linear-gradient(135deg,#f59e0b,#d97706);font-size:0.85rem;padding:8px 16px;">
+                ✨ Mở 1 Túi (Còn ${unopened})
+              </button>
+            ` : '')}
+            <button type="button" class="col-anim-close-btn" id="colAnim10CloseBtn" style="font-size:0.85rem;padding:8px 16px;">
+              ✅ Thu Thập Tất Cả
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (typeof sfx === 'function') sfx('win');
+
+    overlay.onclick = e => {
+      if (e.target.closest('#colAnim10PackNextBtn')) {
+        open10Packs();
+        return;
+      }
+      if (e.target.closest('#colAnim1PackNextBtn')) {
+        openPack();
+        return;
+      }
+      if (e.target.closest('#colAnim10CloseBtn')) {
+        overlay.style.display = 'none';
+        render();
+        return;
+      }
+    };
+  }
+
+  // Render UI
+  function render() {
+    initCollectionState();
+    const body = document.getElementById('collectionModalBody');
+    if (!body) return;
+
+    const served = S.served || 0;
+    const unopened = S.collection.unopenedPacks || 0;
+    const nextM = getNextMilestone(served);
+    const prevM = getPrevMilestone(served);
+    const mProgress = Math.min(100, Math.max(0, Math.round(((served - prevM) / (nextM - prevM)) * 100)));
+
+    const unlockedMap = S.collection.unlockedIngs || {};
+    const discoveredMap = S.collection.discoveredIngs || {};
+    const totalCollected = INGREDIENTS.filter(x => (unlockedMap[x.id] > 0) || !!discoveredMap[x.id]).length;
+    const readyRecipesCount = getCraftableRecipesCount() + getUpgradeableRecipesCount();
+
+    let html = `
+      <div class="col-nav-tabs">
+        <button class="col-nav-btn ${curTab === 'gacha' ? 'active' : ''}" data-col-tab="gacha">
+          🎁 Mở Túi (${unopened}) ${unopened > 0 ? `<span class="col-nav-badge">${unopened}</span>` : ''}
+        </button>
+        <button class="col-nav-btn ${curTab === 'collection' ? 'active' : ''}" data-col-tab="collection">
+          📦 100 Nguyên Liệu (${totalCollected}/100)
+        </button>
+        <button class="col-nav-btn ${curTab === 'recipes' ? 'active' : ''}" data-col-tab="recipes">
+          📜 Sổ Tay Công Thức (${Object.keys(S.collection.craftedRecipes || {}).length}/${RECIPES.length}) ${readyRecipesCount > 0 ? `<span class="col-nav-badge">${readyRecipesCount}</span>` : ''}
+        </button>
+      </div>
+    `;
+
+    if (curTab === 'gacha') {
+      html += `
+        <div class="col-pack-hero">
+          <div class="col-pack-icon">🧋🎁</div>
+          <div class="col-pack-count">Bạn Đang Có: ${unopened} Túi Quà</div>
+          <div class="col-pack-sub">Mỗi túi gồm 3 nguyên liệu ngẫu nhiên (Tỉ lệ: N 70% · R 24.5% · SR 5% · SSR 0.5%)!</div>
+          <div class="col-pack-btn-row">
+            <button class="col-open-btn" id="colOpenPackBtn" ${unopened <= 0 ? 'disabled' : ''}>
+              ${unopened > 0 ? `✨ Mở 1 Túi (Còn ${unopened})` : '🔒 Hết Túi Miễn Phí (Pha Thêm Để Nhận)'}
+            </button>
+            ${unopened >= 10 ? `
+              <button class="col-open-10-btn" id="colOpen10PacksBtn">
+                🚀 Mở Nhanh 10 Túi (30 Thẻ)
+              </button>
+            ` : ''}
+            <button class="col-buy-btn" id="colBuyPackBtn" style="background:linear-gradient(135deg,#f59e0b,#d97706);font-weight:800;">
+              ✨ Mở Gói Pack (100tr · -10 Lần 5★ · -10% Bank Cap)
+            </button>
+          </div>
+          <div class="col-pack-res-hint">
+            💵 Tiền két: <b style="color:${(S.money||0)>=100000000?'#059669':'#dc2626'};">${typeof fmt === 'function' ? fmt(S.money || 0) : (S.money || 0) + 'đ'}/100tr</b> &nbsp;|&nbsp; ⭐ <b>${S.star5Count || 0}/10 lần 5★</b> &nbsp;|&nbsp; 🏦 Bank cap: <b>${typeof fmt === 'function' ? fmt((S.bank && S.bank.cap) || 10000000) : ((S.bank && S.bank.cap) || 10000000) + 'đ'}</b> (-10%/gói)
+          </div>
+        </div>
+
+        <div class="col-milestone-box">
+          <div class="col-milestone-title">
+            <span>🥤 Tiến Độ Pha Chế: <b>${served} ly</b></span>
+            <span>Mốc tiếp theo: <b>${nextM} ly</b> (+1 Túi)</span>
+          </div>
+          <div class="col-progress-bar">
+            <div class="col-progress-fill" style="width: ${mProgress}%;"></div>
+          </div>
+          <div class="col-milestone-hint">
+            💡 <b>Cơ chế thưởng:</b> Cứ mỗi 1000 ly pha chế phục vụ khách (1000, 2000, 3000, 4000, 5000... ly) sẽ được tặng ngay 1 Túi Quà 3 nguyên liệu!
+          </div>
+        </div>
+      `;
+
+      if (S.collection.lastRevealed && S.collection.lastRevealed.length > 0) {
+        html += `
+          <div style="font-weight:900;font-size:0.88rem;color:#854d0e;margin:12px 0 6px;">✨ NGUYÊN LIỆU VỪA MỞ ĐƯỢC:</div>
+          <div class="col-reveal-grid">
+        `;
+        S.collection.lastRevealed.forEach(ing => {
+          html += `
+            <div class="col-reveal-card rarity-${ing.rarity}">
+              ${ing.isNew ? '<span class="tag-new">MỚI!</span>' : ''}
+              <div style="font-size:2.2rem;line-height:1;">${ing.icon}</div>
+              <div style="font-weight:800;font-size:0.75rem;color:#1e293b;margin:4px 0 2px;line-height:1.2;">${esc(ing.name)}</div>
+              <span class="rarity-badge ${ing.rarity}">${ing.rarity}</span>
+              <div style="font-size:0.68rem;color:#64748b;margin-top:2px;">${esc(ing.groupName)}</div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+    } else if (curTab === 'collection') {
+      const groups = [
+        { id: 0, n: 'Tất cả (100)' },
+        { id: 1, n: '1. Cốt trà (25)' },
+        { id: 2, n: '2. Sữa & Béo (18)' },
+        { id: 3, n: '3. Topping (25)' },
+        { id: 4, n: '4. Sốt & Ngọt (20)' },
+        { id: 5, n: '5. Kem & Decor (12)' }
+      ];
+
+      const filteredIngs = curGroupFilter === 0 ? INGREDIENTS : INGREDIENTS.filter(x => x.group === curGroupFilter);
+
+      html += `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="font-size:0.82rem;font-weight:800;color:#334155;">Đã sưu tầm: <b style="color:#059669;">${totalCollected}/100</b> (${Math.round((totalCollected/100)*100)}%)</div>
+          <div style="font-size:0.75rem;color:#64748b;">Chạm vào thẻ để xem mô tả</div>
+        </div>
+
+        <div class="col-filter-scroll">
+          ${groups.map(g => `<button class="col-filter-btn ${curGroupFilter === g.id ? 'active' : ''}" data-col-group="${g.id}">${g.n}</button>`).join('')}
+        </div>
+
+        <div class="col-ing-grid">
+      `;
+
+      filteredIngs.forEach(ing => {
+        const qty = unlockedMap[ing.id] || 0;
+        const isOwned = qty > 0 || !!discoveredMap[ing.id];
+        html += `
+          <div class="col-ing-item ${isOwned ? `rarity-${ing.rarity}` : 'locked'}" data-ing-desc="${esc(ing.name)} (${ing.rarity}): ${esc(ing.desc)}">
+            <div class="col-ing-icon">${ing.icon}</div>
+            <div class="col-ing-name">${isOwned ? esc(ing.name) : '???'}</div>
+            <span class="rarity-badge ${ing.rarity}">${ing.rarity}</span>
+            ${isOwned ? `<div class="col-ing-qty">x${Math.max(1, qty)}</div>` : '<div style="font-size:0.65rem;color:#94a3b8;margin-top:2px;">Chưa có</div>'}
+          </div>
+        `;
+      });
+
+      html += `</div>`;
+    } else if (curTab === 'recipes') {
+      html += `
+        <div style="font-size:0.8rem;color:#64748b;margin-bottom:10px;">
+          Sưu tầm đủ bộ nguyên liệu để chế tạo các món trà sữa độc bản, mở khóa vĩnh viễn các buff doanh thu và nhận tiền thưởng khổng lồ!
+        </div>
+      `;
+
+      RECIPES.forEach(rec => {
+        const isCrafted = !!(S.collection.craftedRecipes && S.collection.craftedRecipes[rec.id]);
+        const canCraft = rec.ings.every(id => (unlockedMap[id] || 0) > 0);
+        const curStar = isCrafted ? ((S.collection.recipeStars && S.collection.recipeStars[rec.id]) || 1) : 0;
+        const nextStar = curStar + 1;
+        const upgradeCost = STAR_UPGRADE_COSTS[nextStar] || 3;
+        const canUpgrade = isCrafted && (curStar < 5) && rec.ings.every(id => (unlockedMap[id] || 0) >= (upgradeCost + 1));
+        const isCosmic = rec.tier && rec.tier.includes('Vũ Trụ');
+
+        html += `
+          <div class="col-recipe-card ${isCrafted ? 'crafted' : ''} ${isCosmic ? 'tier-cosmic' : ''}">
+            <div class="col-recipe-header">
+              <div class="col-recipe-title">
+                <span>${rec.icon}</span>
+                <span>${esc(rec.name)}</span>
+              </div>
+              <span class="col-recipe-tier ${isCosmic ? 'tier-cosmic-badge' : ''}">${rec.tier}</span>
+            </div>
+
+            ${isCrafted ? `
+              <div class="col-star-row">
+                <div class="col-star-display">
+                  ${[1, 2, 3, 4, 5].map(s => `
+                    <span class="col-star-icon ${s <= curStar ? 'filled' : 'empty'}">${s <= curStar ? '★' : '☆'}</span>
+                  `).join('')}
+                  <span class="col-star-level-text">${curStar}/5★ ${curStar === 5 ? '👑 TỐI THƯỢNG' : ''}</span>
+                </div>
+                <div class="col-star-perk-hint">${STAR_BENEFITS[curStar]}</div>
+              </div>
+            ` : ''}
+
+            <div class="col-recipe-ings">
+              ${rec.ings.map(id => {
+                const item = INGREDIENTS.find(x => x.id === id);
+                const haveQty = unlockedMap[id] || 0;
+                const isOwned = haveQty > 0;
+                const dupQty = Math.max(0, haveQty - 1);
+                const reqText = isCrafted && curStar < 5 
+                  ? `${item ? item.name : id}: ${dupQty}/${upgradeCost} thẻ trùng` 
+                  : (item ? item.name : id);
+                const isSufficient = isCrafted && curStar < 5 ? (dupQty >= upgradeCost) : isOwned;
+                return `<span class="col-req-pill ${isSufficient ? 'have' : ''}">${isSufficient ? '✓' : '✗'} ${reqText}</span>`;
+              }).join('')}
+            </div>
+
+            <div class="col-recipe-bonus">
+              🎁 <b>Thưởng chế tạo:</b> ${rec.rewardDesc}
+            </div>
+
+            ${!isCrafted ? `
+              <button class="col-craft-btn ${canCraft ? 'ready' : ''}" data-craft-recipe="${rec.id}" ${canCraft ? '' : 'disabled'}>
+                ${canCraft ? '✨ Pha Chế &amp; Kích Hoạt Món Mới (1★)' : '🔒 Chưa Đủ Nguyên Liệu'}
+              </button>
+            ` : (curStar < 5 ? `
+              <div class="col-star-upgrade-box">
+                <button class="col-upgrade-star-btn ${canUpgrade ? 'ready' : ''}" data-upgrade-star="${rec.id}" ${canUpgrade ? '' : 'disabled'}>
+                  ${canUpgrade ? `⭐ Đột Phá Lên ${nextStar}★ (Dùng ${upgradeCost}x thẻ trùng)` : `🔒 Đột Phá Lên ${nextStar}★ (Cần ${upgradeCost}x mỗi nguyên liệu)`}
+                </button>
+                <div class="col-star-next-perk"><b>Nâng lên ${nextStar}★:</b> ${STAR_BENEFITS[nextStar]}</div>
+              </div>
+            ` : `
+              <div class="col-craft-btn crafted-max-badge">
+                👑 Đạt Cảnh Giới Tối Thượng 5★ (+3% Doanh thu toàn chuỗi mẹ)
+              </div>
+            `)}
+          </div>
+        `;
+      });
+    }
+
+    body.innerHTML = html;
+
+    // Bind event listeners
+    body.onclick = e => {
+      const tabBtn = e.target.closest('[data-col-tab]');
+      if (tabBtn) {
+        curTab = tabBtn.dataset.colTab;
+        render();
+        return;
+      }
+
+      const openBtn = e.target.closest('#colOpenPackBtn');
+      if (openBtn) {
+        openPack();
+        return;
+      }
+
+      const open10Btn = e.target.closest('#colOpen10PacksBtn');
+      if (open10Btn) {
+        open10Packs();
+        return;
+      }
+
+      const buyBtn = e.target.closest('#colBuyPackBtn');
+      if (buyBtn) {
+        buyPack();
+        return;
+      }
+
+      const groupBtn = e.target.closest('[data-col-group]');
+      if (groupBtn) {
+        curGroupFilter = parseInt(groupBtn.dataset.colGroup, 10);
+        render();
+        return;
+      }
+
+      const craftBtn = e.target.closest('[data-craft-recipe]');
+      if (craftBtn) {
+        const rid = craftBtn.dataset.craftRecipe;
+        craftRecipe(rid);
+        return;
+      }
+
+      const upgradeBtn = e.target.closest('[data-upgrade-star]');
+      if (upgradeBtn) {
+        const rid = upgradeBtn.dataset.upgradeStar;
+        upgradeRecipeStar(rid);
+        return;
+      }
+
+      const descItem = e.target.closest('[data-ing-desc]');
+      if (descItem) {
+        if (typeof toast === 'function') {
+          toast(descItem.dataset.ingDesc, 3500);
+        }
+      }
+    };
+  }
+
+  function open() {
+    checkMilestones();
+    const modal = document.getElementById('collection-modal');
+    if (!modal) return;
+    modal.hidden = false;
+    render();
+  }
+
+  function close() {
+    clearAnimTimeouts();
+    const animOverlay = document.getElementById('colPackAnimOverlay');
+    if (animOverlay) animOverlay.style.display = 'none';
+    const modal = document.getElementById('collection-modal');
+    if (!modal) return;
+    modal.hidden = true;
+  }
+
+  function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // Export API
+  window.RECIPES = RECIPES;
+  window.Collection = {
+    open,
+    close,
+    checkMilestones,
+    updateBadge,
+    getCraftableRecipesCount,
+    getUpgradeableRecipesCount,
+    upgradeRecipeStar,
+    open10Packs,
+    STAR_UPGRADE_COSTS,
+    STAR_BENEFITS,
+    INGREDIENTS,
+    RECIPES
+  };
+
+  // Bind close button
+  document.addEventListener('DOMContentLoaded', () => {
+    const closeBtn = document.getElementById('collectionModalClose');
+    if (closeBtn) closeBtn.onclick = close;
+
+    const modal = document.getElementById('collection-modal');
+    if (modal) {
+      modal.onclick = e => {
+        if (e.target === modal) close();
+      };
+    }
+  });
+})();
